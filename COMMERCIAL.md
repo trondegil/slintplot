@@ -2,9 +2,12 @@
 
 SlintPlot is free under either of two licenses (see [LICENSE.md](LICENSE.md)):
 
-- the **GNU GPL, version 3**, for open-source applications distributed under
-  the GPLv3, commercial or not
-- the **PolyForm Noncommercial License 1.0.0**, for any noncommercial
+- the **GNU GPL, version 3**: free for anyone, for any purpose, including
+  companies. Software that includes SlintPlot and is distributed to others
+  must be distributed under the GPLv3, with its source code. Using SlintPlot
+  only within your own organization, without distributing it, has no such
+  condition.
+- the **PolyForm Noncommercial License 1.0.0**: free for any noncommercial
   purpose, with or without sharing your source code: personal projects,
   hobby projects and learning; research, experiments and testing; education,
   and use by charitable, public research, public safety, health and
@@ -12,13 +15,14 @@ SlintPlot is free under either of two licenses (see [LICENSE.md](LICENSE.md)):
 
 ## When you need a commercial license
 
-You need a commercial license to use SlintPlot for a commercial purpose in
-software that is not distributed under the GPLv3, for example:
+You need a commercial license when you use SlintPlot for a commercial
+purpose and don't distribute your software under the GPLv3, for example:
 
 - in a closed-source product, app or device you sell, license or ship to
   customers
-- in software or services your company uses to run its business
-- in client work or consulting
+- in a closed-source app that is free to download but earns money, such as
+  through paid upgrades, subscriptions or ads
+- in closed-source software you deliver to a client
 
 ## How to get one
 

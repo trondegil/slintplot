@@ -15,9 +15,10 @@ slintplot-stress --bench   # print headless frame timings
 On Linux, Slint needs the fontconfig and xkbcommon development packages first
 (`libfontconfig-dev` and `libxkbcommon-dev` on Debian and Ubuntu).
 
-SlintPlot is free for open-source GPLv3 applications and for any
-noncommercial use (PolyForm Noncommercial 1.0.0). For commercial use in
-other applications, email license@slintplot.dev. See LICENSE.md.
+SlintPlot is available under your choice of the GPLv3, the PolyForm
+Noncommercial License 1.0.0 (free for any noncommercial use) or a commercial
+license, for commercial use without the GPLv3's conditions
+(license@slintplot.dev). See LICENSE.md.
 Documentation: [slintplot.dev](https://slintplot.dev).
 
 SlintPlot is an independent project. It is not affiliated with, endorsed by or sponsored by SixtyFPS GmbH or the Slint project. Slint and the Slint logo are trademarks of SixtyFPS GmbH.

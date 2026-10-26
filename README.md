@@ -567,12 +567,15 @@ What SlintPlot 0.1 doesn't do yet, or does with restrictions:
 
 SlintPlot is available under your choice of three licenses:
 
-- **GPLv3**, free for open-source applications distributed under the GPLv3
-- **[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)**,
+- **GPLv3**: free for anyone, for any purpose. Software that includes
+  SlintPlot and is distributed to others must be distributed under the
+  GPLv3, with its source code.
+- **[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)**:
   free for personal, hobby, research, education and other noncommercial use,
-  with or without sharing your source code
-- **A commercial license** for commercial applications that aren't GPLv3:
-  email [license@slintplot.dev](mailto:license@slintplot.dev)
+  with or without sharing your source code.
+- **A commercial license**: for commercial use without the GPLv3's
+  conditions, such as in closed-source software you sell or ship. Email
+  [license@slintplot.dev](mailto:license@slintplot.dev).
 
 See [LICENSE.md](LICENSE.md) and [COMMERCIAL.md](COMMERCIAL.md) for the
 details. Your application also needs a suitable
