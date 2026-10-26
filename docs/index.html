@@ -101,6 +101,7 @@
   .placeholder.small { min-height: 70px; }
   .placeholder strong { display: block; color: var(--text); margin-bottom: 4px; }
   .shot { margin: 14px 0 20px; }
+  .shot figcaption { margin-top: 8px; font-size: 14px; color: var(--text-muted); }
   .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
   .swatches { display: flex; gap: 4px; }
   .swatches span { width: 18px; height: 18px; border-radius: 4px; display: inline-block; }
@@ -181,7 +182,10 @@
   <div class="card"><h4>Interactive</h4><p>Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.</p></div>
   <div class="card"><h4>Large datasets</h4><p>Min-max decimation and on-demand data reading for millions of points.</p></div>
 </div>
-<figure class="shot"><img src="screenshots/light.png" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy"></figure>
+<figure class="shot"><img src="screenshots/light.png" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy">
+  <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
+  Install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
+  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.0">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
 
 <h2 id="getting-started">Getting started</h2>
 <h3>1. Add the dependencies</h3>
