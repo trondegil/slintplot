@@ -158,6 +158,7 @@
   <a href="#engine">ChartEngine</a>
   <h4>More</h4>
   <a href="#examples">Example apps</a>
+  <a href="#limitations">Limitations</a>
   <a href="#license">License</a>
 </nav>
 
@@ -1460,6 +1461,23 @@ development packages first, such as <code>libfontconfig-dev</code> and <code>lib
 and <a href="https://github.com/trondegil/slintplot/tree/main/examples/stress">examples/stress</a>.
 The gallery's <code>ui/gallery.slint</code> has a working example of every chart.</p>
 <figure class="shot"><img src="screenshots/gallery.png" alt="The gallery sample browser" loading="lazy"></figure>
+
+<h2 id="limitations">Limitations</h2>
+<p>What SlintPlot 0.1 doesn't do yet, or does with restrictions:</p>
+<ul>
+  <li><strong>Rust only.</strong> The chart geometry is computed in Rust and connected with <code>register!</code>, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.</li>
+  <li><strong>Platforms.</strong> Tested on desktop: macOS, Windows and Linux. Embedded (MCU) and WebAssembly builds are untested. With Slint's software renderer, enable its <code>software-renderer-path</code> feature, or charts aren't drawn.</li>
+  <li><strong>English formatting.</strong> Values use <code>,</code> for thousands and <code>.</code> for decimals, and month and weekday names are English. There is no locale setting yet; a prefix, suffix and number of decimals can be set (see <a href="#axes">Axes and formatting</a>).</li>
+  <li><strong>Time zones.</strong> Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.</li>
+  <li><strong>One value axis.</strong> Each chart has one value axis; there is no secondary y axis.</li>
+  <li><strong>Zoom, pan and decimation</strong> work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.</li>
+  <li><strong>Eight colors per theme.</strong> With more than eight datasets the colors repeat. Set your own palette for more (see <a href="#theming">Theming</a>).</li>
+  <li><strong>Large charts of separate shapes are slower.</strong> Sunburst, waterfall, dumbbell and funnel charts draw every item as its own shape: about 320 ms for a sunburst with 10,000 items, and about 100 ms for waterfall and dumbbell charts. With up to 1,000 items, a frame takes under 30 ms. Decimation applies to lines only.</li>
+  <li><strong>Label fitting is estimated.</strong> Sunburst and treemap labels are kept or hidden from an estimate of the text width, so very wide or narrow fonts can be clipped or hidden too early.</li>
+  <li><strong>No image or PDF export.</strong> To save a chart as PNG, render the window with Slint's software renderer, as the gallery's <code>--snapshot</code> option does.</li>
+  <li><strong>Sunburst data order.</strong> A parent item must come before its children in <code>items</code>.</li>
+  <li><strong>Requirements.</strong> Slint 1.18 or later and Rust 1.88 or later.</li>
+</ul>
 
 <h2 id="license">License</h2>
 <p>

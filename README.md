@@ -541,6 +541,23 @@ cargo run --release -p slintplot-stress                        # stress test, st
 cargo run --release -p slintplot-stress -- --bench             # headless timings
 ```
 
+## Limitations
+
+What SlintPlot 0.1 doesn't do yet, or does with restrictions:
+
+- **Rust only.** The chart geometry is computed in Rust and connected with `register!`, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.
+- **Platforms.** Tested on desktop: macOS, Windows and Linux. Embedded (MCU) and WebAssembly builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.
+- **English formatting.** Values use `,` for thousands and `.` for decimals, and month and weekday names are English. There is no locale setting yet; a prefix, suffix and number of decimals can be set.
+- **Time zones.** Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.
+- **One value axis.** Each chart has one value axis; there is no secondary y axis.
+- **Zoom, pan and decimation** work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.
+- **Eight colors per theme.** With more than eight datasets the colors repeat. Set your own palette for more.
+- **Large charts of separate shapes are slower.** Sunburst, waterfall, dumbbell and funnel charts draw every item as its own shape: about 320 ms for a sunburst with 10,000 items, and about 100 ms for waterfall and dumbbell charts. With up to 1,000 items, a frame takes under 30 ms. Decimation applies to lines only.
+- **Label fitting is estimated.** Sunburst and treemap labels are kept or hidden from an estimate of the text width, so very wide or narrow fonts can be clipped or hidden too early.
+- **No image or PDF export.** To save a chart as PNG, render the window with Slint's software renderer, as the gallery's `--snapshot` option does.
+- **Sunburst data order.** A parent item must come before its children in `items`.
+- **Requirements.** Slint 1.18 or later and Rust 1.88 or later.
+
 ## License
 
 SlintPlot is source-available under the
