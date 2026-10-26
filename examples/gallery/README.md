@@ -21,3 +21,5 @@ SlintPlot is free for open-source GPLv3 applications and for any
 noncommercial use (PolyForm Noncommercial 1.0.0). For commercial use in
 other applications, email license@slintplot.dev. See LICENSE.md.
 Documentation: [slintplot.dev](https://slintplot.dev).
+
+SlintPlot is an independent project. It is not affiliated with, endorsed by or sponsored by SixtyFPS GmbH or the Slint project. Slint and the Slint logo are trademarks of SixtyFPS GmbH.

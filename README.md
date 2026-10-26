@@ -577,3 +577,5 @@ SlintPlot is available under your choice of three licenses:
 See [LICENSE.md](LICENSE.md) and [COMMERCIAL.md](COMMERCIAL.md) for the
 details. Your application also needs a suitable
 [Slint license](https://slint.dev/pricing).
+
+SlintPlot is an independent project. It is not affiliated with, endorsed by or sponsored by SixtyFPS GmbH or the Slint project. Slint and the Slint logo are trademarks of SixtyFPS GmbH.
