@@ -1,0 +1,58 @@
+# Builds the gallery and stress apps for each platform and attaches them to
+# the release. Runs when a release tagged `apps-v*` is published, or by hand
+# with the tag of an existing release.
+name: Release apps
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the builds to, such as apps-v0.1.0
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'apps-v')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, target: aarch64-apple-darwin, name: macos-arm64 }
+          - { os: macos-14, target: x86_64-apple-darwin, name: macos-x64 }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, name: windows-x64 }
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, name: linux-x64 }
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - run: rustup target add ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig-dev libxkbcommon-dev
+      - run: cargo build --release --locked --target ${{ matrix.target }} -p slintplot-gallery -p slintplot-stress
+      - name: Package
+        shell: bash
+        run: |
+          dir="slintplot-apps-${TAG#apps-v}-${{ matrix.name }}"
+          mkdir "$dir"
+          ext=""; [ "$RUNNER_OS" = Windows ] && ext=".exe"
+          cp target/${{ matrix.target }}/release/slintplot-gallery$ext target/${{ matrix.target }}/release/slintplot-stress$ext "$dir"/
+          cp LICENSE.md COMMERCIAL.md "$dir"/
+          if [ "$RUNNER_OS" = Windows ]; then
+            7z a "$dir.zip" "$dir" >/dev/null
+            echo "ASSET=$dir.zip" >> "$GITHUB_ENV"
+          else
+            tar czf "$dir.tar.gz" "$dir"
+            echo "ASSET=$dir.tar.gz" >> "$GITHUB_ENV"
+          fi
+      - run: gh release upload "$TAG" "$ASSET" --clobber
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
