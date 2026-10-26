@@ -6,7 +6,7 @@ members = ["crates/slintplot", "examples/gallery", "examples/stress"]
 edition = "2024"
 rust-version = "1.88"
 repository = "https://github.com/trondegil/slintplot"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "GPL-3.0-only OR PolyForm-Noncommercial-1.0.0 OR LicenseRef-SlintPlot-Commercial"
 
 [workspace.dependencies]
 slint = "1.18"

@@ -531,6 +531,11 @@ xkbcommon development packages (`libfontconfig-dev` and `libxkbcommon-dev` on De
 The source of the apps is in [`examples/gallery`](https://github.com/trondegil/slintplot/tree/main/examples/gallery) and
 [`examples/stress`](https://github.com/trondegil/slintplot/tree/main/examples/stress).
 
+Ready-built apps for macOS, Windows and Linux are on the
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.1).
+
+<a href="https://slint.dev"><img src="https://slintplot.dev/assets/MadeWithSlint-logo-whitebg.png" alt="Made with Slint" width="212"></a>
+
 ## Development
 
 ```sh
@@ -560,9 +565,15 @@ What SlintPlot 0.1 doesn't do yet, or does with restrictions:
 
 ## License
 
-SlintPlot is source-available under the
-[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0):
-free for personal, hobby, research and other noncommercial use. **Commercial
-use requires a commercial license**: email
-[license@slintplot.dev](mailto:license@slintplot.dev). `COMMERCIAL.md`, in
-the crate, has the details.
+SlintPlot is available under your choice of three licenses:
+
+- **GPLv3**, free for open-source applications distributed under the GPLv3
+- **[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)**,
+  free for personal, hobby, research, education and other noncommercial use,
+  with or without sharing your source code
+- **A commercial license** for commercial applications that aren't GPLv3:
+  email [license@slintplot.dev](mailto:license@slintplot.dev)
+
+See [LICENSE.md](LICENSE.md) and [COMMERCIAL.md](COMMERCIAL.md) for the
+details. Your application also needs a suitable
+[Slint license](https://slint.dev/pricing).

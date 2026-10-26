@@ -1,0 +1,32 @@
+# Licenses of the crates the gallery and stress apps are built from, for the
+# release downloads: `cargo about generate -c .github/about/about.toml
+# .github/about/about.hbs -o THIRD-PARTY-LICENSES.html`.
+accepted = [
+    # Slint. Its crates don't ship the license text, so the report lists Slint
+    # in a section of its own and the downloads include LICENSE-SLINT.md.
+    "LicenseRef-Slint-Royalty-free-2.0",
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Zlib",
+    "ISC",
+    "Unicode-3.0",
+    "Unlicense",
+    "CC0-1.0",
+    "0BSD",
+    "BSL-1.0",
+    "MPL-2.0",
+    # SlintPlot itself (the apps ship under this license).
+    "PolyForm-Noncommercial-1.0.0",
+]
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+

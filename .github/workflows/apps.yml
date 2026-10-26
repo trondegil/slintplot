@@ -37,6 +37,15 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libfontconfig-dev libxkbcommon-dev
       - run: cargo build --release --locked --target ${{ matrix.target }} -p slintplot-gallery -p slintplot-stress
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
+      - name: Third-party licenses
+        shell: bash
+        run: |
+          cargo about generate --locked -c .github/about/about.toml .github/about/about.hbs -o THIRD-PARTY-LICENSES.html
+          slint=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "slint") | .version')
+          curl -fsSL -o LICENSE-SLINT.md "https://raw.githubusercontent.com/slint-ui/slint/v$slint/LICENSES/LicenseRef-Slint-Royalty-free-2.0.md"
       - name: Package
         shell: bash
         run: |
@@ -44,7 +53,7 @@ jobs:
           mkdir "$dir"
           ext=""; [ "$RUNNER_OS" = Windows ] && ext=".exe"
           cp target/${{ matrix.target }}/release/slintplot-gallery$ext target/${{ matrix.target }}/release/slintplot-stress$ext "$dir"/
-          cp LICENSE.md COMMERCIAL.md "$dir"/
+          cp LICENSE.md LICENSE-GPL-3.0.txt LICENSE-POLYFORM-NC.md COMMERCIAL.md THIRD-PARTY-LICENSES.html LICENSE-SLINT.md "$dir"/
           if [ "$RUNNER_OS" = Windows ]; then
             7z a "$dir.zip" "$dir" >/dev/null
             echo "ASSET=$dir.zip" >> "$GITHUB_ENV"

@@ -17,6 +17,7 @@ slintplot-gallery --snapshot <dir>   # render every sample to PNG, without a win
 On Linux, Slint needs the fontconfig and xkbcommon development packages first
 (`libfontconfig-dev` and `libxkbcommon-dev` on Debian and Ubuntu).
 
-SlintPlot is free for noncommercial use under the PolyForm Noncommercial
-License 1.0.0. For commercial use, email license@slintplot.dev.
+SlintPlot is free for open-source GPLv3 applications and for any
+noncommercial use (PolyForm Noncommercial 1.0.0). For commercial use in
+other applications, email license@slintplot.dev. See LICENSE.md.
 Documentation: [slintplot.dev](https://slintplot.dev).

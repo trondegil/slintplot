@@ -1,6 +1,6 @@
 [package]
 name = "slintplot-stress"
-version = "0.1.0"
+version = "0.1.1"
 description = "Stress test for SlintPlot: up to 8 x 1,000,000 points, 60 Hz streaming and headless benchmarks"
 license.workspace = true
 edition.workspace = true
@@ -10,7 +10,7 @@ homepage = "https://slintplot.dev"
 keywords = ["slint", "chart", "plot", "gui", "demo"]
 categories = ["gui", "visualization"]
 readme = "README.md"
-include = ["src/**", "ui/**", "build.rs", "icon.png", "README.md", "LICENSE.md", "COMMERCIAL.md"]
+include = ["src/**", "ui/**", "build.rs", "icon.png", "README.md", "LICENSE.md", "LICENSE-GPL-3.0.txt", "LICENSE-POLYFORM-NC.md", "COMMERCIAL.md"]
 
 [dependencies]
 # `software-renderer-path` lets the software renderer (used by `--bench`) draw paths.

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SlintPlot apps: third-party licenses</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 860px; margin: 32px auto; padding: 0 16px; color: #1d2433; background: #fff; }
+  pre { white-space: pre-wrap; background: #f5f6f8; padding: 12px; border-radius: 8px; font-size: 13px; }
+  li { margin: 2px 0; }
+</style>
+</head>
+<body>
+<h1>Third-party licenses</h1>
+<p>The SlintPlot gallery and stress apps are built from these open-source crates.
+SlintPlot itself is licensed as described in LICENSE.md.</p>
+<h2>Slint</h2>
+<p>The apps are built with <a href="https://slint.dev">Slint</a> (the <code>slint</code> and <code>i-slint-*</code> crates),
+used under the Slint Royalty-free License 2.0, included as LICENSE-SLINT.md.</p>
+<h2>Overview</h2>
+<ul>
+{{#each overview}}
+  <li><a href="#{{id}}">{{name}}</a> ({{count}})</li>
+{{/each}}
+</ul>
+{{#each licenses}}
+<h2 id="{{id}}">{{name}}</h2>
+<p>Used by:</p>
+<ul>
+{{#each used_by}}
+  <li>{{crate.name}} {{crate.version}}</li>
+{{/each}}
+</ul>
+<pre>{{text}}</pre>
+{{/each}}
+</body>
+</html>
