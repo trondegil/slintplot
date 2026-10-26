@@ -1,0 +1,294 @@
+import { ChartEngine, ChartFormat, ChartGaugeBand, ChartGaugeLayout, ChartLabel, ChartLegendItem } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A gauge: an arc from `min-value` to `max-value`, in one of two styles.
+//
+// - Fill (the default): a thick track with rounded ends, filled up to
+//   `value`, with the value large in the middle. Bands are a thin ring
+//   outside the track, and the fill takes the color of the band the value is
+//   in.
+// - Needle (`show-needle: true`): the bands as a thinner arc, with ticks and
+//   their labels inside it, and a needle pointing at the value.
+export component GaugeChart {
+    in property <float> value;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    in property <string> title;
+    // Written under the value.
+    in property <string> label;
+    in property <[ChartGaugeBand]> bands;
+    in property <bool> show-needle: false;
+    // The angle the arc covers, in degrees.
+    in property <float> sweep: 180;
+    // Size of the inside of the arc, as a share of the radius.
+    in property <float> cutout: root.show-needle ? 0.86 : 0.72;
+    // Fill style: round the ends of the track and the fill.
+    in property <bool> rounded: true;
+    // Needle style: ticks and their labels inside the arc.
+    in property <bool> show-ticks: true;
+    // The fill color without bands.
+    in property <color> color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #3b82f6;
+    // Write the minimum and maximum at the ends of the arc (unless the tick
+    // labels show them).
+    in property <bool> show-min-max: true;
+    // The legend lists the bands.
+    in property <bool> show-legend: false;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
+    in property <bool> show-tooltip: true;
+    // Sweep the value in when the gauge appears, and move to new values.
+    in property <bool> animated: true;
+    // The size of the value; 0 to fit it to the gauge.
+    in property <length> value-font-size: 0px;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The band under the mouse; -1 if none.
+    out property <int> hovered-band: root.hit >= 0 ? root.hit : -1;
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: ChartEngine.format-value(root.value, root.format);
+
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+    private property <float> shown: root.value;
+    animate shown {
+        duration: root.animated ? 500ms : 0ms;
+        easing: ease-out;
+    }
+    private property <length> hub: 7px;
+    private property <bool> ticks: root.show-needle && root.show-ticks;
+    private property <bool> min-max: root.show-min-max && !root.ticks;
+    // Sized from the space, not the arc, which depends on it.
+    private property <length> value-size: root.value-font-size > 0 ? root.value-font-size
+        : clamp(min(area.width, area.height * (root.sweep <= 200 ? 1.6 : 1)) * 0.11, ChartTheme.font-size * 1.6, 56px);
+    private property <length> label-height: root.label != "" ? ChartTheme.font-size * 1.4 : 0px;
+    private property <int> hit: touch.has-hover ? ChartEngine.gauge-hit(gauge, touch.mouse-x / 1px, touch.mouse-y / 1px) : -2;
+    private property <[ChartLegendItem]> legend: ChartEngine.gauge-legend(root.bands, ChartTheme.colors);
+    private property <ChartGaugeLayout> gauge: ChartEngine.gauge-layout({
+        value: root.min-value + (root.shown - root.min-value) * root.progress,
+        min: root.min-value,
+        max: root.max-value,
+        bands: root.bands,
+        width: area.width / 1px,
+        height: area.height / 1px,
+        cutout: root.cutout,
+        sweep: root.sweep,
+        below-ends: root.min-max ? ChartTheme.font-size / 1px * 1.4 + 4 : 0,
+        below-center: root.show-needle ? (root.hub + 8px + root.value-size * 1.25 + root.label-height) / 1px
+            : root.sweep <= 200 ? root.label-height / 1px + 4 : 0,
+        needle: root.show-needle,
+        rounded: root.rounded,
+        ticks: root.ticks,
+        font-size: ChartTheme.font-size / 1px * 0.9,
+        // Tick labels are bare numbers; the unit is on the value.
+        format: { prefix: root.value-prefix, decimals: root.value-decimals },
+        color: root.color,
+        palette: ChartTheme.colors,
+    });
+
+    min-width: 120px;
+    min-height: 90px;
+    preferred-width: 320px;
+    preferred-height: 220px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend && root.bands.length > 0;
+            position: root.legend-position;
+
+            area := Rectangle {
+                horizontal-stretch: 1;
+
+                // The track, and the fill up to the value, unless a needle
+                // points at bands.
+                if !root.show-needle || root.bands.length == 0: Path {
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    width: area.width;
+                    height: area.height;
+                    fit: fill;
+                    commands: gauge.track;
+                    fill: root.hit == -1 || (root.hit >= 0 && !root.show-needle) ? ChartTheme.grid-color.mix(ChartTheme.axis-color, 0.5) : ChartTheme.grid-color;
+                }
+                if !root.show-needle || root.bands.length == 0: Path {
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    width: area.width;
+                    height: area.height;
+                    fit: fill;
+                    commands: gauge.fill;
+                    fill: gauge.value-color;
+                }
+
+                // The bands: the arc of a needle gauge, or a ring outside
+                // the track.
+                for band in gauge.bands: Path {
+                    // Grown by the border width on every side, as in pie
+                    // charts, so that viewbox coordinates equal pixels.
+                    x: -ChartTheme.slice-border-width / 2;
+                    y: -ChartTheme.slice-border-width / 2;
+                    width: area.width + ChartTheme.slice-border-width;
+                    height: area.height + ChartTheme.slice-border-width;
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    fit: fill;
+                    commands: band.path;
+                    fill: band.index == root.hit ? band.color.mix(ChartTheme.text-color, 0.85) : band.color;
+                    stroke: ChartTheme.background;
+                    stroke-width: ChartTheme.slice-border-width;
+                    stroke-line-join: round;
+                }
+
+                if root.ticks: Path {
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    width: area.width;
+                    height: area.height;
+                    fit: fill;
+                    commands: gauge.ticks;
+                    stroke: ChartTheme.text-color;
+                    stroke-width: 1px;
+                }
+                if root.ticks: Rectangle {
+                    for label in gauge.tick-labels: Text {
+                        x: label.x * 1px - self.preferred-width / 2;
+                        y: label.y * 1px - self.preferred-height / 2;
+                        text: label.text;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size * 0.9;
+                    }
+                }
+
+                if root.show-needle: Rectangle {
+                    Path {
+                        viewbox-width: area.width / 1px;
+                        viewbox-height: area.height / 1px;
+                        width: area.width;
+                        height: area.height;
+                        fit: fill;
+                        commands: gauge.needle;
+                        fill: ChartTheme.text-color;
+                    }
+                    Rectangle {
+                        x: gauge.center-x * 1px - root.hub;
+                        y: gauge.center-y * 1px - root.hub;
+                        width: root.hub * 2;
+                        height: root.hub * 2;
+                        border-radius: root.hub;
+                        background: ChartTheme.text-color;
+                        border-width: 2px;
+                        border-color: ChartTheme.background;
+                    }
+                }
+
+                // The value, and the label under it: below the needle's hub,
+                // on the center line of a half circle, or in the middle.
+                value-block := VerticalLayout {
+                    x: gauge.center-x * 1px - self.width / 2;
+                    y: root.show-needle ? gauge.center-y * 1px + root.hub + 8px
+                        : root.sweep <= 200 ? gauge.center-y * 1px - value-text.preferred-height + 4px
+                        : gauge.center-y * 1px - self.preferred-height / 2;
+                    width: max(self.preferred-width, gauge.inner * 2px);
+                    height: self.preferred-height;
+                    value-text := Text {
+                        text: ChartEngine.format-value(root.value, root.format);
+                        color: ChartTheme.text-color;
+                        font-size: root.value-size;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                    }
+                    if root.label != "": Text {
+                        text: root.label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        horizontal-alignment: center;
+                    }
+                }
+
+                if root.min-max: Text {
+                    x: gauge.start-x * 1px - self.preferred-width / 2;
+                    y: gauge.start-y * 1px + 4px;
+                    text: ChartEngine.format-value(root.min-value, root.format);
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                }
+                if root.min-max: Text {
+                    x: gauge.end-x * 1px - self.preferred-width / 2;
+                    y: gauge.end-y * 1px + 4px;
+                    text: ChartEngine.format-value(root.max-value, root.format);
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                }
+
+                touch := TouchArea {
+                    mouse-cursor: default;
+                }
+
+                if root.show-tooltip && root.hit >= -1: Rectangle {
+                    property <int> band: root.hit;
+                    property <float> from: self.band <= 0 ? root.min-value : root.bands[self.band - 1].to;
+                    x: touch.mouse-x + 14px + self.width > area.width ? max(0px, touch.mouse-x - 14px - self.width) : touch.mouse-x + 14px;
+                    y: clamp(touch.mouse-y - self.height / 2, 0px, max(0px, area.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    HorizontalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 6px;
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 10px;
+                                height: 10px;
+                                background: band >= 0 && band < gauge.bands.length ? root.legend[band].color : gauge.value-color;
+                                border-color: ChartTheme.tooltip-text;
+                                border-width: 1px;
+                            }
+                        }
+                        Text {
+                            text: band >= 0
+                                ? (root.bands[band].label != "" ? root.bands[band].label + ": " : "")
+                                    + ChartEngine.format-value(from, root.format) + " – " + ChartEngine.format-value(root.bands[band].to, root.format)
+                                : (root.label != "" ? root.label + ": " : "") + ChartEngine.format-value(root.value, root.format);
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

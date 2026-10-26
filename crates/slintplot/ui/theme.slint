@@ -1,0 +1,51 @@
+import { Palette } from "std-widgets.slint";
+
+// Built-in dataset color themes. Each has 8 colors with light and dark mode
+// variants, ordered so that neighboring colors stay distinct, also with
+// red-green color blindness.
+export enum ChartPalette {
+    // Clean, saturated colors in the style of modern UI frameworks (Tailwind 500, 400 in dark mode).
+    modern,
+    // Material Design 500 colors (400 in dark mode).
+    material,
+    // Restrained business colors, based on Tableau 10 (as in d3 schemeTableau10).
+    corporate,
+    // Shades of one blue, alternating dark and light. Best for up to five series.
+    mono,
+    // Soft, light colors. Strongest on dark backgrounds or as fills; best for
+    // up to three series, since pastels sit close together.
+    pastel,
+}
+
+// Colors and fonts shared by all charts. Override any property to restyle.
+export global ChartTheme {
+    in-out property <bool> dark: Palette.color-scheme == ColorScheme.dark;
+    // Colors for datasets and slices that don't set their own, in order.
+    in-out property <ChartPalette> palette: ChartPalette.modern;
+    // The colors of `palette` for the current mode. Assign a list of colors
+    // for a custom palette.
+    in-out property <[color]> colors: root.palette == ChartPalette.modern ? (root.dark ? [#60a5fa, #34d399, #fb923c, #818cf8, #a3e635, #22d3ee, #a78bfa, #fb7185] : [#3b82f6, #10b981, #f97316, #6366f1, #84cc16, #06b6d4, #8b5cf6, #f43f5e])
+        : root.palette == ChartPalette.material ? (root.dark ? [#42a5f5, #ec407a, #ffa726, #ab47bc, #66bb6a, #7986cb, #ff7043, #26c6da] : [#2196f3, #e91e63, #ff9800, #9c27b0, #4caf50, #3f51b5, #ff5722, #00bcd4])
+        : root.palette == ChartPalette.corporate ? (root.dark ? [#5f8ac0, #f5993d, #7fc4be, #e8696b, #ffadb5, #6cb262, #4a68a0, #bf8ab1] : [#4e79a7, #f28e2b, #76b7b2, #e15759, #ff9da7, #59a14f, #2f4b7c, #b07aa1])
+        : root.palette == ChartPalette.mono ? (root.dark ? [#93c5fd, #2563eb, #bfdbfe, #3b82f6, #dbeafe, #1d4ed8, #60a5fa, #1e40af] : [#1e3a8a, #60a5fa, #1d4ed8, #93c5fd, #2563eb, #bfdbfe, #3b82f6, #172554])
+        : root.palette == ChartPalette.pastel ? (root.dark ? [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff] : [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff])
+        : [];
+    in-out property <color> text-color: dark ? #c8c8c8 : #666666;
+    in-out property <color> grid-color: dark ? #ffffff1f : #0000001a;
+    in-out property <color> axis-color: dark ? #ffffff40 : #00000040;
+    in-out property <brush> background: Palette.background;
+    in-out property <color> tooltip-background: #000000cc;
+    in-out property <color> tooltip-text: #ffffff;
+    in-out property <length> font-size: 12px;
+    in-out property <length> title-font-size: 15px;
+    // Opacity of filled marks (bars, areas, points, bubbles, polar slices),
+    // whose outline stays solid.
+    in-out property <float> fill-opacity: 0.5;
+    in-out property <length> line-width: 2px;
+    in-out property <length> point-radius: 3px;
+    in-out property <length> point-hover-radius: 5px;
+    // Border between pie and doughnut slices, drawn in the background color.
+    in-out property <length> slice-border-width: 2px;
+    in-out property <length> slice-hover-offset: 8px;
+    in-out property <duration> animation-duration: 900ms;
+}

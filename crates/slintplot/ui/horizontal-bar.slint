@@ -1,0 +1,318 @@
+import { ChartAxis, ChartDataset, ChartEngine, ChartFormat, ChartKind, ChartLayout } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+import { Tooltip } from "tooltip.slint";
+
+// A horizontal bar chart:
+// categories run down the left side and bars grow to the right.
+export component HorizontalBarChart {
+    in-out property <[ChartDataset]> datasets;
+    in property <[string]> labels;
+    in property <string> title;
+    in property <bool> begin-at-zero: true;
+    // Stack the datasets end to end.
+    in property <bool> stacked: false;
+    // 100% stacked: each category is split into the datasets' shares, and
+    // values are shown as percentages.
+    in property <bool> stacked-percent: false;
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    // Bars: corner radius and outline width.
+    in property <length> bar-radius: 0;
+    in property <length> bar-border-width: 1px;
+    // Opacity of the bar fills; the theme's `fill-opacity` by default.
+    in property <float> fill-opacity: ChartTheme.fill-opacity;
+    in property <bool> show-tooltip: true;
+    // Grow the bars in when the chart appears, and move them to new values.
+    in property <bool> animated: true;
+    // Write each value at the end of its bar.
+    in property <bool> show-values: false;
+    // Axis titles: `x-title` below the value axis, `y-title` beside the categories.
+    in property <string> x-title;
+    in property <string> y-title;
+    // A fixed value axis from `min-value` to `max-value`.
+    in property <bool> fixed-range: false;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    // A logarithmic value axis. Values that aren't positive are left out.
+    in property <bool> logarithmic: false;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The category under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: chart.count == 0 || chart.step <= 0 ? -1
+        : touch.has-hover ? clamp(floor(touch.mouse-y / (chart.step * 1px)), 0, chart.count - 1)
+        : keys.has-focus && root.key-index >= 0 ? min(root.key-index, chart.count - 1)
+        : -1;
+    private property <int> key-index: -1;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    private property <duration> transition: root.animated && root.progress >= 1 ? 300ms : 0ms;
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-index >= 0 ? root.labels[root.hovered-index] : "";
+
+    callback category-clicked(index: int);
+    callback legend-toggled(index: int);
+
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+
+    // The engine lays out vertical bars. They are drawn rotated: the engine's
+    // category axis becomes the plot height and its value axis the plot width.
+    private property <ChartAxis> axis: ChartEngine.value-axis({
+        kind: ChartKind.bar,
+        datasets: root.datasets,
+        stacked: root.stacked || root.stacked-percent,
+        percent: root.stacked-percent,
+        height: plot.width / 1px,
+        horizontal: true,
+        labels: root.labels,
+        begin-at-zero: root.begin-at-zero,
+        font-size: ChartTheme.font-size / 1px,
+        fixed: root.fixed-range,
+        fixed-min: root.min-value,
+        fixed-max: root.max-value,
+        logarithmic: root.logarithmic,
+        format: root.format,
+    });
+    private property <ChartLayout> chart: ChartEngine.layout({
+        kind: ChartKind.bar,
+        datasets: root.datasets,
+        stacked: root.stacked || root.stacked-percent,
+        percent: root.stacked-percent,
+        labels: root.labels,
+        width: plot.height / 1px,
+        height: plot.width / 1px,
+        y-min: axis.min,
+        y-max: axis.max,
+        progress: root.progress,
+        font-size: ChartTheme.font-size / 1px,
+        horizontal: true,
+        palette: ChartTheme.colors,
+        logarithmic: root.logarithmic,
+    });
+
+    min-width: 160px;
+    min-height: 120px;
+    preferred-width: 480px;
+    preferred-height: 300px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: ChartEngine.dataset-legend(root.datasets, ChartTheme.colors);
+            show-legend: root.show-legend;
+            position: root.legend-position;
+            toggled(index) => {
+                root.datasets[index].hidden = !root.datasets[index].hidden;
+                root.legend-toggled(index);
+            }
+
+            frame := Rectangle {
+                horizontal-stretch: 1;
+
+                // Measures the category labels. They don't depend on the chart
+                // size, so unlike the value labels they can be measured exactly.
+                label-measure := Text {
+                    visible: false;
+                    text: ChartEngine.widest-label(root.labels);
+                    font-size: ChartTheme.font-size;
+                }
+
+                // The y title sits above the axis, so it needs no rotated text.
+                property <length> y-title-space: root.y-title != "" ? ChartTheme.font-size * 1.6 : 0px;
+                property <length> x-title-space: root.x-title != "" ? ChartTheme.font-size * 1.8 : 0px;
+
+                plot := Rectangle {
+                    x: label-measure.preferred-width + 10px;
+                    y: frame.y-title-space + 4px;
+                    // Room for half of the last value label on the right.
+                    width: max(0px, parent.width - self.x - 20px);
+                    height: max(0px, parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space);
+
+                    // Value tick positions count from the far end of the axis.
+                    for tick in axis.ticks: Rectangle {
+                        x: (plot.width / 1px - tick.pos) * 1px - 0.5px;
+                        width: 1px;
+                        background: ChartTheme.grid-color;
+                    }
+                    Rectangle {
+                        x: 0;
+                        width: 1px;
+                        background: ChartTheme.axis-color;
+                    }
+                    Rectangle {
+                        y: parent.height - 0.5px;
+                        height: 1px;
+                        background: ChartTheme.axis-color;
+                    }
+
+                    if root.hovered-index >= 0: Rectangle {
+                        y: root.hovered-index * chart.step * 1px;
+                        height: chart.step * 1px;
+                        background: ChartTheme.grid-color;
+                    }
+
+                    for bar in chart.bars: Rectangle {
+                        x: (plot.width / 1px - bar.y - bar.height) * 1px;
+                        y: bar.x * 1px;
+                        width: bar.height * 1px;
+                        height: bar.width * 1px;
+                        background: bar.color.with-alpha(root.hovered-index == bar.index ? min(1, root.fill-opacity + 0.3) : root.fill-opacity);
+                        border-radius: root.bar-radius;
+                        border-color: bar.color;
+                        border-width: root.bar-border-width;
+                        animate background { duration: 120ms; }
+                        animate x, y, width, height {
+                            duration: root.transition;
+                            easing: ease-out;
+                        }
+                    }
+
+                    if root.show-values: Rectangle {
+                        for bar in chart.bars: Text {
+                            property <float> value: root.datasets[bar.dataset].values[bar.index];
+                            property <length> left: (plot.width / 1px - bar.y - bar.height) * 1px;
+                            text: root.stacked-percent
+                                ? ChartEngine.rounded-share(root.datasets, bar.dataset, bar.index) + "%"
+                                : ChartEngine.format-value(self.value, root.format);
+                            y: bar.x * 1px + (bar.width * 1px - self.height) / 2;
+                            // Inside stacked segments; past the end of other bars.
+                            x: root.stacked || root.stacked-percent ? self.left + (bar.height * 1px - self.width) / 2
+                                : self.value >= 0 ? self.left + bar.height * 1px + 4px
+                                : self.left - self.width - 4px;
+                            // Inside solid segments: light text on dark fills and dark
+                            // text on light ones, in either theme.
+                            color: !((root.stacked || root.stacked-percent) && root.fill-opacity > 0.7) ? ChartTheme.text-color
+                                : bar.color.red * 0.299 + bar.color.green * 0.587 + bar.color.blue * 0.114 < 150 ? #ffffff : #1f2328;
+                            font-size: ChartTheme.font-size * 0.9;
+                        }
+                    }
+
+                    // Keyboard: the up and down arrows move through the
+                    // categories, Enter clicks the selected one.
+                    keys := FocusScope {
+                        key-pressed(event) => {
+                            if chart.count == 0 {
+                                return reject;
+                            }
+                            let current = root.key-index < 0 ? 0 : min(root.key-index, chart.count - 1);
+                            if event.text == Key.UpArrow {
+                                root.key-index = max(0, current - 1);
+                            } else if event.text == Key.DownArrow {
+                                root.key-index = root.key-index < 0 ? 0 : min(chart.count - 1, current + 1);
+                            } else if event.text == Key.Home {
+                                root.key-index = 0;
+                            } else if event.text == Key.End {
+                                root.key-index = chart.count - 1;
+                            } else if event.text == Key.Return && root.key-index >= 0 {
+                                root.category-clicked(current);
+                            } else {
+                                return reject;
+                            }
+                            accept
+                        }
+
+                        touch := TouchArea {
+                            clicked => {
+                                keys.focus();
+                                if root.hovered-index >= 0 {
+                                    root.key-index = root.hovered-index;
+                                    root.category-clicked(root.hovered-index);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    x: plot.x - 3px;
+                    y: plot.y - 3px;
+                    width: plot.width + 6px;
+                    height: plot.height + 6px;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.y-title != "": Text {
+                    x: 0;
+                    y: 0;
+                    text: root.y-title;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                }
+
+                if root.x-title != "": Text {
+                    x: plot.x;
+                    width: plot.width;
+                    y: plot.y + plot.height + ChartTheme.font-size * 1.6 + 6px;
+                    text: root.x-title;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                }
+
+                for tick in chart.x-ticks: Text {
+                    x: 0;
+                    width: plot.x - 8px;
+                    y: plot.y + tick.pos * 1px - self.height / 2;
+                    text: tick.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    horizontal-alignment: right;
+                }
+
+                for tick in axis.ticks: Text {
+                    x: plot.x + (plot.width / 1px - tick.pos) * 1px - self.width / 2;
+                    y: plot.y + plot.height + 6px;
+                    text: tick.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                }
+
+                if root.show-tooltip && root.hovered-index >= 0 && chart.visible.length > 0: Tooltip {
+                    property <length> anchor-x: plot.x + (touch.has-hover ? touch.mouse-x : plot.width * 0.5);
+                    x: self.anchor-x + 14px + self.width > frame.width ? self.anchor-x - 14px - self.width : self.anchor-x + 14px;
+                    y: clamp(plot.y + (root.hovered-index + 0.5) * chart.step * 1px - self.height / 2, 0px, max(0px, frame.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    title: root.labels[root.hovered-index];
+                    index: root.hovered-index;
+                    datasets: root.datasets;
+                    series: chart.series;
+                    visible-datasets: chart.visible;
+                    format: root.format;
+                    percent: root.stacked-percent;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,518 @@
+import { ChartCalendarLayout, ChartDateTime, ChartEngine, ChartFormat, ChartRange } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+
+// A matrix of colored cells: rows (`y-labels`) by columns (`x-labels`), with
+// `values` in row order: `values[row * columns + column]`. Missing values
+// (NaN) are drawn as empty cells.
+export component HeatmapChart {
+    in property <[string]> x-labels;
+    in property <[string]> y-labels;
+    in property <[float]> values;
+    in property <string> title;
+    // The color of the largest value; smaller values blend towards the
+    // empty-cell color.
+    in property <color> color: ChartTheme.colors[0];
+    // A diverging scale: values below `center-value` use `negative-color`, values
+    // above it `color`, and `center-value` itself is the empty-cell color.
+    in property <bool> diverging: false;
+    in property <float> center-value: 0;
+    in property <color> negative-color: ChartTheme.colors[2];
+    // A fixed color range from `min-value` to `max-value`, instead of fitting
+    // the data.
+    in property <bool> fixed-range: false;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    // Write each value in its cell.
+    in property <bool> show-values: false;
+    in property <bool> show-legend: true;
+    in property <bool> show-tooltip: true;
+    in property <length> cell-gap: 2px;
+    in property <length> cell-radius: 3px;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The cell under the mouse; -1 if none.
+    out property <int> hovered-row: root.hovered-cell < 0 ? -1 : floor(root.hovered-cell / root.columns);
+    out property <int> hovered-column: root.hovered-cell < 0 ? -1 : mod(root.hovered-cell, root.columns);
+
+    callback cell-clicked(row: int, column: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+
+    private property <int> columns: max(1, root.x-labels.length);
+    private property <int> rows: max(1, root.y-labels.length);
+    private property <ChartRange> data-range: ChartEngine.value-range(root.values);
+    private property <float> low: root.fixed-range ? root.min-value : root.data-range.min;
+    private property <float> high: root.fixed-range ? root.max-value : root.data-range.max;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    private property <color> empty: ChartTheme.dark ? #2b2f36 : #eef0f3;
+    private property <int> hovered-cell: touch.has-hover
+        ? (grid.cell-width <= 0 || grid.cell-height <= 0 ? -1 : root.cell-at(floor(touch.mouse-x / grid.cell-width), floor(touch.mouse-y / grid.cell-height)))
+        : keys.has-focus && root.key-cell >= 0 && root.values.length > 0 ? min(root.key-cell, root.values.length - 1)
+        : -1;
+    // The cell selected with the arrow keys.
+    private property <int> key-cell: -1;
+
+    pure function cell-at(column: int, row: int) -> int {
+        column >= 0 && column < root.columns && row >= 0 && row < root.rows && row * root.columns + column < root.values.length
+            ? row * root.columns + column : -1
+    }
+
+    // How strongly `value` is colored, from 0 (empty) to 1; negative for the
+    // negative side of a diverging scale.
+    pure function strength(value: float) -> float {
+        if root.diverging {
+            let reach = max(abs(root.high - root.center-value), abs(root.low - root.center-value));
+            return reach > 0 ? clamp((value - root.center-value) / reach, -1, 1) : 0;
+        }
+        root.high > root.low ? clamp((value - root.low) / (root.high - root.low), 0, 1) : 1
+    }
+
+    pure function cell-color(value: float) -> color {
+        // NaN is not equal to itself: a missing value.
+        if value != value {
+            return root.empty;
+        }
+        let s = root.strength(value);
+        // Even the smallest value is visibly colored.
+        s < 0 ? root.negative-color.mix(root.empty, 0.12 - s * 0.88) : root.color.mix(root.empty, root.diverging ? s : 0.12 + s * 0.88)
+    }
+
+    min-width: 160px;
+    min-height: 120px;
+    preferred-width: 520px;
+    preferred-height: 320px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        frame := Rectangle {
+            vertical-stretch: 1;
+
+            // The row labels don't depend on the chart size, so they can be
+            // measured exactly.
+            label-measure := Text {
+                visible: false;
+                text: ChartEngine.widest-label(root.y-labels);
+                font-size: ChartTheme.font-size;
+            }
+
+            grid := Rectangle {
+                property <length> cell-width: self.width / root.columns;
+                property <length> cell-height: self.height / root.rows;
+                x: label-measure.preferred-width + 10px;
+                y: 0;
+                width: max(0px, parent.width - self.x - 4px);
+                height: max(0px, parent.height - ChartTheme.font-size * 2);
+
+                for value[index] in root.values: Rectangle {
+                    property <int> cell-column: mod(index, root.columns);
+                    property <int> cell-row: floor(index / root.columns);
+                    property <float> s: root.strength(value);
+                    x: self.cell-column * grid.cell-width + root.cell-gap / 2;
+                    y: self.cell-row * grid.cell-height + root.cell-gap / 2;
+                    width: max(0px, grid.cell-width - root.cell-gap);
+                    height: max(0px, grid.cell-height - root.cell-gap);
+                    visible: self.cell-row < root.rows;
+                    border-radius: root.cell-radius;
+                    background: root.cell-color(value);
+                    border-width: index == root.hovered-cell ? 2px : 0;
+                    border-color: ChartTheme.text-color;
+
+                    if root.show-values && value == value: Text {
+                        text: ChartEngine.format-value(value, root.format);
+                        // Light text on strongly colored cells.
+                        color: abs(parent.s) > 0.55 ? #ffffff : ChartTheme.text-color;
+                        font-size: ChartTheme.font-size * 0.9;
+                    }
+                }
+
+                // Keyboard: the arrow keys move from cell to cell, Home and End
+                // to the first and last cell, and Enter clicks.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        let count = root.values.length;
+                        if count == 0 {
+                            return reject;
+                        }
+                        let current = root.key-cell < 0 ? 0 : min(root.key-cell, count - 1);
+                        let column = mod(current, root.columns);
+                        if root.key-cell < 0 && (event.text == Key.LeftArrow || event.text == Key.RightArrow
+                            || event.text == Key.UpArrow || event.text == Key.DownArrow) {
+                            root.key-cell = 0;
+                        } else if event.text == Key.LeftArrow {
+                            root.key-cell = column > 0 ? current - 1 : current;
+                        } else if event.text == Key.RightArrow {
+                            root.key-cell = column < root.columns - 1 && current + 1 < count ? current + 1 : current;
+                        } else if event.text == Key.UpArrow {
+                            root.key-cell = current >= root.columns ? current - root.columns : current;
+                        } else if event.text == Key.DownArrow {
+                            root.key-cell = current + root.columns < count ? current + root.columns : current;
+                        } else if event.text == Key.Home {
+                            root.key-cell = 0;
+                        } else if event.text == Key.End {
+                            root.key-cell = count - 1;
+                        } else if event.text == Key.Return && root.key-cell >= 0 {
+                            root.cell-clicked(floor(current / root.columns), column);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-cell >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-cell >= 0 {
+                                root.key-cell = root.hovered-cell;
+                                root.cell-clicked(root.hovered-row, root.hovered-column);
+                            }
+                        }
+                    }
+                }
+            }
+
+            for label[row] in root.y-labels: Text {
+                x: 0;
+                width: grid.x - 8px;
+                y: grid.y + (row + 0.5) * grid.cell-height - self.height / 2;
+                text: label;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                horizontal-alignment: right;
+            }
+
+            for label[column] in root.x-labels: Text {
+                width: grid.cell-width;
+                x: grid.x + column * grid.cell-width;
+                y: grid.y + grid.height + 6px;
+                text: label;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                horizontal-alignment: center;
+                overflow: elide;
+            }
+
+            if keys.has-focus: Rectangle {
+                x: grid.x - 3px;
+                y: grid.y - 3px;
+                width: grid.width + 6px;
+                height: grid.height + 6px;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: ChartTheme.axis-color;
+            }
+
+            if root.show-tooltip && root.hovered-cell >= 0: Rectangle {
+                // At the mouse, or at the cell selected with the keyboard.
+                property <length> anchor-x: grid.x + (touch.has-hover ? touch.mouse-x : (root.hovered-column + 0.5) * grid.cell-width);
+                property <length> anchor-y: grid.y + (touch.has-hover ? touch.mouse-y : (root.hovered-row + 0.5) * grid.cell-height);
+                x: max(0px, self.anchor-x + 14px + self.width > frame.width ? self.anchor-x - 14px - self.width : self.anchor-x + 14px);
+                y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, frame.height - self.height));
+                width: self.preferred-width;
+                height: self.preferred-height;
+                background: ChartTheme.tooltip-background;
+                border-radius: 6px;
+                HorizontalLayout {
+                    padding: 6px;
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    spacing: 6px;
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 10px;
+                            height: 10px;
+                            background: root.cell-color(root.values[root.hovered-cell]);
+                            border-color: ChartTheme.tooltip-text;
+                            border-width: 1px;
+                        }
+                    }
+                    Text {
+                        property <float> value: root.values[root.hovered-cell];
+                        text: root.y-labels[root.hovered-row] + ", " + root.x-labels[root.hovered-column] + ": "
+                            + (self.value == self.value ? ChartEngine.format-value(self.value, root.format) : "no data");
+                        color: ChartTheme.tooltip-text;
+                        font-size: ChartTheme.font-size;
+                    }
+                }
+            }
+        }
+
+        // Legend: the color scale from the smallest to the largest value.
+        if root.show-legend: HorizontalLayout {
+            alignment: center;
+            spacing: 8px;
+            Text {
+                text: ChartEngine.format-value(root.low, root.format);
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                vertical-alignment: center;
+            }
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 160px;
+                    height: 10px;
+                    border-radius: 5px;
+                    background: root.diverging
+                        ? @linear-gradient(90deg, root.negative-color 0%, root.empty 50%, root.color 100%)
+                        : @linear-gradient(90deg, root.color.mix(root.empty, 0.12) 0%, root.color 100%);
+                }
+            }
+            Text {
+                text: ChartEngine.format-value(root.high, root.format);
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+// A calendar of daily values, like GitHub's contribution graph: one column
+// per week and one row per weekday. Days are colored in `levels` steps, split
+// by quantiles of the positive values; zero or missing is empty.
+export component CalendarHeatmap {
+    // The date of the first value.
+    in property <ChartDateTime> start-date;
+    // One value per day.
+    in property <[float]> values;
+    in property <string> title;
+    // The color of the most active days: the theme's first color by default.
+    // For GitHub's green, use `ChartTheme.dark ? #39d353 : #216e39`.
+    in property <color> color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #216e39;
+    in property <int> levels: 4;
+    // Weeks start on Sunday, like GitHub, unless this is set.
+    in property <bool> week-starts-monday: false;
+    in property <bool> show-legend: true;
+    in property <bool> show-tooltip: true;
+    in property <length> cell-gap: 3px;
+    in property <length> cell-radius: 2px;
+    // How values are written in the tooltip, such as `value-suffix: " contributions"`.
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The day under the mouse, or selected with the arrow keys (an index into
+    // `values`); -1 if none.
+    out property <int> hovered-index: touch.has-hover
+        ? (root.step <= 0 ? -1 : root.day-at(floor(touch.mouse-x / root.step), floor(touch.mouse-y / root.step)))
+        : keys.has-focus && root.key-day >= 0 && root.values.length > 0 ? min(root.key-day, root.values.length - 1)
+        : -1;
+    // The day selected with the keyboard.
+    private property <int> key-day: -1;
+
+    callback day-clicked(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+
+    private property <ChartCalendarLayout> calendar: ChartEngine.calendar-layout(root.start-date, root.values, root.levels, root.week-starts-monday);
+    private property <int> first-weekday: root.calendar.days.length > 0 ? root.calendar.days[0].weekday : 0;
+    private property <color> empty: ChartTheme.dark ? #2b2f36 : #ebedf0;
+    private property <length> label-width: ChartTheme.font-size * 2.6;
+    private property <length> label-height: ChartTheme.font-size * 1.6;
+    // Square cells: the largest that fit, cell plus gap.
+    private property <length> step: max(0px, min(
+        (area.width - root.label-width) / max(1, root.calendar.weeks),
+        (area.height - root.label-height) / 7));
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+
+    pure function day-at(week: int, weekday: int) -> int {
+        let index = week * 7 + weekday - root.first-weekday;
+        week >= 0 && weekday >= 0 && weekday < 7 && index >= 0 && index < root.values.length ? index : -1
+    }
+
+    pure function level-color(level: int) -> color {
+        level <= 0 ? root.empty : root.color.mix(root.empty, 0.25 + 0.75 * (level - 1) / max(1, root.levels - 1))
+    }
+
+    min-width: 200px;
+    min-height: 100px;
+    preferred-width: 760px;
+    preferred-height: 200px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 6px;
+        // The calendar keeps its proportions; extra height goes below it.
+        alignment: start;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+        }
+
+        area := Rectangle {
+            vertical-stretch: 1;
+            // Square cells across the full width, but not larger than 20px.
+            preferred-height: root.label-height + 7 * clamp((self.width - root.label-width) / max(1, root.calendar.weeks), 8px, 20px);
+            min-height: root.label-height + 7 * 8px;
+
+            grid := Rectangle {
+                x: root.label-width;
+                y: root.label-height;
+                width: root.step * root.calendar.weeks;
+                height: root.step * 7;
+
+                for day in root.calendar.days: Rectangle {
+                    x: day.week * root.step;
+                    y: day.weekday * root.step;
+                    width: max(0px, root.step - root.cell-gap);
+                    height: max(0px, root.step - root.cell-gap);
+                    border-radius: root.cell-radius;
+                    background: root.level-color(day.level);
+                    border-width: day.index == root.hovered-index ? 1.5px : 0;
+                    border-color: ChartTheme.text-color;
+                }
+
+                // Keyboard, following the layout: Left and Right move a week,
+                // Up and Down a day, Home and End to the first and last day,
+                // and Enter clicks.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        let count = root.values.length;
+                        if count == 0 {
+                            return reject;
+                        }
+                        let current = root.key-day < 0 ? 0 : min(root.key-day, count - 1);
+                        let step = event.text == Key.LeftArrow ? -7 : event.text == Key.RightArrow ? 7
+                            : event.text == Key.UpArrow ? -1 : event.text == Key.DownArrow ? 1 : 0;
+                        if step != 0 {
+                            root.key-day = root.key-day < 0 ? 0 : current + step >= 0 && current + step < count ? current + step : current;
+                        } else if event.text == Key.Home {
+                            root.key-day = 0;
+                        } else if event.text == Key.End {
+                            root.key-day = count - 1;
+                        } else if event.text == Key.Return && root.key-day >= 0 {
+                            root.day-clicked(current);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-index >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-index >= 0 {
+                                root.key-day = root.hovered-index;
+                                root.day-clicked(root.hovered-index);
+                            }
+                        }
+                    }
+                }
+            }
+
+            for month in root.calendar.months: Text {
+                x: grid.x + month.pos * root.step;
+                y: 0;
+                text: month.label;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+            }
+
+            // Every other weekday, like GitHub.
+            for name[row] in root.week-starts-monday ? ["Mon", "", "Wed", "", "Fri", "", ""] : ["", "Mon", "", "Wed", "", "Fri", ""]: Text {
+                x: 0;
+                width: root.label-width - 6px;
+                y: grid.y + row * root.step + (root.step - root.cell-gap) / 2 - self.height / 2;
+                text: name;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                horizontal-alignment: right;
+            }
+
+            if keys.has-focus: Rectangle {
+                x: grid.x - 3px;
+                y: grid.y - 3px;
+                width: grid.width + 6px;
+                height: grid.height + 6px;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: ChartTheme.axis-color;
+            }
+
+            if root.show-tooltip && root.hovered-index >= 0: Rectangle {
+                // At the mouse, or above the day selected with the keyboard.
+                property <int> day: root.hovered-index + root.first-weekday;
+                property <length> anchor-x: grid.x + (touch.has-hover ? touch.mouse-x : (floor(self.day / 7) + 0.5) * root.step);
+                property <length> anchor-y: grid.y + (touch.has-hover ? touch.mouse-y : mod(self.day, 7) * root.step);
+                property <float> value: root.values[root.hovered-index];
+                x: clamp(self.anchor-x - self.width / 2, 0px, max(0px, area.width - self.width));
+                y: max(0px, self.anchor-y - self.height - 10px);
+                width: self.preferred-width;
+                height: self.preferred-height;
+                background: ChartTheme.tooltip-background;
+                border-radius: 6px;
+                HorizontalLayout {
+                    padding: 6px;
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    Text {
+                        text: (value == value ? ChartEngine.format-value(value, root.format) : "No data")
+                            + " on " + ChartEngine.format-time(root.start-date, 0, root.hovered-index * 86400);
+                        color: ChartTheme.tooltip-text;
+                        font-size: ChartTheme.font-size;
+                    }
+                }
+            }
+        }
+
+        // Legend: "Less" to "More", like GitHub.
+        if root.show-legend: HorizontalLayout {
+            alignment: start;
+            padding-left: root.label-width;
+            spacing: 4px;
+            Text {
+                text: "Less";
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size * 0.9;
+                vertical-alignment: center;
+            }
+            for level in root.levels + 1: VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    // A fixed size: sizing it like the cells would make the
+                    // legend's height depend on itself through the cell size.
+                    width: 12px;
+                    height: 12px;
+                    border-radius: root.cell-radius;
+                    background: root.level-color(level);
+                }
+            }
+            Text {
+                text: "More";
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size * 0.9;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

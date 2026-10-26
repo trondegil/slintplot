@@ -1,0 +1,30 @@
+[package]
+name = "slintplot-stress"
+version = "0.1.0"
+description = "Stress test for SlintPlot: up to 8 x 1,000,000 points, 60 Hz streaming and headless benchmarks"
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage = "https://slintplot.dev"
+keywords = ["slint", "chart", "plot", "gui", "demo"]
+categories = ["gui", "visualization"]
+readme = "README.md"
+include = ["src/**", "ui/**", "build.rs", "icon.png", "README.md", "LICENSE.md", "COMMERCIAL.md"]
+
+[dependencies]
+# `software-renderer-path` lets the software renderer (used by `--bench`) draw paths.
+slint = { workspace = true, features = ["software-renderer-path"] }
+slintplot.workspace = true
+png = "0.18"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The Dock icon (see src/dock_icon.rs).
+objc2 = "0.6"
+objc2-app-kit = "0.3"
+objc2-foundation = "0.3"
+
+[build-dependencies]
+slint-build.workspace = true
+slintplot.workspace = true
+png = "0.18"

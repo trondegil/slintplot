@@ -1,0 +1,107 @@
+import { ChartLegendItem } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+
+// Where a chart shows its legend.
+export enum ChartLegendPosition { top, bottom, left, right }
+
+// Chart legend. Clicking an entry calls `toggled`; the chart hides or shows
+// the matching dataset or slice.
+export component Legend {
+    in property <[ChartLegendItem]> items;
+    // Stack the entries (for legends left or right of a chart).
+    in property <bool> vertical;
+    callback toggled(index: int);
+
+    // Wraps onto more lines when the entries don't fit.
+    FlexboxLayout {
+        alignment: center;
+        flex-direction: root.vertical ? FlexboxLayoutDirection.column : FlexboxLayoutDirection.row;
+        spacing-horizontal: 16px;
+        spacing-vertical: 4px;
+        for item[i] in root.items: Rectangle {
+            HorizontalLayout {
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 28px;
+                        height: 10px;
+                        background: item.color.with-alpha(ChartTheme.fill-opacity);
+                        border-color: item.color;
+                        border-width: 2px;
+                        opacity: item.hidden ? 0.4 : 1;
+                    }
+                }
+                Text {
+                    text: item.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    vertical-alignment: center;
+                    opacity: item.hidden ? 0.5 : 1;
+                    // Strike-through for hidden entries.
+                    Rectangle {
+                        visible: item.hidden;
+                        y: (parent.height - self.height) / 2;
+                        height: 1px;
+                        background: ChartTheme.text-color;
+                    }
+                }
+            }
+            TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.toggled(i);
+                }
+            }
+        }
+    }
+}
+
+// Places a legend above, below, left or right of its children (the chart).
+export component LegendFrame {
+    in property <[ChartLegendItem]> items;
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> position: ChartLegendPosition.top;
+    callback toggled(index: int);
+
+    VerticalLayout {
+        spacing: 8px;
+        if root.show-legend && root.position == ChartLegendPosition.top: Legend {
+            items: root.items;
+            toggled(index) => {
+                root.toggled(index);
+            }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 8px;
+            if root.show-legend && root.position == ChartLegendPosition.left: VerticalLayout {
+                alignment: center;
+                Legend {
+                    vertical: true;
+                    items: root.items;
+                    toggled(index) => {
+                        root.toggled(index);
+                    }
+                }
+            }
+            @children
+            if root.show-legend && root.position == ChartLegendPosition.right: VerticalLayout {
+                alignment: center;
+                Legend {
+                    vertical: true;
+                    items: root.items;
+                    toggled(index) => {
+                        root.toggled(index);
+                    }
+                }
+            }
+        }
+        if root.show-legend && root.position == ChartLegendPosition.bottom: Legend {
+            items: root.items;
+            toggled(index) => {
+                root.toggled(index);
+            }
+        }
+    }
+}

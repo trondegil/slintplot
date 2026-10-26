@@ -1,0 +1,491 @@
+import { Button, CheckBox, ComboBox, ListView, Palette } from "std-widgets.slint";
+import {
+    BarChart,
+    BubbleChart,
+    CalendarHeatmap,
+    ChartGaugeBand,
+    ChartSunburstItem,
+    ChartTreemapItem,
+    ChartWaterfallStep,
+    DumbbellChart,
+    FunnelChart,
+    GaugeChart,
+    SunburstChart,
+    TreemapChart,
+    WaterfallChart,
+    ChartDataset,
+    ChartEngine,
+    ChartLegendPosition,
+    ChartPalette,
+    ChartSlice,
+    ChartTheme,
+    DoughnutChart,
+    HeatmapChart,
+    HorizontalBarChart,
+    LineChart,
+    PieChart,
+    PolarAreaChart,
+    RadarChart,
+    ScatterChart,
+    TimeSeriesChart,
+} from "@slintplot";
+export { ChartEngine }
+
+// A row of the sample list: a category header, or a sample.
+export struct SampleEntry {
+    id: string,
+    title: string,
+    header: bool,
+}
+
+// A sample browser: pick a sample on
+// the left, and change its data with the buttons below the chart.
+export component Gallery inherits Window {
+    title: "SlintPlot gallery";
+    // Shown in the taskbar, and in the Dock on macOS.
+    icon: @image-url("../icon.png");
+    preferred-width: 1280px;
+    preferred-height: 820px;
+    background: ChartTheme.background;
+
+    in property <[SampleEntry]> samples;
+    in-out property <string> sample;
+    in property <string> sample-title;
+    in property <string> description;
+    // Buttons for the current sample.
+    in property <[string]> actions;
+    in-out property <string> status;
+
+    // The data of the current sample.
+    in property <[string]> labels;
+    in-out property <[ChartDataset]> datasets;
+    in-out property <[ChartSlice]> slices;
+    in property <[string]> row-labels;
+    in property <[float]> grid;
+    in-out property <[ChartTreemapItem]> tree;
+    in-out property <[ChartSunburstItem]> sun;
+    in property <[ChartWaterfallStep]> steps;
+    in property <float> gauge-value;
+    in-out property <ChartLegendPosition> legend-position;
+    in-out property <bool> decimate: true;
+
+    in-out property <bool> dark-mode: Palette.color-scheme == ColorScheme.dark;
+    // Index into the theme picker.
+    in-out property <int> theme;
+    // Index into the calendar heatmap's color picker; 0 follows the theme.
+    in-out property <int> calendar-colors;
+
+    callback select(id: string);
+    callback action(index: int);
+    // Samples with their own light and dark colors update them.
+    callback dark-mode-changed();
+    // The zoom window of the one-week time series.
+    in-out property <float> view-start: 0;
+    in-out property <float> view-end: 1;
+
+    changed dark-mode => {
+        Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
+        root.dark-mode-changed();
+    }
+    changed theme => {
+        ChartTheme.palette = self.theme == 0 ? ChartPalette.modern
+            : self.theme == 1 ? ChartPalette.material
+            : self.theme == 2 ? ChartPalette.corporate
+            : self.theme == 3 ? ChartPalette.mono
+            : ChartPalette.pastel;
+    }
+
+    HorizontalLayout {
+        // Sample list
+        Rectangle {
+            width: 230px;
+            background: root.dark-mode ? #ffffff08 : #00000006;
+            ListView {
+                for entry in root.samples: Rectangle {
+                    height: entry.header ? 34px : 28px;
+                    background: entry.id == root.sample ? (root.dark-mode ? #ffffff1a : #0000000f) : transparent;
+                    Text {
+                        x: entry.header ? 14px : 22px;
+                        y: entry.header ? parent.height - self.height - 4px : (parent.height - self.height) / 2;
+                        text: entry.title;
+                        color: entry.header ? ChartTheme.text-color : (entry.id == root.sample ? Palette.foreground : ChartTheme.text-color);
+                        font-size: entry.header ? 11px : 13px;
+                        font-weight: entry.header || entry.id == root.sample ? 700 : 400;
+                        letter-spacing: entry.header ? 0.6px : 0;
+                    }
+                    if !entry.header: TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.select(entry.id);
+                        }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            padding: 20px;
+            padding-top: 14px;
+            spacing: 10px;
+
+            HorizontalLayout {
+                spacing: 10px;
+                Text {
+                    text: root.sample-title;
+                    font-size: 22px;
+                    font-weight: 700;
+                    color: Palette.foreground;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                Text {
+                    text: "Theme";
+                    color: ChartTheme.text-color;
+                    vertical-alignment: center;
+                }
+                ComboBox {
+                    model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
+                    current-index <=> root.theme;
+                }
+                // The calendar heatmap's color, separate from the theme.
+                if root.sample == "calendar": Text {
+                    text: "Colors";
+                    color: ChartTheme.text-color;
+                    vertical-alignment: center;
+                }
+                if root.sample == "calendar": ComboBox {
+                    model: ["Theme", "GitHub green", "Blue", "Orange", "Purple", "Red"];
+                    current-index <=> root.calendar-colors;
+                }
+                // The active palette, in the order datasets use it.
+                HorizontalLayout {
+                    spacing: 3px;
+                    alignment: center;
+                    for swatch in ChartTheme.colors: VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 14px;
+                            height: 14px;
+                            border-radius: 3px;
+                            background: swatch.with-alpha(ChartTheme.fill-opacity);
+                            border-color: swatch;
+                            border-width: 1px;
+                        }
+                    }
+                }
+                CheckBox {
+                    text: "Dark mode";
+                    checked <=> root.dark-mode;
+                }
+            }
+
+            Text {
+                text: root.description;
+                color: ChartTheme.text-color;
+                wrap: word-wrap;
+            }
+
+            // The chart of the current sample.
+            Rectangle {
+                vertical-stretch: 1;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: ChartTheme.grid-color;
+
+                VerticalLayout {
+                    padding: 12px;
+
+                    if root.sample == "bar-vertical": BarChart {
+                        title: "Vertical bar chart";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                    }
+                    if root.sample == "bar-horizontal": HorizontalBarChart {
+                        title: "Horizontal bar chart";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        legend-position: ChartLegendPosition.right;
+                    }
+                    if root.sample == "bar-stacked": BarChart {
+                        title: "Stacked bar chart";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        stacked: true;
+                    }
+                    if root.sample == "bar-border-radius": BarChart {
+                        title: "Bar chart border radius";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        bar-radius: 6px;
+                        bar-border-width: 2px;
+                    }
+                    if root.sample == "line" || root.sample == "line-interpolation" || root.sample == "line-stepped" || root.sample == "area-line": LineChart {
+                        title: root.sample-title;
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        begin-at-zero: false;
+                    }
+                    if root.sample == "line-points": LineChart {
+                        title: "Line chart without point markers";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        show-points: false;
+                    }
+                    if root.sample == "combo-bar-line": BarChart {
+                        title: "Combo bar and line chart";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                    }
+                    if root.sample == "stacked-bar-line": BarChart {
+                        title: "Stacked bar and line chart";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        stacked: true;
+                    }
+                    if root.sample == "area-stacked": LineChart {
+                        title: "Stacked area chart";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        stacked: true;
+                    }
+                    if root.sample == "pie": PieChart {
+                        title: "Pie chart";
+                        slices <=> root.slices;
+                    }
+                    if root.sample == "doughnut": DoughnutChart {
+                        title: "Doughnut chart";
+                        slices <=> root.slices;
+                    }
+                    if root.sample == "polar-area": PolarAreaChart {
+                        title: "Polar area chart";
+                        slices <=> root.slices;
+                    }
+                    if root.sample == "radar" || root.sample == "area-radar": RadarChart {
+                        title: root.sample-title;
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                    }
+                    if root.sample == "scatter": ScatterChart {
+                        title: "Scatter chart";
+                        datasets <=> root.datasets;
+                        zoom-enabled: true;
+                    }
+                    if root.sample == "bubble": BubbleChart {
+                        title: "Bubble chart";
+                        datasets <=> root.datasets;
+                        zoom-enabled: true;
+                    }
+                    if root.sample == "legend-position": LineChart {
+                        title: "Legend position";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        legend-position: root.legend-position;
+                    }
+                    if root.sample == "axes-format": BarChart {
+                        title: "Revenue";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        x-title: "Month";
+                        y-title: "Revenue (USD)";
+                        value-prefix: "$";
+                        value-decimals: 0;
+                        show-values: true;
+                    }
+                    if root.sample == "axes-fixed": LineChart {
+                        title: "Fixed range: -150 to 150";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        fixed-range: true;
+                        min-value: -150;
+                        max-value: 150;
+                        y-title: "Value";
+                    }
+                    if root.sample == "axes-log": LineChart {
+                        title: "Users";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        logarithmic: true;
+                        y-title: "Users (log scale)";
+                    }
+                    if root.sample == "survey": HorizontalBarChart {
+                        title: "How often do you work from home?";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        stacked-percent: true;
+                        show-values: true;
+                        bar-border-width: 0;
+                        fill-opacity: 1;
+                    }
+                    if root.sample == "time-hourly": TimeSeriesChart {
+                        title: "Temperature, hourly";
+                        datasets <=> root.datasets;
+                        time-origin: { year: 2026, month: 10, day: 11 };
+                        value-suffix: " °C";
+                        value-decimals: 1;
+                        y-title: "Temperature";
+                        zoom-enabled: true;
+                    }
+                    if root.sample == "time-week": TimeSeriesChart {
+                        title: "Electricity use, one week";
+                        datasets <=> root.datasets;
+                        // Monday 19 October 2026, local time (UTC+2).
+                        time-origin: { year: 2026, month: 10, day: 18, hour: 22 };
+                        utc-offset: 120;
+                        value-suffix: " kW";
+                        begin-at-zero: true;
+                        y-title: "Power";
+                        zoom-enabled: true;
+                        view-start <=> root.view-start;
+                        view-end <=> root.view-end;
+                    }
+                    if root.sample == "time-daily": TimeSeriesChart {
+                        title: "Temperature, daily";
+                        datasets <=> root.datasets;
+                        time-origin: { year: 2025, month: 10, day: 26 };
+                        value-suffix: " °C";
+                        value-decimals: 1;
+                        zoom-enabled: true;
+                    }
+                    if root.sample == "heatmap": HeatmapChart {
+                        title: "Visits by weekday and hour";
+                        x-labels: root.labels;
+                        y-labels: root.row-labels;
+                        values: root.grid;
+                        value-suffix: " visits";
+                    }
+                    if root.sample == "heatmap-diverging": HeatmapChart {
+                        title: "Correlation";
+                        x-labels: root.labels;
+                        y-labels: root.row-labels;
+                        values: root.grid;
+                        diverging: true;
+                        fixed-range: true;
+                        min-value: -1;
+                        max-value: 1;
+                        show-values: true;
+                        value-decimals: 2;
+                    }
+                    if root.sample == "treemap": TreemapChart {
+                        title: "World population by country (millions)";
+                        items <=> root.tree;
+                        value-suffix: " M";
+                    }
+                    if root.sample == "sunburst": SunburstChart {
+                        title: "World population by region (millions)";
+                        items <=> root.sun;
+                        value-suffix: " M";
+                    }
+                    if root.sample == "funnel": FunnelChart {
+                        title: "Visitors to purchases, last 30 days";
+                        stages <=> root.slices;
+                    }
+                    if root.sample == "waterfall": WaterfallChart {
+                        title: "Profit and loss";
+                        steps: root.steps;
+                        show-values: true;
+                        value-prefix: "$";
+                        value-suffix: "k";
+                    }
+                    if root.sample == "dumbbell": DumbbellChart {
+                        title: "Life expectancy at birth (years)";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        show-values: true;
+                    }
+                    if root.sample == "gauge": HorizontalLayout {
+                        spacing: 8px;
+                        GaugeChart {
+                            title: "Storage used";
+                            value: root.gauge-value;
+                            label: "of 2 TB";
+                            value-suffix: "%";
+                            value-decimals: 0;
+                        }
+                        GaugeChart {
+                            title: "Memory pressure";
+                            value: 100 - root.gauge-value * 0.8;
+                            label: "16 GB";
+                            sweep: 240;
+                            value-suffix: "%";
+                            value-decimals: 0;
+                            bands: [
+                                { to: 60, label: "Normal", color: ChartTheme.dark ? #34d399 : #10b981 },
+                                { to: 85, label: "High", color: ChartTheme.dark ? #fbbf24 : #f59e0b },
+                                { to: 100, label: "Critical", color: ChartTheme.dark ? #fb7185 : #f43f5e },
+                            ];
+                        }
+                        GaugeChart {
+                            title: "CPU temperature";
+                            value: 30 + root.gauge-value * 0.65;
+                            min-value: 20;
+                            max-value: 100;
+                            label: "Package";
+                            sweep: 240;
+                            show-needle: true;
+                            value-suffix: " °C";
+                            value-decimals: 0;
+                            bands: [
+                                { to: 60, label: "Normal", color: ChartTheme.dark ? #34d399 : #10b981 },
+                                { to: 85, label: "Warm", color: ChartTheme.dark ? #fbbf24 : #f59e0b },
+                                { to: 100, label: "Hot", color: ChartTheme.dark ? #fb7185 : #f43f5e },
+                            ];
+                        }
+                    }
+                    if root.sample == "calendar": CalendarHeatmap {
+                        title: "Contributions in the last year";
+                        start-date: { year: 2025, month: 10, day: 26 };
+                        values: root.grid;
+                        value-suffix: " contributions";
+                        // Light and dark mode shades of each choice.
+                        color: root.calendar-colors == 1 ? (ChartTheme.dark ? #39d353 : #216e39)
+                            : root.calendar-colors == 2 ? (ChartTheme.dark ? #60a5fa : #1d4ed8)
+                            : root.calendar-colors == 3 ? (ChartTheme.dark ? #fb923c : #c2410c)
+                            : root.calendar-colors == 4 ? (ChartTheme.dark ? #a78bfa : #6d28d9)
+                            : root.calendar-colors == 5 ? (ChartTheme.dark ? #f87171 : #b91c1c)
+                            : ChartTheme.colors[0];
+                    }
+                    if root.sample == "pie-labels": PieChart {
+                        title: "Pie chart with data labels";
+                        slices <=> root.slices;
+                        show-percentages: true;
+                    }
+                    if root.sample == "zoom": LineChart {
+                        title: "Zoom and pan: scroll to zoom, drag to pan, double-click to reset";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        begin-at-zero: false;
+                        show-points: false;
+                        zoom-enabled: true;
+                    }
+                    if root.sample == "decimation": LineChart {
+                        title: "Data decimation (scroll to zoom)";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        begin-at-zero: false;
+                        show-points: false;
+                        decimate: root.decimate;
+                        zoom-enabled: true;
+                        animated: false;
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                for name[index] in root.actions: Button {
+                    text: name;
+                    clicked => {
+                        root.action(index);
+                    }
+                }
+            }
+
+            Text {
+                text: root.status;
+                color: ChartTheme.text-color;
+                font-size: 12px;
+            }
+        }
+    }
+}

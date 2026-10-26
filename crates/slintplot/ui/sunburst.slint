@@ -1,0 +1,278 @@
+import { ChartEngine, ChartFormat, ChartLegendItem, ChartSunburstArc, ChartSunburstItem, ChartSunburstLayout } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A sunburst chart: a hierarchy drawn as rings, the top level innermost, each
+// item's angle its share of its parent. Clicking an item with children zooms
+// into it; clicking the center zooms back out.
+export component SunburstChart {
+    in-out property <[ChartSunburstItem]> items;
+    in property <string> title;
+    // The legend lists the top-level items; clicking one hides or shows it.
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    in property <bool> show-tooltip: true;
+    in property <bool> animated: true;
+    // Write each item's label on its arc, where it fits.
+    in property <bool> show-labels: true;
+    // Size of the center circle, as a share of the radius.
+    in property <float> cutout: 0.3;
+    // Shown in the center above the total, when not zoomed in.
+    in property <string> center-label: "Total";
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+    // The zoomed-in item, or -1 for all items. Set it to zoom from code.
+    in-out property <int> zoom-item: -1;
+
+    // The item under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: root.hovered-arc < 0 ? -1 : sun.arcs[root.hovered-arc].index;
+
+    callback item-clicked(index: int);
+    callback legend-toggled(index: int);
+    // The zoomed-in item changed, to `index` or -1.
+    callback zoomed(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+
+    private property <int> key-arc: -1;
+    private property <bool> center-hovered: touch.has-hover && root.zoom-item >= 0
+        && (touch.mouse-x / 1px - sun.center-x) * (touch.mouse-x / 1px - sun.center-x) + (touch.mouse-y / 1px - sun.center-y) * (touch.mouse-y / 1px - sun.center-y) < sun.hole * sun.hole;
+    private property <int> hovered-arc: touch.has-hover ? ChartEngine.sunburst-hit(sun, touch.mouse-x / 1px, touch.mouse-y / 1px)
+        : keys.has-focus && root.key-arc >= 0 ? min(root.key-arc, sun.arcs.length - 1)
+        : -1;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+    private property <[ChartLegendItem]> legend: ChartEngine.sunburst-legend(root.items, ChartTheme.colors);
+    private property <[int]> roots: ChartEngine.sunburst-roots(root.items);
+    private property <ChartSunburstLayout> sun: ChartEngine.sunburst-layout({
+        items: root.items,
+        root: root.zoom-item,
+        width: area.width / 1px,
+        height: area.height / 1px,
+        cutout: root.cutout,
+        progress: root.progress,
+        font-size: ChartTheme.font-size / 1px,
+        palette: ChartTheme.colors,
+    });
+
+    // Light text on dark arcs.
+    pure function text-color(fill: color) -> color {
+        fill.red * 0.299 + fill.green * 0.587 + fill.blue * 0.114 < 150 ? #ffffff : #1f2328
+    }
+
+    function zoom(index: int) {
+        root.zoom-item = index;
+        root.key-arc = -1;
+        root.zoomed(index);
+    }
+
+    function zoom-out() {
+        if root.zoom-item >= 0 {
+            root.zoom(ChartEngine.sunburst-parent(root.items, root.zoom-item));
+        }
+    }
+
+    function activate(arc: int) {
+        let index = sun.arcs[arc].index;
+        root.item-clicked(index);
+        if sun.arcs[arc].has-children {
+            root.zoom(index);
+        }
+    }
+
+    min-width: 120px;
+    min-height: 120px;
+    preferred-width: 380px;
+    preferred-height: 380px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend;
+            position: root.legend-position;
+            toggled(index) => {
+                root.items[root.roots[index]].hidden = !root.items[root.roots[index]].hidden;
+                root.key-arc = -1;
+                root.legend-toggled(index);
+            }
+
+            area := Rectangle {
+                horizontal-stretch: 1;
+
+                // Each arc is drawn over its own box only, which keeps
+                // rendering fast with many arcs.
+                for arc[position] in sun.arcs: Path {
+                    // Grown by the border width on every side, as in pie charts,
+                    // so that viewbox coordinates equal pixels.
+                    x: arc.box-x * 1px - ChartTheme.slice-border-width / 2;
+                    y: arc.box-y * 1px - ChartTheme.slice-border-width / 2;
+                    width: arc.box-width * 1px + ChartTheme.slice-border-width;
+                    height: arc.box-height * 1px + ChartTheme.slice-border-width;
+                    viewbox-width: arc.box-width;
+                    viewbox-height: arc.box-height;
+                    fit: fill;
+                    commands: arc.path;
+                    fill: position == root.hovered-arc ? arc.color.mix(ChartTheme.text-color, 0.85) : arc.color;
+                    stroke: ChartTheme.background;
+                    stroke-width: ChartTheme.slice-border-width;
+                    stroke-line-join: round;
+                }
+
+                if root.show-labels: Rectangle {
+                    for arc in sun.arcs: Text {
+                        visible: arc.show-label;
+                        x: arc.x * 1px - self.preferred-width / 2;
+                        y: arc.y * 1px - self.preferred-height / 2;
+                        text: root.items[arc.index].label;
+                        color: root.text-color(arc.color);
+                        font-size: ChartTheme.font-size;
+                        font-weight: 600;
+                        opacity: root.progress;
+                    }
+                }
+
+                // The center: the shown total, and a way back out.
+                if sun.radius > 0: Rectangle {
+                    x: (sun.center-x - sun.hole) * 1px;
+                    y: (sun.center-y - sun.hole) * 1px;
+                    width: sun.hole * 2px;
+                    height: sun.hole * 2px;
+                    border-radius: self.width / 2;
+                    background: root.center-hovered ? ChartTheme.grid-color : transparent;
+
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 2px;
+                        Text {
+                            text: root.zoom-item >= 0 ? "‹ " + root.items[root.zoom-item].label : root.center-label;
+                            color: ChartTheme.text-color;
+                            font-size: ChartTheme.font-size * 0.9;
+                            horizontal-alignment: center;
+                            overflow: elide;
+                        }
+                        Text {
+                            text: ChartEngine.format-value(sun.total, root.format);
+                            color: ChartTheme.text-color;
+                            font-size: ChartTheme.font-size * 1.3;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+                }
+
+                // Keyboard: the arrow keys move through the items, parents
+                // before their children; Enter clicks the selected item and
+                // zooms into it, Escape and Backspace zoom out.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        let count = sun.arcs.length;
+                        let current = root.key-arc < 0 ? 0 : min(root.key-arc, count - 1);
+                        if event.text == Key.Escape || event.text == Key.Backspace {
+                            if root.zoom-item < 0 {
+                                return reject;
+                            }
+                            root.zoom-out();
+                        } else if count == 0 {
+                            return reject;
+                        } else if event.text == Key.RightArrow || event.text == Key.DownArrow {
+                            root.key-arc = root.key-arc < 0 ? 0 : mod(current + 1, count);
+                        } else if event.text == Key.LeftArrow || event.text == Key.UpArrow {
+                            root.key-arc = mod(current - 1 + count, count);
+                        } else if event.text == Key.Home {
+                            root.key-arc = 0;
+                        } else if event.text == Key.End {
+                            root.key-arc = count - 1;
+                        } else if event.text == Key.Return && root.key-arc >= 0 {
+                            root.activate(current);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-arc >= 0 || root.center-hovered ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.center-hovered {
+                                root.zoom-out();
+                            } else if root.hovered-arc >= 0 {
+                                root.activate(root.hovered-arc);
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.show-tooltip && root.hovered-arc >= 0: Rectangle {
+                    property <ChartSunburstArc> arc: sun.arcs[root.hovered-arc];
+                    property <length> anchor-x: touch.has-hover ? touch.mouse-x : self.arc.x * 1px;
+                    property <length> anchor-y: touch.has-hover ? touch.mouse-y : self.arc.y * 1px;
+                    x: self.anchor-x + 14px + self.width > area.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
+                    y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, area.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    HorizontalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 6px;
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 10px;
+                                height: 10px;
+                                background: arc.color;
+                                border-color: ChartTheme.tooltip-text;
+                                border-width: 1px;
+                            }
+                        }
+                        Text {
+                            text: ChartEngine.sunburst-path(root.items, arc.index) + ": "
+                                + ChartEngine.format-value(arc.value, root.format)
+                                + " (" + ChartEngine.format-value(arc.share * 100, { decimals: 1 }) + "%)";
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

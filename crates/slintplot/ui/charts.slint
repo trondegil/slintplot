@@ -1,0 +1,34 @@
+import { CartesianChart } from "cartesian.slint";
+import { ChartKind } from "engine.slint";
+
+// A line chart: lines through the values of each dataset.
+export component LineChart inherits CartesianChart {
+    kind: ChartKind.line;
+}
+
+// A vertical bar chart. Bars are grouped, or
+// stacked with `stacked: true`.
+export component BarChart inherits CartesianChart {
+    kind: ChartKind.bar;
+}
+
+// A scatter chart, with numeric x and y axes. Datasets use `points`.
+export component ScatterChart inherits CartesianChart {
+    kind: ChartKind.scatter;
+}
+
+// A time series: lines through points whose x values are seconds after
+// `time-origin`, on a time axis of dates and times. Hover
+// shows the values at the time under the mouse.
+export component TimeSeriesChart inherits CartesianChart {
+    kind: ChartKind.scatter;
+    time-axis: true;
+    show-lines: true;
+    show-points: false;
+}
+
+// A bubble chart: a scatter chart of circles. Datasets use `points`,
+// whose `r` is the bubble radius in pixels.
+export component BubbleChart inherits CartesianChart {
+    kind: ChartKind.bubble;
+}

@@ -1,0 +1,19 @@
+[package]
+name = "slintplot"
+version = "0.1.0"
+description = "Native, interactive charts for Slint"
+license = "PolyForm-Noncommercial-1.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+keywords = ["slint", "chart", "plot", "gui"]
+categories = ["gui", "visualization"]
+readme = "../../README.md"
+homepage = "https://slintplot.dev"
+documentation = "https://slintplot.dev"
+include = ["src/**", "ui/**", "LICENSE.md", "COMMERCIAL.md"]
+
+# Intentionally dependency-free: this crate is used both as a regular
+# dependency (math + `register!` macro) and as a build-dependency (to locate
+# the `.slint` sources), so it must stay cheap to compile.
+[dependencies]

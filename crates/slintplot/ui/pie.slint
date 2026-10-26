@@ -1,0 +1,248 @@
+import { ChartEngine, ChartFormat, ChartLegendItem, ChartPieLayout, ChartSlice } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A pie chart. Hovered slices move outwards.
+export component PieChart {
+    in-out property <[ChartSlice]> slices;
+    in property <string> title;
+    // Size of the center hole, as a fraction of the radius.
+    in property <float> cutout: 0;
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    in property <bool> show-tooltip: true;
+    in property <bool> animated: true;
+    // Polar area chart: equal angles, and the radius shows the value. Use
+    // `PolarAreaChart` rather than setting this directly.
+    in property <bool> polar: false;
+    // Write each slice's value (or its share, with `show-percentages`) on it.
+    in property <bool> show-values: false;
+    in property <bool> show-percentages: false;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The slice under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: touch.has-hover ? ChartEngine.pie-hit(pie, touch.mouse-x / 1px, touch.mouse-y / 1px)
+        : keys.has-focus && root.key-index >= 0 ? min(root.key-index, root.slices.length - 1)
+        : -1;
+    private property <int> key-index: -1;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+
+    accessible-role: image;
+    accessible-label: root.title;
+
+    callback slice-clicked(index: int);
+    callback legend-toggled(index: int);
+
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+
+    private property <[ChartLegendItem]> legend: ChartEngine.slice-legend(root.slices, ChartTheme.colors);
+    private property <ChartPieLayout> pie: ChartEngine.pie-layout({
+        slices: root.slices,
+        width: area.width / 1px,
+        height: area.height / 1px,
+        cutout: root.cutout,
+        hover-offset: root.polar ? 0 : ChartTheme.slice-hover-offset / 1px,
+        progress: root.progress,
+        polar: root.polar,
+        font-size: ChartTheme.font-size / 1px,
+        palette: ChartTheme.colors,
+    });
+
+    min-width: 120px;
+    min-height: 120px;
+    preferred-width: 360px;
+    preferred-height: 360px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend;
+            position: root.legend-position;
+            toggled(index) => {
+                root.slices[index].hidden = !root.slices[index].hidden;
+                root.legend-toggled(index);
+            }
+
+            area := Rectangle {
+                horizontal-stretch: 1;
+
+                // Polar area value scale.
+                Path {
+                    x: -0.5px;
+                    y: -0.5px;
+                    width: area.width + 1px;
+                    height: area.height + 1px;
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    fit: fill;
+                    commands: pie.grid;
+                    stroke: ChartTheme.grid-color;
+                    stroke-width: 1px;
+                }
+
+                for arc in pie.arcs: Path {
+                    property <bool> hovered: arc.index == root.hovered-index;
+                    property <length> shift: self.hovered && !root.polar ? ChartTheme.slice-hover-offset : 0px;
+                    animate shift { duration: 150ms; easing: ease-out; }
+                    // Grown by the border width on every side, because Path insets
+                    // its geometry by half the stroke width; this keeps viewbox
+                    // coordinates equal to pixels.
+                    x: arc.dx * self.shift - ChartTheme.slice-border-width / 2;
+                    y: arc.dy * self.shift - ChartTheme.slice-border-width / 2;
+                    width: area.width + ChartTheme.slice-border-width;
+                    height: area.height + ChartTheme.slice-border-width;
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    fit: fill;
+                    commands: arc.path;
+                    // Polar areas overlap the grid, so they are see-through until hovered.
+                    fill: root.polar && !self.hovered ? arc.color.with-alpha(ChartTheme.fill-opacity) : arc.color;
+                    stroke: ChartTheme.background;
+                    stroke-width: ChartTheme.slice-border-width;
+                    stroke-line-join: round;
+                }
+
+                for ring in pie.rings: Rectangle {
+                    x: pie.center-x * 1px - self.width / 2;
+                    y: (pie.center-y - ring.pos) * 1px - self.height / 2;
+                    width: ring-label.preferred-width + 6px;
+                    height: ring-label.preferred-height;
+                    background: ChartTheme.background.transparentize(0.25);
+                    border-radius: 2px;
+                    ring-label := Text {
+                        text: ring.label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size * 0.9;
+                    }
+                }
+
+                // Data labels, inside the slices; slices too thin for a label
+                // get none.
+                if root.show-values || root.show-percentages: Rectangle {
+                    for arc in pie.arcs: Text {
+                        property <ChartSlice> slice: root.slices[arc.index];
+                        property <float> distance: root.polar ? arc.outer * 0.65 : (pie.radius + pie.inner-radius) / 2 + (pie.inner-radius > 0 ? 0 : pie.radius * 0.12);
+                        visible: arc.end - arc.start > 0.25 && (!root.polar || arc.outer > ChartTheme.font-size / 1px * 2);
+                        text: root.show-percentages
+                            ? ChartEngine.format-value(self.slice.value / max(pie.total, 0.000001) * 100, { decimals: 0 }) + "%"
+                            : ChartEngine.format-value(self.slice.value, root.format);
+                        x: (pie.center-x + arc.dx * self.distance) * 1px - self.width / 2;
+                        y: (pie.center-y + arc.dy * self.distance) * 1px - self.height / 2;
+                        color: root.polar ? ChartTheme.text-color : #ffffff;
+                        font-size: ChartTheme.font-size;
+                        font-weight: 600;
+                    }
+                }
+
+                // Keyboard: the arrow keys move through the slices, Enter
+                // clicks the selected one.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        if root.slices.length == 0 {
+                            return reject;
+                        }
+                        let current = root.key-index < 0 ? 0 : min(root.key-index, root.slices.length - 1);
+                        if event.text == Key.RightArrow || event.text == Key.DownArrow {
+                            root.key-index = root.key-index < 0 ? 0 : mod(current + 1, root.slices.length);
+                        } else if event.text == Key.LeftArrow || event.text == Key.UpArrow {
+                            root.key-index = mod(current - 1 + root.slices.length, root.slices.length);
+                        } else if event.text == Key.Return && root.key-index >= 0 {
+                            root.slice-clicked(current);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-index >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-index >= 0 {
+                                root.key-index = root.hovered-index;
+                                root.slice-clicked(root.hovered-index);
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.show-tooltip && root.hovered-index >= 0: Rectangle {
+                    property <ChartSlice> slice: root.slices[root.hovered-index];
+                    x: min((touch.has-hover ? touch.mouse-x : pie.center-x * 1px) + 14px, area.width - self.width);
+                    y: min((touch.has-hover ? touch.mouse-y : pie.center-y * 1px) + 14px, area.height - self.height);
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    HorizontalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 6px;
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 10px;
+                                height: 10px;
+                                background: root.legend[root.hovered-index].color;
+                                border-color: ChartTheme.tooltip-text;
+                                border-width: 1px;
+                            }
+                        }
+                        Text {
+                            text: slice.label + ": " + ChartEngine.format-value(slice.value, root.format)
+                                + " (" + ChartEngine.format-value(slice.value / max(pie.total, 0.000001) * 100, { decimals: 1 }) + "%)";
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A doughnut chart: a pie chart with a hole of half the radius.
+export component DoughnutChart inherits PieChart {
+    cutout: 0.5;
+}
+
+// A polar area chart: slices of equal
+// angle whose radius shows the value.
+export component PolarAreaChart inherits PieChart {
+    polar: true;
+}

@@ -1,0 +1,1474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlintPlot API</title>
+<link rel="icon" href="assets/slintplot-icon.png">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f7fb;
+    --text: #1d2433;
+    --text-muted: #5b6475;
+    --border: #e3e6ef;
+    --accent: #2563c9;
+    --accent-2: #13b7a5;
+    --code-bg: #f3f5fa;
+    --code-text: #1d2433;
+    --note-bg: #eef7f6;
+    --placeholder: #f2f4fa;
+    --sidebar: #fafbfd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151c;
+      --bg-soft: #181c25;
+      --text: #e6e9f0;
+      --text-muted: #a3abbb;
+      --border: #2a303d;
+      --accent: #6aa2ff;
+      --accent-2: #3fd6c4;
+      --code-bg: #1b2030;
+      --code-text: #dfe5f2;
+      --note-bg: #16302d;
+      --placeholder: #1a1f2b;
+      --sidebar: #151922;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151c;
+    --bg-soft: #181c25;
+    --text: #e6e9f0;
+    --text-muted: #a3abbb;
+    --border: #2a303d;
+    --accent: #6aa2ff;
+    --accent-2: #3fd6c4;
+    --code-bg: #1b2030;
+    --code-text: #dfe5f2;
+    --note-bg: #16302d;
+    --placeholder: #1a1f2b;
+    --sidebar: #151922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .layout { display: flex; min-height: 100vh; }
+  nav {
+    position: sticky; top: 0; align-self: flex-start;
+    width: 250px; height: 100vh; overflow-y: auto;
+    padding: 20px 16px 40px;
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  nav .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--text); font-weight: 700; font-size: 18px; }
+  nav .brand img { width: 32px; height: 32px; }
+  nav h4 { margin: 18px 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  nav a { display: block; padding: 3px 8px; border-radius: 6px; color: var(--text); font-size: 14px; }
+  nav a:hover { background: var(--bg-soft); text-decoration: none; }
+  main { flex: 1; min-width: 0; padding: 32px 48px 80px; max-width: 980px; }
+  .hero { padding: 28px; border-radius: 14px; background: #ffffff; border: 1px solid var(--border); margin-bottom: 28px; text-align: center; }
+  .hero img { max-width: 420px; width: 100%; height: auto; }
+  .hero p { color: #5b6475; margin: 10px 0 0; font-size: 17px; }
+  h1 { font-size: 30px; margin: 0 0 8px; }
+  h2 { font-size: 24px; margin: 52px 0 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 18px; margin: 32px 0 8px; }
+  h3 code, h2 code { font-size: .95em; }
+  p, li { color: var(--text); }
+  .muted { color: var(--text-muted); }
+  code { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code-bg); color: var(--code-text); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; }
+  pre code { background: none; padding: 0; font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--bg-soft); border: 1px solid var(--border); color: var(--text-muted); margin-left: 6px; vertical-align: middle; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td code { white-space: nowrap; }
+  .note { background: var(--note-bg); border-left: 3px solid var(--accent-2); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .placeholder {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: 220px; margin: 14px 0 20px; padding: 20px;
+    border: 2px dashed var(--border); border-radius: 12px;
+    background: var(--placeholder); color: var(--text-muted); font-size: 14px;
+  }
+  .placeholder.small { min-height: 70px; }
+  .placeholder strong { display: block; color: var(--text); margin-bottom: 4px; }
+  .shot { margin: 14px 0 20px; }
+  .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
+  .swatches { display: flex; gap: 4px; }
+  .swatches span { width: 18px; height: 18px; border-radius: 4px; display: inline-block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+  .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-soft); }
+  .card h4 { margin: 0 0 4px; font-size: 15px; }
+  .card p { margin: 0; font-size: 13px; color: var(--text-muted); }
+  @media (max-width: 820px) {
+    .layout { display: block; }
+    nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    main { padding: 20px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <a class="brand" href="#top"><img src="assets/slintplot-icon.png" alt="">SlintPlot</a>
+  <h4>Start</h4>
+  <a href="#overview">Overview</a>
+  <a href="#getting-started">Getting started</a>
+  <a href="#concepts">How it works</a>
+  <h4>Charts</h4>
+  <a href="#line-chart">LineChart</a>
+  <a href="#bar-chart">BarChart</a>
+  <a href="#horizontal-bar-chart">HorizontalBarChart</a>
+  <a href="#scatter-chart">ScatterChart</a>
+  <a href="#bubble-chart">BubbleChart</a>
+  <a href="#pie-chart">PieChart</a>
+  <a href="#doughnut-chart">DoughnutChart</a>
+  <a href="#polar-area-chart">PolarAreaChart</a>
+  <a href="#radar-chart">RadarChart</a>
+  <a href="#mixed-charts">Mixed charts</a>
+  <a href="#percent-bars">100% stacked bars</a>
+  <a href="#time-series">TimeSeriesChart</a>
+  <a href="#heatmap">HeatmapChart</a>
+  <a href="#calendar-heatmap">CalendarHeatmap</a>
+  <a href="#treemap">TreemapChart</a>
+  <a href="#sunburst">SunburstChart</a>
+  <a href="#funnel">FunnelChart</a>
+  <a href="#waterfall">WaterfallChart</a>
+  <a href="#dumbbell">DumbbellChart</a>
+  <a href="#gauge">GaugeChart</a>
+  <h4>Reference</h4>
+  <a href="#axes">Axes and formatting</a>
+  <a href="#data-labels">Data labels</a>
+  <a href="#cartesian-properties">Cartesian properties</a>
+  <a href="#data-types">Data types</a>
+  <a href="#theming">Theming</a>
+  <a href="#interaction">Interaction</a>
+  <a href="#updating-data">Updating data from Rust</a>
+  <a href="#large-datasets">Large datasets</a>
+  <a href="#rust-api">Rust API</a>
+  <a href="#engine">ChartEngine</a>
+  <h4>More</h4>
+  <a href="#examples">Example apps</a>
+  <a href="#license">License</a>
+</nav>
+
+<main id="top">
+
+<div class="hero">
+  <img src="assets/slintplot-logo.png" alt="SlintPlot">
+  <p>Native, interactive charts for Slint.</p>
+</div>
+
+<h1 id="overview">Overview</h1>
+<p>
+  SlintPlot draws charts with Slint's own <code>Path</code>, <code>Rectangle</code> and
+  <code>Text</code> elements. They are not images: charts stay sharp at any scale, follow the
+  theme and dark mode, and react to the mouse.
+</p>
+<div class="grid">
+  <div class="card"><h4>Cartesian charts</h4><p>Line, bar, horizontal bar, scatter and bubble charts; stacked, mixed, stepped and filled variants.</p></div>
+  <div class="card"><h4>Radial charts</h4><p>Pie, doughnut, polar area and radar charts.</p></div>
+  <div class="card"><h4>Time and heatmaps</h4><p>Time series with date axes, matrix heatmaps and GitHub-style calendar heatmaps.</p></div>
+  <div class="card"><h4>Hierarchies and business</h4><p>Treemaps, sunbursts, funnels, waterfalls, dumbbells and gauges.</p></div>
+  <div class="card"><h4>Interactive</h4><p>Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.</p></div>
+  <div class="card"><h4>Large datasets</h4><p>Min-max decimation and on-demand data reading for millions of points.</p></div>
+</div>
+<figure class="shot"><img src="screenshots/light.png" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy"></figure>
+
+<h2 id="getting-started">Getting started</h2>
+<h3>1. Add the dependencies</h3>
+<p>SlintPlot is used both as a regular dependency (the <code>register!</code> macro) and as a build dependency (to find its <code>.slint</code> files).</p>
+<pre><code>[dependencies]
+slint = "1.18"
+slintplot = "0.1"
+
+[build-dependencies]
+slint-build = "1.18"
+slintplot = "0.1"</code></pre>
+
+<h3>2. Make the library importable: <code>build.rs</code></h3>
+<pre><code>fn main() {
+    let config = slint_build::CompilerConfiguration::new().with_library_paths(
+        std::collections::HashMap::from([("slintplot".into(), slintplot::library_path())]),
+    );
+    slint_build::compile_with_config("ui/app.slint", config).unwrap();
+}</code></pre>
+
+<h3>3. Use a chart: <code>ui/app.slint</code></h3>
+<pre><code>import { ChartEngine, ChartLegendPosition, ChartSeriesType, LineChart } from "@slintplot";
+export { ChartEngine } // required, so Rust can connect it
+
+export component App inherits Window {
+    preferred-width: 800px;
+    preferred-height: 500px;
+
+    // Every property is listed here, most at its default value. Properties at
+    // their default value can be dropped: `LineChart { labels: ...; datasets: ...; }`
+    // is a complete chart.
+    LineChart {
+        // Data
+        labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+        datasets: [
+            {
+                label: "2025",
+                values: [12, 19, 8, 15, 22, 18],
+                points: [],                         // scatter and time series charts only
+                color: transparent,                 // transparent: the theme's next color
+                hidden: false,
+                fill: true,                         // default false
+                tension: 0.4,                       // default 0: straight lines
+                stepped: false,
+                series-type: ChartSeriesType.auto,  // or .line / .bar in mixed charts
+            },
+            { label: "2026", values: [15, 22, 13, 24, 26, 30], tension: 0.4 },
+        ];
+        title: "Revenue";                           // default ""
+
+        // Look
+        show-legend: true;
+        legend-position: ChartLegendPosition.top;
+        show-tooltip: true;
+        show-points: true;
+        show-values: false;
+        animated: true;
+
+        // Value axis
+        begin-at-zero: false;
+        stacked: false;
+        stacked-percent: false;
+        fixed-range: false;
+        min-value: 0;
+        max-value: 100;
+        logarithmic: false;
+        x-title: "";
+        y-title: "";
+        value-prefix: "";
+        value-suffix: "";
+        value-decimals: -1;                         // -1: automatic
+
+        // Large datasets, zoom and pan
+        decimate: true;
+        zoom-enabled: false;
+        view-start: 0;
+        view-end: 1;
+        min-view: 0.0005;
+
+        // Callbacks
+        category-clicked(index) =&gt; { debug("clicked category", index); }
+        legend-toggled(index) =&gt; { debug("toggled dataset", index); }
+    }
+}</code></pre>
+<p>Import only the charts you use, plus <code>ChartEngine</code>, which must always be imported and exported. Charts you don't
+import cost nothing: Slint generates code only for the components your UI uses. <code>register!</code> connects the whole engine either way.</p>
+
+<h3>4. Connect the engine: <code>src/main.rs</code></h3>
+<pre><code>slint::include_modules!();
+
+fn main() -> Result&lt;(), slint::PlatformError&gt; {
+    let app = App::new()?;
+    slintplot::register!(app);
+    app.run()
+}</code></pre>
+<div class="note">
+  <strong>Software renderer:</strong> to draw lines, areas and pies with Slint's software renderer, enable
+  Slint's <code>software-renderer-path</code> feature:
+  <code>slint = { version = "1.18", features = ["software-renderer-path"] }</code>.
+</div>
+
+<h2 id="concepts">How it works</h2>
+<p>
+  Charts are Slint components. Geometry such as line paths, bar positions and axis ticks is computed in Rust by
+  the <code>ChartEngine</code> global's pure callbacks, which <code>slintplot::register!</code> connects.
+  Because the callbacks are pure, Slint recomputes them automatically when the chart's size, data or
+  theme changes.
+</p>
+<ul>
+  <li><strong>Data is a Slint model.</strong> Set it in <code>.slint</code> or from Rust; changing a row updates the chart.</li>
+  <li><strong>Colors are optional.</strong> Datasets and slices without a <code>color</code> take the next color of the active theme.</li>
+  <li><strong>Two requirements:</strong> export <code>ChartEngine</code> from your root <code>.slint</code> file, and call <code>slintplot::register!</code> once after creating the component.</li>
+</ul>
+
+<h2 id="line-chart">LineChart</h2>
+<p>Lines through the values of each dataset, one point per label.</p>
+<figure class="shot"><img src="screenshots/charts/line.png" alt="LineChart" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, ChartTheme, LineChart } from "@slintplot";
+
+LineChart {
+    title: "Temperature";
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    datasets: [
+    { label: "Oslo", values: [4, 6, 5, 8, 7], tension: 0.4 },
+    { label: "Bergen", values: [7, 8, 8, 9, 10], tension: 0.4, fill: true },
+    ];
+    // Look
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    show-values: false;
+    animated: true;
+    show-points: true;
+    fill-opacity: ChartTheme.fill-opacity;    // fills of `fill: true` datasets
+    begin-at-zero: false;
+    stacked: false;
+    stacked-percent: false;
+    // Value axis
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    logarithmic: false;
+    x-title: "";
+    y-title: "";
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    decimate: true;
+    // Zoom and pan
+    zoom-enabled: false;
+    view-start: 0;
+    view-end: 1;
+    min-view: 0.0005;
+    category-clicked(index) =&gt; { debug("clicked", index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<p>Dataset options that apply to lines: <code>tension</code> (0 for straight segments, about 0.4 for smooth curves),
+<code>fill</code> (fill to the axis, or to the dataset below when stacked) and <code>stepped</code> (steps instead of slopes).
+All properties are listed under <a href="#cartesian-properties">Cartesian properties</a>.</p>
+<h3>Stepped and stacked lines</h3>
+<pre><code>LineChart {
+    labels: ["Q1", "Q2", "Q3", "Q4"];
+    stacked: true;
+    datasets: [
+        { label: "Solar", values: [10, 25, 30, 12], fill: true },
+        { label: "Wind",  values: [20, 15, 18, 26], fill: true },
+        { label: "Price", values: [5, 7, 6, 8], stepped: true },
+    ];
+}</code></pre>
+<figure class="shot"><img src="screenshots/charts/area-stacked.png" alt="A stacked area chart" loading="lazy"></figure>
+
+<h2 id="bar-chart">BarChart</h2>
+<p>Vertical bars, grouped by default and stacked with <code>stacked: true</code>. The value axis begins at zero.</p>
+<figure class="shot"><img src="screenshots/charts/bar-vertical.png" alt="BarChart" loading="lazy"></figure>
+<pre><code>import { BarChart, ChartLegendPosition, ChartTheme } from "@slintplot";
+
+BarChart {
+    title: "Visitors";
+    labels: ["Jan", "Feb", "Mar"];
+    datasets: [
+    { label: "Desktop", values: [1200, 1350, 1100] },
+    { label: "Mobile",  values: [2400, 2650, 2900] },
+    ];
+    // Look
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    show-values: false;
+    animated: true;
+    begin-at-zero: true;
+    stacked: false;
+    stacked-percent: false;
+    // Bars
+    bar-radius: 6px;                          // default 0
+    bar-border-width: 2px;                    // default 1px
+    fill-opacity: ChartTheme.fill-opacity;    // 0.5 by default
+    // Value axis
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    logarithmic: false;
+    x-title: "";
+    y-title: "";
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    // Zoom and pan
+    zoom-enabled: false;
+    view-start: 0;
+    view-end: 1;
+    min-view: 0.0005;
+    category-clicked(index) =&gt; { debug("clicked", index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<p>When stacked, positive and negative values stack separately.</p>
+
+<h2 id="horizontal-bar-chart">HorizontalBarChart</h2>
+<p>Categories run down the left side and bars grow to the right.</p>
+<figure class="shot"><img src="screenshots/charts/bar-horizontal.png" alt="HorizontalBarChart" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, ChartTheme, HorizontalBarChart } from "@slintplot";
+
+HorizontalBarChart {
+    title: "Languages used (%)";
+    labels: ["JavaScript", "Python", "Rust"];
+    datasets: [
+    { label: "2025", values: [62, 51, 12] },
+    { label: "2026", values: [60, 55, 15] },
+    ];
+    show-legend: true;
+    legend-position: ChartLegendPosition.right;  // default top
+    show-tooltip: true;
+    show-values: false;
+    animated: true;
+    begin-at-zero: true;
+    stacked: false;
+    stacked-percent: false;
+    // Bars
+    bar-radius: 0;
+    bar-border-width: 1px;
+    fill-opacity: ChartTheme.fill-opacity;    // 0.5 by default
+    // Value axis
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    logarithmic: false;
+    x-title: "";
+    y-title: "";
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    category-clicked(index) =&gt; { debug("clicked", index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code>, <code>labels</code>, <code>title</code></td><td></td><td></td><td>As for <a href="#cartesian-properties">cartesian charts</a></td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>true</code></td><td>Include 0 in the value axis</td></tr>
+  <tr><td><code>stacked</code></td><td><code>bool</code></td><td><code>false</code></td><td>Stack the datasets end to end</td></tr>
+  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code></td><td></td><td></td><td>As for cartesian charts</td></tr>
+  <tr><td><code>bar-radius</code>, <code>bar-border-width</code></td><td><code>length</code></td><td><code>0</code>, <code>1px</code></td><td>Rounded bars and their outline</td></tr>
+  <tr><td><code>stacked-percent</code>, <code>show-values</code>, <code>fill-opacity</code></td><td></td><td></td><td>As for <a href="#cartesian-properties">cartesian charts</a></td></tr>
+  <tr><td><code>x-title</code>, <code>y-title</code>, <code>fixed-range</code>, <code>min-value</code>, <code>max-value</code>, <code>logarithmic</code>, value formatting</td><td></td><td></td><td>See <a href="#axes">Axes and formatting</a>; the value axis is the x axis</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The category under the mouse or selected with the arrow keys, or -1</td></tr>
+  <tr><td><code>category-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+</table>
+
+<h2 id="scatter-chart">ScatterChart</h2>
+<p>Points on numeric x and y axes. Datasets use <code>points</code> instead of <code>values</code>.
+Hovering highlights the nearest point and shows its coordinates.</p>
+<figure class="shot"><img src="screenshots/charts/scatter.png" alt="ScatterChart" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, ScatterChart } from "@slintplot";
+
+ScatterChart {
+    title: "Height and weight";
+    datasets: [{
+    label: "Group A",
+    points: [{ x: 165, y: 58 }, { x: 172, y: 70 }, { x: 180, y: 82 }],
+    }];
+    // Look
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    show-values: false;
+    animated: true;
+    show-points: true;
+    show-lines: false;                        // connect the points in order
+    begin-at-zero: false;
+    // Value axis
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    logarithmic: false;
+    x-title: "";
+    y-title: "";
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    time-axis: false;                         // see TimeSeriesChart
+    decimate: true;
+    // Zoom and pan
+    zoom-enabled: true;                       // default false
+    view-start: 0;
+    view-end: 1;
+    min-view: 0.0005;
+    point-clicked(dataset, index) =&gt; {
+            debug("clicked point", index, "of dataset", dataset);
+    }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+
+<h2 id="bubble-chart">BubbleChart</h2>
+<p>A scatter chart whose points have a radius: <code>r</code> is the bubble radius in pixels. Hovering works anywhere inside a bubble.</p>
+<figure class="shot"><img src="screenshots/charts/bubble.png" alt="BubbleChart" loading="lazy"></figure>
+<pre><code>import { BubbleChart, ChartLegendPosition } from "@slintplot";
+
+BubbleChart {
+    title: "Markets";
+    datasets: [{
+    label: "Retail",
+    // r: the bubble radius in pixels
+    points: [{ x: 20, y: 30, r: 15 }, { x: 40, y: 10, r: 8 }, { x: 70, y: 45, r: 20 }],
+    }];
+    // Look
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    show-values: false;
+    animated: true;
+    begin-at-zero: false;
+    // Value axis
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    logarithmic: false;
+    x-title: "";
+    y-title: "";
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    // Zoom and pan
+    zoom-enabled: false;
+    view-start: 0;
+    view-end: 1;
+    min-view: 0.0005;
+    point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+
+<h2 id="pie-chart">PieChart</h2>
+<p>Slices proportional to their values. The hovered slice moves outwards, and the tooltip shows its value and share.
+Clicking a legend entry hides the slice.</p>
+<figure class="shot"><img src="screenshots/charts/pie-labels.png" alt="PieChart with percentages" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, PieChart } from "@slintplot";
+
+PieChart {
+    title: "Browsers";
+    slices: [
+    { label: "Chrome", value: 64 },
+    { label: "Safari", value: 19 },
+    { label: "Edge", value: 5 },
+    { label: "Other", value: 12, color: transparent, hidden: false },
+    ];
+    cutout: 0;
+    polar: false;                                    // the size of the center hole
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    animated: true;
+    show-values: false;
+    show-percentages: false;
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    slice-clicked(index) =&gt; { debug("clicked slice", index); }
+    legend-toggled(index) =&gt; { debug("toggled slice", index); }
+}</code></pre>
+<table id="pie-properties">
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>slices</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td><code>{ label, value, color, hidden }</code>. Non-positive values are skipped.</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0</code></td><td>Size of the center hole, as a fraction of the radius</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td></td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td></td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the slices in when the chart appears</td></tr>
+  <tr><td><code>show-values</code>, <code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's value, or its share, on it</td></tr>
+  <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td></td><td></td><td>How values are written</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The slice under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>slice-clicked(index)</code></td><td>callback</td><td></td><td>A slice was clicked</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry was clicked; the slice's <code>hidden</code> flag has already been toggled</td></tr>
+</table>
+
+<h2 id="doughnut-chart">DoughnutChart</h2>
+<p>A <code>PieChart</code> with <code>cutout: 0.5</code>. It has the same properties.</p>
+<figure class="shot"><img src="screenshots/charts/doughnut.png" alt="DoughnutChart" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, DoughnutChart } from "@slintplot";
+
+DoughnutChart {
+    title: "Traffic sources";
+    slices: [
+    { label: "Search", value: 48 },
+    { label: "Direct", value: 22 },
+    { label: "Social", value: 17 },
+    ];
+    cutout: 0.5;
+    polar: false;                                  // the doughnut's default
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    animated: true;
+    show-values: false;
+    show-percentages: false;
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    slice-clicked(index) =&gt; { debug("clicked slice", index); }
+    legend-toggled(index) =&gt; { debug("toggled slice", index); }
+}</code></pre>
+
+<h2 id="polar-area-chart">PolarAreaChart</h2>
+<p>Slices of equal angle whose radius shows the value, with labelled value rings. It has the same properties as <code>PieChart</code>.</p>
+<figure class="shot"><img src="screenshots/charts/polar-area.png" alt="PolarAreaChart" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, PolarAreaChart } from "@slintplot";
+
+PolarAreaChart {
+    title: "Sales by region";
+    slices: [
+    { label: "North", value: 11 },
+    { label: "East", value: 16 },
+    { label: "South", value: 7 },
+    { label: "West", value: 3 },
+    ];
+    cutout: 0;
+    polar: true;                                  // set by PolarAreaChart
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    animated: true;
+    show-values: false;
+    show-percentages: false;
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    slice-clicked(index) =&gt; { debug("clicked slice", index); }
+    legend-toggled(index) =&gt; { debug("toggled slice", index); }
+}</code></pre>
+
+<h2 id="radar-chart">RadarChart</h2>
+<p>One spoke per label and one closed polygon per dataset. Hovering a spoke shows every dataset's value for it.</p>
+<figure class="shot"><img src="screenshots/charts/radar.png" alt="RadarChart" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, RadarChart } from "@slintplot";
+
+RadarChart {
+    title: "Skills";
+    labels: ["Speed", "Power", "Range", "Comfort", "Price"];
+    datasets: [
+        { label: "Model A", values: [80, 65, 70, 50, 60], fill: true },
+        { label: "Model B", values: [55, 80, 60, 75, 70], fill: true },
+    ];
+    begin-at-zero: true;
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    show-points: true;
+    animated: true;
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    category-clicked(index) =&gt; { debug("clicked spoke", index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>Uses <code>label</code>, <code>values</code>, <code>color</code>, <code>hidden</code> and <code>fill</code>. Needs at least three labels.</td></tr>
+  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>One spoke per label</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td></td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>true</code></td><td>The center is 0</td></tr>
+  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, value formatting</td><td></td><td></td><td>As for other charts</td></tr>
+  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>true</code></td><td>Markers on the polygon corners</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The spoke under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>category-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+</table>
+
+<h2 id="mixed-charts">Mixed charts</h2>
+<p>Any dataset in a line or bar chart can be drawn as the other type with <code>series-type</code>. Lines in a bar chart go through the bar centers, and stacking keeps lines and bars apart.</p>
+<figure class="shot"><img src="screenshots/charts/combo-bar-line.png" alt="Bars with a line" loading="lazy"></figure>
+<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
+<pre><code>import { BarChart, ChartSeriesType } from "@slintplot";
+
+BarChart {
+    labels: ["Q1", "Q2", "Q3", "Q4"];
+    datasets: [
+        { label: "Sales", values: [12, 19, 8, 15] },
+        { label: "Average", values: [10, 14, 12, 13], series-type: ChartSeriesType.line },
+    ];
+}</code></pre>
+
+<h2 id="percent-bars">100% stacked bars</h2>
+<p>With <code>stacked-percent: true</code>, each category of a <code>BarChart</code> or <code>HorizontalBarChart</code> is split into the
+datasets' shares, so every bar fills the axis from 0% to 100%. Labels and tooltips show the percentages. This is the classic chart for
+survey answers. The percentage labels use largest remainder rounding, so each bar's labels add up to exactly 100%.</p>
+<p>Answers with a natural order, from "Every day" to "Never", read best in shades of one color, as in the screenshot and the example
+below: a fade from dark blue to light blue. Give each dataset its own <code>color</code>, which always wins over the theme; without one,
+the datasets take the theme's colors.</p>
+<figure class="shot"><img src="screenshots/charts/survey.png" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"></figure>
+<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
+<pre><code>HorizontalBarChart {
+    title: "How often do you work from home?";
+    labels: ["Engineering", "Sales", "Support"];
+    stacked-percent: true;
+    show-values: true;
+    fill-opacity: 1;
+    bar-border-width: 0;
+    datasets: [
+        { label: "Every day", values: [24, 5, 8], color: #172f73 },
+        { label: "Most days", values: [30, 12, 14], color: #1d4ed8 },
+        { label: "Some days", values: [28, 34, 23], color: #3b7ef0 },
+        { label: "Rarely", values: [12, 28, 25], color: #5f9cf2 },
+        { label: "Never", values: [6, 21, 30], color: #86b6ef },
+    ];
+}</code></pre>
+
+<h2 id="time-series">TimeSeriesChart</h2>
+<p>Lines over a time axis. Datasets use <code>points</code>, whose <code>x</code> is the number of seconds after <code>time-origin</code>.
+The axis picks round times for its ticks: seconds, minutes, hours, days, months or years, depending on the visible range, and the
+tooltip shows the date and time. Hovering anywhere above or below the lines shows the values at that time. Tick steps follow the visible span, from years down to seconds. When no tick falls on a midnight (or on a January), the first
+tick also shows the date (or the year), so a zoomed-in axis always says when it is. Zoomed in between points, lines continue to the
+edges of the plot.</p>
+<figure class="shot"><img src="screenshots/charts/time-hourly.png" alt="TimeSeriesChart with hourly values over two weeks" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, TimeSeriesChart } from "@slintplot";
+
+TimeSeriesChart {
+    title: "Temperature";
+    datasets: [{
+    label: "Oslo",
+    // One point per hour: x is seconds after the time origin.
+    points: [{ x: 0, y: 8.5 }, { x: 3600, y: 9.1 }, { x: 7200, y: 10.4 }],
+    }];
+    time-origin: { year: 2026, month: 10, day: 11 };  // default 1970-01-01
+    time-axis: true;                              // set by TimeSeriesChart
+    utc-offset: 0;                                // minutes added to UTC
+    show-lines: true;
+    show-points: false;
+    // Look
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    show-values: false;
+    animated: true;
+    begin-at-zero: false;
+    // Value axis
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    logarithmic: false;
+    x-title: "";
+    y-title: "";
+    value-prefix: "";
+    value-suffix: " °C";                          // default ""
+    value-decimals: -1;
+    decimate: true;
+    // Zoom and pan
+    zoom-enabled: true;                           // default false
+    view-start: 0;
+    view-end: 1;
+    min-view: 0.0005;
+    point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>time-origin</code></td><td><code>ChartDateTime</code></td><td>1970-01-01</td><td>The time of <code>x: 0</code> (UTC)</td></tr>
+  <tr><td><code>utc-offset</code></td><td><code>int</code></td><td><code>0</code></td><td>Minutes added to UTC for the displayed times, such as <code>120</code></td></tr>
+  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>false</code></td><td>Markers on the points</td></tr>
+</table>
+<p>All <a href="#cartesian-properties">cartesian properties</a> apply as well, including <code>decimate</code> and <code>zoom-enabled</code>.
+<code>ScatterChart</code> has the same <code>time-axis</code>, <code>time-origin</code> and <code>show-lines</code> properties.
+<code>x</code> values are 32-bit floats: measured from a nearby origin, they stay exact to the second for about half a year.</p>
+
+<h2 id="heatmap">HeatmapChart</h2>
+<p>A matrix of colored cells: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order.
+Missing values (NaN) are drawn as empty cells.</p>
+<figure class="shot"><img src="screenshots/charts/heatmap.png" alt="HeatmapChart: visits by weekday and hour" loading="lazy"></figure>
+<pre><code>import { ChartTheme, HeatmapChart } from "@slintplot";
+
+HeatmapChart {
+    title: "Visits by weekday and hour";
+    x-labels: ["09", "10", "11", "12"];
+    y-labels: ["Mon", "Tue"];
+    // values[row * columns + column]
+    values: [12, 30, 45, 52,
+             10, 28, 49, 60];
+    color: ChartTheme.colors[0];
+    diverging: false;
+    center-value: 0;
+    negative-color: ChartTheme.colors[2];
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    show-values: false;
+    show-legend: true;
+    show-tooltip: true;
+    cell-gap: 2px;
+    cell-radius: 3px;
+    value-prefix: "";
+    value-suffix: " visits";                      // default ""
+    value-decimals: -1;
+    cell-clicked(row, column) =&gt; { debug("clicked", row, column); }
+}</code></pre>
+<p>A diverging scale suits values around a center, such as correlations:</p>
+<figure class="shot"><img src="screenshots/charts/heatmap-diverging.png" alt="A diverging heatmap of correlations" loading="lazy"></figure>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>x-labels</code>, <code>y-labels</code></td><td><code>[string]</code></td><td></td><td>Column and row labels</td></tr>
+  <tr><td><code>values</code></td><td><code>[float]</code></td><td></td><td><code>values[row * columns + column]</code>; NaN for missing</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td>palette slot 1</td><td>The color of the largest value</td></tr>
+  <tr><td><code>diverging</code>, <code>center-value</code>, <code>negative-color</code></td><td><code>bool</code>, <code>float</code>, <code>color</code></td><td><code>false</code>, <code>0</code>, palette slot 3</td><td>Values below the center use <code>negative-color</code></td></tr>
+  <tr><td><code>fixed-range</code>, <code>min-value</code>, <code>max-value</code></td><td></td><td>fit the data</td><td>A fixed color range</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write the value in each cell</td></tr>
+  <tr><td><code>cell-gap</code>, <code>cell-radius</code></td><td><code>length</code></td><td><code>2px</code>, <code>3px</code></td><td></td></tr>
+  <tr><td><code>show-legend</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for other charts</td></tr>
+  <tr><td><code>hovered-row</code>, <code>hovered-column</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The cell under the mouse, or -1</td></tr>
+  <tr><td><code>cell-clicked(row, column)</code></td><td>callback</td><td></td><td></td></tr>
+</table>
+
+<h2 id="calendar-heatmap">CalendarHeatmap</h2>
+<p>A year (or any span) of daily values, like GitHub's contribution graph: one column per week, one row per weekday, with month and
+weekday labels and a "Less … More" legend. Days are colored in <code>levels</code> steps, split by quantiles of the positive values,
+so a few very active days don't wash out the rest; zero or missing days are empty. The days take the theme's first color, in
+lighter shades for fewer contributions; set <code>color</code> for another, such as GitHub's green.</p>
+<figure class="shot"><img src="screenshots/charts/calendar.png" alt="CalendarHeatmap of a year of contributions" loading="lazy"></figure>
+<pre><code>import { CalendarHeatmap, ChartTheme } from "@slintplot";
+
+CalendarHeatmap {
+    title: "Contributions in the last year";
+    start-date: { year: 2025, month: 10, day: 26 };
+    values: root.daily-counts;                    // one value per day
+    color: ChartTheme.dark ? #39d353 : #216e39;   // GitHub's green; default ChartTheme.colors[0]
+    levels: 4;
+    week-starts-monday: false;
+    show-legend: true;
+    show-tooltip: true;
+    cell-gap: 3px;
+    cell-radius: 2px;
+    value-prefix: "";
+    value-suffix: " contributions";               // default ""
+    value-decimals: -1;
+    day-clicked(index) =&gt; { debug("day", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>start-date</code></td><td><code>ChartDateTime</code></td><td></td><td>The date of the first value</td></tr>
+  <tr><td><code>values</code></td><td><code>[float]</code></td><td></td><td>One value per day</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The color of the most active days; fewer contributions are lighter shades of it</td></tr>
+  <tr><td><code>levels</code></td><td><code>int</code></td><td><code>4</code></td><td>Color steps besides "empty"</td></tr>
+  <tr><td><code>week-starts-monday</code></td><td><code>bool</code></td><td><code>false</code></td><td>Weeks start on Sunday, like GitHub, unless set</td></tr>
+  <tr><td><code>cell-gap</code>, <code>cell-radius</code></td><td><code>length</code></td><td><code>3px</code>, <code>2px</code></td><td></td></tr>
+  <tr><td><code>show-legend</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td></td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The day under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>day-clicked(index)</code></td><td>callback</td><td></td><td></td></tr>
+</table>
+
+<h2 id="treemap">TreemapChart</h2>
+<p>One rectangle per item, with an area proportional to its value, laid out with the squarified algorithm so the rectangles stay
+close to square. Items with the same <code>group</code> are placed together under the group's label and share the group's color;
+the legend lists the groups, and clicking one hides it. Without groups, every item gets its own theme color and there is no legend.
+Missing, zero and negative values take no space. Labels and values are written in the rectangles where they fit, in white or dark
+text depending on the fill.</p>
+<figure class="shot"><img src="screenshots/charts/treemap.png" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, TreemapChart } from "@slintplot";
+
+TreemapChart {
+    title: "World population (millions)";
+    items: [
+        { label: "India", value: 1464, group: "Asia" },
+        { label: "China", value: 1416, group: "Asia" },
+        { label: "Nigeria", value: 237, group: "Africa" },
+        { label: "United States", value: 347, group: "Americas" },
+        { label: "Brazil", value: 212, group: "Americas", color: transparent },  // transparent: the group's color
+    ];
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    show-values: true;
+    cell-gap: 2px;
+    cell-radius: 3px;
+    value-prefix: "";
+    value-suffix: " M";                           // default ""
+    value-decimals: -1;
+    item-clicked(index) =&gt; { debug("clicked", index); }
+    legend-toggled(index) =&gt; { debug("toggled group", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>items</code></td><td><code>[ChartTreemapItem]</code></td><td></td><td><code>{ label, value, group, color }</code></td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>true</code></td><td>Write each value under its label, where there is room</td></tr>
+  <tr><td><code>cell-gap</code>, <code>cell-radius</code></td><td><code>length</code></td><td><code>2px</code>, <code>3px</code></td><td>Groups are three gaps apart</td></tr>
+  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The item under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>item-clicked(index)</code></td><td>callback</td><td></td><td>The index of the clicked item in <code>items</code></td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A group was hidden or shown</td></tr>
+</table>
+
+<h2 id="sunburst">SunburstChart</h2>
+<p>A hierarchy drawn as rings: the top level innermost, and each item's angle its share of its parent. Items name their parent by
+index, and a parent must come before its children; an item whose <code>parent</code> is -1 (or invalid) is top-level. Leave a parent's
+<code>value</code> at 0 and it is the sum of its children; a parent with a larger value of its own keeps the rest of its angle empty.
+Top-level items take the theme's colors in order and their children a lighter shade of their parent's. Clicking an item with
+children zooms into it, so that it fills the rings; clicking the center zooms back out. The center shows the total of what is shown.
+Labels are written on the arcs where they fit, and the legend lists the top-level items.</p>
+<figure class="shot"><img src="screenshots/charts/sunburst.png" alt="SunburstChart of world population by continent, region and country" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, SunburstChart } from "@slintplot";
+
+SunburstChart {
+    title: "World population (millions)";
+    items: [
+        { label: "Asia", parent: -1 },                       // 0: its value is the sum of its children
+        { label: "South Asia", parent: 0 },                  // 1
+        { label: "India", value: 1464, parent: 1 },
+        { label: "Pakistan", value: 255, parent: 1 },
+        { label: "East Asia", parent: 0 },                   // 4
+        { label: "China", value: 1416, parent: 4 },
+        { label: "Europe", parent: -1, color: transparent }, // 6; transparent: the theme's next color
+        { label: "Germany", value: 84, parent: 6 },
+        { label: "France", value: 66, parent: 6, hidden: false },
+    ];
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    animated: true;
+    show-labels: true;
+    cutout: 0.3;
+    center-label: "Total";
+    zoom-item: -1;
+    value-prefix: "";
+    value-suffix: " M";                                     // default ""
+    value-decimals: -1;
+    item-clicked(index) =&gt; { debug("clicked", index); }
+    zoomed(index) =&gt; { debug("zoomed into", index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>items</code> <span class="tag">in-out</span></td><td><code>[ChartSunburstItem]</code></td><td></td><td><code>{ label, value, parent, color, hidden }</code></td></tr>
+  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>Write each item's label on its arc, where it fits</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.3</code></td><td>Size of the center circle, as a share of the radius</td></tr>
+  <tr><td><code>center-label</code></td><td><code>string</code></td><td><code>"Total"</code></td><td>Shown above the total when not zoomed in</td></tr>
+  <tr><td><code>zoom-item</code> <span class="tag">in-out</span></td><td><code>int</code></td><td><code>-1</code></td><td>The zoomed-in item, or -1 for all; set it to zoom from code</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the rings in when the chart appears</td></tr>
+  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The item under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>item-clicked(index)</code></td><td>callback</td><td></td><td>The index of the clicked item in <code>items</code></td></tr>
+  <tr><td><code>zoomed(index)</code></td><td>callback</td><td></td><td>The chart zoomed into <code>index</code>, or out to -1</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A top-level item was hidden or shown; <code>index</code> counts the legend entries</td></tr>
+</table>
+
+<h2 id="funnel">FunnelChart</h2>
+<p>The stages as slices of one funnel: each slice is as wide at the top as its value and narrows to the next stage, with curved sides.
+Stages fade from <code>color</code> at the top to lighter shades below (darker in dark mode), so the order reads in the color; a
+stage's own <code>color</code> wins. Each slice shows its value and its share of the first stage, beside the slice when it is too
+narrow, and badges on the right show the share of the previous stage each one kept. Hovering a stage fades the others. With so many stages that the
+rows are too short for text, the names, values and badges are left out, and the tooltip shows them. Stages are
+<code>ChartSlice</code>s, as in pie charts.</p>
+<figure class="shot"><img src="screenshots/charts/funnel.png" alt="FunnelChart of website visitors through to a purchase" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, ChartTheme, FunnelChart } from "@slintplot";
+
+FunnelChart {
+    title: "Visitors to purchases";
+    stages: [
+        { label: "Visited the site", value: 12400 },
+        { label: "Viewed a product", value: 7350 },
+        { label: "Added to cart", value: 3120 },
+        { label: "Purchased", value: 1150, color: transparent, hidden: false },  // transparent: the fade
+    ];
+    show-legend: false;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    animated: true;
+    show-labels: true;
+    show-values: true;
+    show-percentages: true;
+    show-conversions: true;
+    color: ChartTheme.colors[0];
+    curved: true;
+    gap: 4px;
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    stage-clicked(index) =&gt; { debug("clicked", index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>stages</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td><code>{ label, value, color, hidden }</code>, from the first stage to the last</td></tr>
+  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>The stage names on the left</td></tr>
+  <tr><td><code>show-values</code>, <code>show-percentages</code></td><td><code>bool</code></td><td><code>true</code>, <code>true</code></td><td>The value, and the share of the first stage, on each slice</td></tr>
+  <tr><td><code>show-conversions</code></td><td><code>bool</code></td><td><code>true</code></td><td>Badges with the share of the previous stage kept</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The first stage's color; the others fade from it</td></tr>
+  <tr><td><code>curved</code></td><td><code>bool</code></td><td><code>true</code></td><td>Curved sides between the stages, or straight ones</td></tr>
+  <tr><td><code>gap</code></td><td><code>length</code></td><td><code>4px</code></td><td>Space between the slices</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>The names are on the left already; the legend can hide stages</td></tr>
+  <tr><td><code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts; the stages open out one after the other</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The stage under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>stage-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+</table>
+
+<h2 id="waterfall">WaterfallChart</h2>
+<p>Each step's bar floats from the running total before it to the total after it: green when it adds, red when it takes away.
+Steps with <code>total: true</code> are bars from zero to the running total, in the theme's first color, and their <code>value</code> is
+ignored. Thin lines connect each bar's end to the next bar. The value axis always includes zero; the tooltip shows the change and
+the running total. Negative values are written with the sign before the prefix: "-$48k".</p>
+<figure class="shot"><img src="screenshots/charts/waterfall.png" alt="WaterfallChart of a profit and loss statement" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, ChartTheme, WaterfallChart } from "@slintplot";
+
+WaterfallChart {
+    title: "Profit and loss";
+    steps: [
+        { label: "Revenue", value: 420 },
+        { label: "Cost of sales", value: -185 },
+        { label: "Gross profit", total: true },
+        { label: "Marketing", value: -48 },
+        { label: "Net profit", total: true },
+    ];
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    animated: true;
+    show-values: true;                              // default false
+    show-connectors: true;
+    increase-color: #10b981;                        // default: green, lighter in dark mode
+    decrease-color: #f43f5e;                        // default: red, lighter in dark mode
+    total-color: ChartTheme.colors[0];
+    increase-label: "Increase";
+    decrease-label: "Decrease";
+    total-label: "Total";
+    bar-radius: 0;
+    bar-border-width: 1px;
+    fill-opacity: 0.5;                              // default ChartTheme.fill-opacity
+    x-title: "";
+    y-title: "";
+    value-prefix: "$";                              // default ""
+    value-suffix: "k";                              // default ""
+    value-decimals: -1;
+    step-clicked(index) =&gt; { debug("clicked", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>steps</code></td><td><code>[ChartWaterfallStep]</code></td><td></td><td><code>{ label, value, total }</code></td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each change (with its sign) or total by its bar</td></tr>
+  <tr><td><code>show-connectors</code></td><td><code>bool</code></td><td><code>true</code></td><td>Lines from each bar's end to the next bar</td></tr>
+  <tr><td><code>increase-color</code>, <code>decrease-color</code>, <code>total-color</code></td><td><code>color</code></td><td>green, red, first theme color</td><td></td></tr>
+  <tr><td><code>increase-label</code>, <code>decrease-label</code>, <code>total-label</code></td><td><code>string</code></td><td><code>"Increase"</code>, <code>"Decrease"</code>, <code>"Total"</code></td><td>The legend entries</td></tr>
+  <tr><td><code>bar-radius</code>, <code>bar-border-width</code>, <code>fill-opacity</code>, <code>x-title</code>, <code>y-title</code></td><td></td><td></td><td>As for bar charts</td></tr>
+  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The step under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>step-clicked(index)</code></td><td>callback</td><td></td><td></td></tr>
+</table>
+
+<h2 id="dumbbell">DumbbellChart</h2>
+<p>One row per category, with a dot for each dataset's value and a bar joining the smallest to the largest: a compact way to compare
+two values per category, such as before and after. It takes <code>labels</code> and <code>datasets</code> like a horizontal bar chart,
+and works with more than two datasets too. With exactly two, the tooltip also shows the change from the first to the second.</p>
+<figure class="shot"><img src="screenshots/charts/dumbbell.png" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, DumbbellChart } from "@slintplot";
+
+DumbbellChart {
+    title: "Life expectancy at birth (years)";
+    labels: ["Japan", "India", "Nigeria"];
+    datasets: [
+        { label: "2000", values: [81.1, 62.7, 46.3] },
+        { label: "2023", values: [84.7, 72.0, 54.5] },
+    ];
+    show-legend: true;
+    legend-position: ChartLegendPosition.top;
+    show-tooltip: true;
+    animated: true;
+    begin-at-zero: false;
+    show-values: true;                              // default false
+    dot-radius: 6px;
+    bar-width: 4px;
+    bar-color: gray;                                // default: between the grid and axis colors
+    fixed-range: false;
+    min-value: 0;
+    max-value: 100;
+    logarithmic: false;
+    x-title: "";
+    y-title: "";
+    value-prefix: "";
+    value-suffix: "";
+    value-decimals: -1;
+    category-clicked(index) =&gt; { debug("clicked", index); }
+    legend-toggled(index) =&gt; { debug("toggled", index); }
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>One row per label</td></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>One dot per dataset and row, from <code>values</code></td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write the smallest value left of its dot and the largest right of it</td></tr>
+  <tr><td><code>dot-radius</code>, <code>bar-width</code>, <code>bar-color</code></td><td></td><td><code>6px</code>, <code>4px</code>, gray</td><td></td></tr>
+  <tr><td><code>begin-at-zero</code>, <code>fixed-range</code>, <code>min-value</code>, <code>max-value</code>, <code>logarithmic</code>, <code>x-title</code>, <code>y-title</code></td><td></td><td></td><td>As for <a href="#cartesian-properties">cartesian charts</a>; the value axis is horizontal</td></tr>
+  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The row under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>category-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+</table>
+
+<h2 id="gauge">GaugeChart</h2>
+<p>An arc from <code>min-value</code> to <code>max-value</code>, centered at the top and covering <code>sweep</code> degrees, in one of two
+styles after common dashboard gauges:</p>
+<ul>
+  <li><strong>Fill</strong> (the default), like ApexCharts radial bars and Highcharts solid gauges: a thick track with rounded ends,
+  filled up to <code>value</code>, with the value large in the middle and the minimum and maximum at the ends. <code>bands</code> are drawn
+  as a thin ring outside the track, like Grafana's threshold markers, and the fill takes the color of the band the value is in.</li>
+  <li><strong>Needle</strong> (<code>show-needle: true</code>), like ECharts gauges: the bands as a thinner arc, with major and minor
+  ticks and their labels inside it, and a needle pointing at the value, which is written below the hub.</li>
+</ul>
+<p>The value is sized to the gauge, and the gauge moves smoothly to new values. Hovering a band shows its range.</p>
+<figure class="shot"><img src="screenshots/charts/gauge.png" alt="Three gauges: a half circle fill, a 240° fill with a ring of bands, and a needle with ticks" loading="lazy"></figure>
+<pre><code>import { ChartLegendPosition, ChartTheme, GaugeChart } from "@slintplot";
+
+GaugeChart {
+    title: "CPU temperature";
+    value: 77;
+    min-value: 20;                                  // default 0
+    max-value: 100;
+    label: "Package";
+    bands: [
+        { to: 60, label: "Normal", color: #10b981 },
+        { to: 85, label: "Warm", color: #f59e0b },
+        { to: 100, label: "Hot", color: transparent },  // transparent: the theme's next color
+    ];
+    show-needle: true;                              // default false
+    show-ticks: true;
+    rounded: true;                                  // fill style only
+    sweep: 240;                                     // default 180
+    cutout: 0.86;                                   // default 0.86 with a needle, else 0.72
+    color: ChartTheme.colors[0];
+    show-min-max: true;                             // hidden while tick labels show the ends
+    show-legend: true;                              // default false
+    legend-position: ChartLegendPosition.bottom;
+    show-tooltip: true;
+    animated: true;
+    value-font-size: 0px;                           // 0: sized to the gauge
+    value-prefix: "";
+    value-suffix: " °C";                            // default ""
+    value-decimals: 0;                              // default -1
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>value</code>, <code>min-value</code>, <code>max-value</code></td><td><code>float</code></td><td><code>0</code>, <code>0</code>, <code>100</code></td><td>Values outside the range are drawn at its ends</td></tr>
+  <tr><td><code>label</code></td><td><code>string</code></td><td><code>""</code></td><td>Written under the value</td></tr>
+  <tr><td><code>bands</code></td><td><code>[ChartGaugeBand]</code></td><td></td><td><code>{ to, label, color }</code>; each band starts where the previous one ends</td></tr>
+  <tr><td><code>show-needle</code></td><td><code>bool</code></td><td><code>false</code></td><td>The needle style: the bands in full, ticks and a needle, instead of a fill</td></tr>
+  <tr><td><code>show-ticks</code></td><td><code>bool</code></td><td><code>true</code></td><td>Needle style: major and minor ticks, with labels, inside the arc</td></tr>
+  <tr><td><code>rounded</code></td><td><code>bool</code></td><td><code>true</code></td><td>Fill style: round ends on the track and the fill</td></tr>
+  <tr><td><code>sweep</code></td><td><code>float</code></td><td><code>180</code></td><td>The angle the arc covers, in degrees</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.86</code> with a needle, else <code>0.72</code></td><td>Size of the inside of the arc, as a share of the radius</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td>first theme color</td><td>The fill without bands</td></tr>
+  <tr><td><code>show-min-max</code></td><td><code>bool</code></td><td><code>true</code></td><td>Write the minimum and maximum at the ends, unless tick labels show them</td></tr>
+  <tr><td><code>show-legend</code>, <code>legend-position</code></td><td></td><td><code>false</code>, <code>bottom</code></td><td>A legend of the bands</td></tr>
+  <tr><td><code>value-font-size</code></td><td><code>length</code></td><td><code>0px</code></td><td>The size of the value; 0 sizes it to the gauge</td></tr>
+  <tr><td><code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>hovered-band</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The band under the mouse, or -1</td></tr>
+</table>
+
+<h2 id="axes">Axes and formatting</h2>
+<p>Cartesian charts and <code>HorizontalBarChart</code> share these axis options:</p>
+<ul>
+  <li><strong>Titles:</strong> <code>x-title</code> below the x axis, <code>y-title</code> above the y axis.</li>
+  <li><strong>Fixed range:</strong> <code>fixed-range: true</code> with <code>min-value</code> and <code>max-value</code>, so the axis stays put when the data changes.</li>
+  <li><strong>Logarithmic axis:</strong> <code>logarithmic: true</code>, with ticks at 1, 2 and 5 times powers of ten. Values that aren't positive are left out.</li>
+  <li><strong>Formatting:</strong> <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> (-1 for automatic) apply to the value axis, tooltips and data labels. Pies and radar charts have them too. A minus sign goes before the prefix: "-$5".</li>
+</ul>
+<figure class="shot"><img src="screenshots/charts/axes-log.png" alt="A logarithmic axis" loading="lazy"></figure>
+<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
+<pre><code>LineChart {
+    labels: ["Q1", "Q2", "Q3", "Q4"];
+    datasets: [{ label: "Users", values: [12, 340, 2900, 61000] }];
+    logarithmic: true;
+    y-title: "Users (log scale)";
+    value-suffix: " users";
+}</code></pre>
+
+<h2 id="data-labels">Data labels</h2>
+<p><code>show-values: true</code> writes each value next to its bar or point, or inside stacked segments. Pies write the value inside
+each slice, or its share with <code>show-percentages: true</code>; slices too thin for a label get none.</p>
+<figure class="shot"><img src="screenshots/charts/axes-format.png" alt="Bars with data labels and dollar formatting" loading="lazy"></figure>
+<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
+<pre><code>BarChart {
+    labels: ["Jan", "Feb", "Mar"];
+    datasets: [{ label: "Revenue", values: [7869, 5941, 5946] }];
+    show-values: true;
+    value-prefix: "$";
+    value-decimals: 0;
+    x-title: "Month";
+    y-title: "Revenue (USD)";
+}</code></pre>
+
+<h2 id="cartesian-properties">Cartesian properties</h2>
+<p><code>LineChart</code>, <code>BarChart</code>, <code>ScatterChart</code> and <code>BubbleChart</code> share these properties.</p>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data; see <a href="#chart-dataset">ChartDataset</a></td></tr>
+  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>Category labels on the x axis (not used by scatter and bubble charts)</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>true</code> for bars, else <code>false</code></td><td>Include 0 in the value axis</td></tr>
+  <tr><td><code>stacked</code></td><td><code>bool</code></td><td><code>false</code></td><td>Stack the datasets; lines and bars stack separately</td></tr>
+  <tr><td><code>stacked-percent</code></td><td><code>bool</code></td><td><code>false</code></td><td>100% stacked: each category split into the datasets' shares</td></tr>
+  <tr><td><code>x-title</code>, <code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>Axis titles</td></tr>
+  <tr><td><code>fixed-range</code>, <code>min-value</code>, <code>max-value</code></td><td><code>bool</code>, <code>float</code></td><td><code>false</code>, <code>0</code>, <code>100</code></td><td>A fixed value axis</td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis</td></tr>
+  <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td><code>string</code>, <code>int</code></td><td><code>""</code>, <code>-1</code></td><td>How values are written; -1 decimals is automatic</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Data labels on bars and points</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>Opacity of bar fills</td></tr>
+  <tr><td><code>time-axis</code>, <code>time-origin</code>, <code>utc-offset</code>, <code>show-lines</code></td><td></td><td></td><td>Scatter charts: a time axis and lines between points (see <a href="#time-series">TimeSeriesChart</a>)</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td></td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td></td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move bars to new values</td></tr>
+  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>true</code></td><td>Line charts: a marker on every point. Turn off for large datasets.</td></tr>
+  <tr><td><code>decimate</code></td><td><code>bool</code></td><td><code>true</code></td><td>Line charts and time series: min-max decimation when a line has more than twice as many points as the plot has pixels. Turn off to draw every point of large data.</td></tr>
+  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Corner radius of bars</td></tr>
+  <tr><td><code>bar-border-width</code></td><td><code>length</code></td><td><code>1px</code></td><td>Width of the solid bar outline</td></tr>
+  <tr><td><code>zoom-enabled</code></td><td><code>bool</code></td><td><code>false</code></td><td>Mouse wheel zooms the x axis around the mouse, dragging pans, double-click resets</td></tr>
+  <tr><td><code>view-start</code>, <code>view-end</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>0</code>, <code>1</code></td><td>The visible part of the x axis, as fractions of the full range</td></tr>
+  <tr><td><code>min-view</code></td><td><code>float</code></td><td><code>0.0005</code></td><td>The smallest visible part when zooming</td></tr>
+  <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>Line and bar charts: the category under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>hovered-point</code> <span class="tag">out</span></td><td><code>ChartHit</code></td><td></td><td>Scatter, bubble and time series charts: the point under the mouse or selected with the keyboard; <code>dataset</code> is -1 when none</td></tr>
+</table>
+<h3>Callbacks and functions</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>category-clicked(index: int)</code></td><td>Line and bar charts: a category was clicked</td></tr>
+  <tr><td><code>point-clicked(dataset: int, index: int)</code></td><td>Scatter and bubble charts: a point was clicked</td></tr>
+  <tr><td><code>legend-toggled(index: int)</code></td><td>A legend entry was clicked; the dataset's <code>hidden</code> flag has already been toggled</td></tr>
+  <tr><td><code>reset-zoom()</code></td><td>Public function: show the whole x axis again</td></tr>
+</table>
+
+<h2 id="data-types">Data types</h2>
+<h3 id="chart-dataset"><code>ChartDataset</code></h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>label</code></td><td><code>string</code></td><td>Shown in the legend and tooltip</td></tr>
+  <tr><td><code>values</code></td><td><code>[float]</code></td><td>One value per label (line, bar and radar charts)</td></tr>
+  <tr><td><code>points</code></td><td><code>[ChartXY]</code></td><td>Scatter and bubble charts: the points, used instead of <code>values</code></td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td>Leave unset to use the next color of the theme</td></tr>
+  <tr><td><code>hidden</code></td><td><code>bool</code></td><td>Hide the dataset; the legend toggles it</td></tr>
+  <tr><td><code>fill</code></td><td><code>bool</code></td><td>Line and radar charts: fill the area</td></tr>
+  <tr><td><code>tension</code></td><td><code>float</code></td><td>Line charts: curve tension, 0 for straight segments</td></tr>
+  <tr><td><code>stepped</code></td><td><code>bool</code></td><td>Line charts: draw steps</td></tr>
+  <tr><td><code>series-type</code></td><td><code>ChartSeriesType</code></td><td><code>auto</code> (like the chart), <code>line</code> or <code>bar</code></td></tr>
+</table>
+<h3><code>ChartXY</code></h3>
+<p><code>{ x: float, y: float, r: float }</code>. A scatter or bubble point; <code>r</code> is the bubble radius in pixels and is ignored by scatter charts.</p>
+<h3><code>ChartSlice</code></h3>
+<p><code>{ label: string, value: float, color: color, hidden: bool }</code>. A pie, doughnut or polar area slice.</p>
+<h3><code>ChartTreemapItem</code></h3>
+<p><code>{ label: string, value: float, group: string, color: color }</code>. A treemap item. Items with the same <code>group</code> are
+placed together; leave <code>color</code> unset to use the group's color, or the theme's next color for items without a group.</p>
+<h3><code>ChartSunburstItem</code></h3>
+<p><code>{ label: string, value: float, parent: int, color: color, hidden: bool }</code>. A sunburst item. <code>parent</code> is the index
+of an earlier item, or -1 for the top level. Leave a parent's <code>value</code> at 0 to use the sum of its children, and <code>color</code>
+unset for the theme's color (top level) or a lighter shade of the parent's.</p>
+<h3><code>ChartWaterfallStep</code></h3>
+<p><code>{ label: string, value: float, total: bool }</code>. A waterfall step: a change, or with <code>total: true</code>, the running total so far.</p>
+<h3><code>ChartGaugeBand</code></h3>
+<p><code>{ to: float, label: string, color: color }</code>. A gauge band, from where the previous one ends (or <code>min-value</code>) to <code>to</code>.
+Leave <code>color</code> unset for the theme's next color.</p>
+<h3><code>ChartHit</code></h3>
+<p><code>{ dataset: int, index: int, x: float, y: float, r: float }</code>. The point under the mouse in a scatter or bubble chart, with its position in pixels. <code>dataset</code> is -1 when there is none.</p>
+<h3><code>ChartDateTime</code></h3>
+<p><code>{ year: int, month: int, day: int, hour: int, minute: int, second: int }</code>. A date and time in UTC, such as a
+<code>time-origin</code> or <code>start-date</code>: <code>{ year: 2026, month: 10, day: 25 }</code>.</p>
+<h3><code>ChartFormat</code></h3>
+<p><code>{ prefix: string, suffix: string, decimals: int }</code>. How a value is written; <code>decimals: -1</code> chooses automatically.
+Charts build it from their <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> properties.</p>
+<h3>Enums</h3>
+<table>
+  <tr><th>Enum</th><th>Values</th></tr>
+  <tr><td><code>ChartSeriesType</code></td><td><code>auto</code>, <code>line</code>, <code>bar</code></td></tr>
+  <tr><td><code>ChartLegendPosition</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code></td></tr>
+  <tr><td><code>ChartPalette</code></td><td><code>modern</code>, <code>material</code>, <code>corporate</code>, <code>mono</code>, <code>pastel</code></td></tr>
+  <tr><td><code>ChartKind</code></td><td><code>line</code>, <code>bar</code>, <code>scatter</code>, <code>bubble</code> (used internally by the chart components)</td></tr>
+  <tr><td><code>ChartChange</code></td><td><code>increase</code>, <code>decrease</code>, <code>total</code> (waterfall bars, used internally)</td></tr>
+</table>
+
+<h2 id="theming">Theming</h2>
+<p>The <code>ChartTheme</code> global styles every chart. Assign its properties anywhere, for example in your window's <code>init</code>.
+Colors follow light and dark mode automatically through Slint's <code>Palette.color-scheme</code>.</p>
+<pre><code>import { ChartPalette, ChartTheme } from "@slintplot";
+
+export component App inherits Window {
+    init => {
+        ChartTheme.palette = ChartPalette.corporate;
+        ChartTheme.fill-opacity = 0.6;
+        // Or a custom palette:
+        // ChartTheme.colors = [#0b6e4f, #f4a259, #5b8e7d, #bc4b51];
+    }
+}</code></pre>
+<h3>Palettes</h3>
+<p>Datasets and slices without their own <code>color</code> take the colors of the palette in order.</p>
+<table>
+  <tr><th>Palette</th><th>Colors (light mode)</th><th>Style</th></tr>
+  <tr><td><code>modern</code> (default)</td><td><div class="swatches"><span style="background:#3b82f6"></span><span style="background:#10b981"></span><span style="background:#f97316"></span><span style="background:#6366f1"></span><span style="background:#84cc16"></span><span style="background:#06b6d4"></span><span style="background:#8b5cf6"></span><span style="background:#f43f5e"></span></div></td><td>Clean, saturated colors in the style of modern UI frameworks</td></tr>
+  <tr><td><code>material</code></td><td><div class="swatches"><span style="background:#2196f3"></span><span style="background:#e91e63"></span><span style="background:#ff9800"></span><span style="background:#9c27b0"></span><span style="background:#4caf50"></span><span style="background:#3f51b5"></span><span style="background:#ff5722"></span><span style="background:#00bcd4"></span></div></td><td>Material Design colors</td></tr>
+  <tr><td><code>corporate</code></td><td><div class="swatches"><span style="background:#4e79a7"></span><span style="background:#f28e2b"></span><span style="background:#76b7b2"></span><span style="background:#e15759"></span><span style="background:#ff9da7"></span><span style="background:#59a14f"></span><span style="background:#2f4b7c"></span><span style="background:#b07aa1"></span></div></td><td>Restrained business colors, based on Tableau 10</td></tr>
+  <tr><td><code>mono</code></td><td><div class="swatches"><span style="background:#1e3a8a"></span><span style="background:#60a5fa"></span><span style="background:#1d4ed8"></span><span style="background:#93c5fd"></span><span style="background:#2563eb"></span><span style="background:#bfdbfe"></span><span style="background:#3b82f6"></span><span style="background:#172554"></span></div></td><td>Shades of one blue; best for up to five series</td></tr>
+  <tr><td><code>pastel</code></td><td><div class="swatches"><span style="background:#a1c9f4"></span><span style="background:#8de5a1"></span><span style="background:#f5a8d8"></span><span style="background:#bae6fd"></span><span style="background:#ff9f9b"></span><span style="background:#99e2dc"></span><span style="background:#ffb482"></span><span style="background:#d0bbff"></span></div></td><td>Soft, light colors; best for up to three series</td></tr>
+</table>
+<p>Each palette has separate dark mode colors. Neighboring colors, and the first three, stay distinct with red-green color blindness.</p>
+<h3><code>ChartTheme</code> properties</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>palette</code></td><td><code>ChartPalette</code></td><td><code>modern</code></td><td>The built-in palette</td></tr>
+  <tr><td><code>colors</code></td><td><code>[color]</code></td><td>from <code>palette</code></td><td>The dataset colors for the current mode; assign for a custom palette</td></tr>
+  <tr><td><code>dark</code></td><td><code>bool</code></td><td>follows <code>Palette</code></td><td>Dark mode</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>0.5</code></td><td>Opacity of filled marks (bars, areas, points, bubbles, polar slices); outlines stay solid</td></tr>
+  <tr><td><code>text-color</code></td><td><code>color</code></td><td>gray</td><td>Axis labels, titles and legend text</td></tr>
+  <tr><td><code>grid-color</code>, <code>axis-color</code></td><td><code>color</code></td><td>translucent</td><td>Grid lines and axis lines</td></tr>
+  <tr><td><code>background</code></td><td><code>brush</code></td><td><code>Palette.background</code></td><td>Used for slice borders and label backdrops</td></tr>
+  <tr><td><code>tooltip-background</code>, <code>tooltip-text</code></td><td><code>color</code></td><td>dark, white</td><td></td></tr>
+  <tr><td><code>font-size</code>, <code>title-font-size</code></td><td><code>length</code></td><td><code>12px</code>, <code>15px</code></td><td></td></tr>
+  <tr><td><code>line-width</code></td><td><code>length</code></td><td><code>2px</code></td><td>Line chart strokes</td></tr>
+  <tr><td><code>point-radius</code>, <code>point-hover-radius</code></td><td><code>length</code></td><td><code>3px</code>, <code>5px</code></td><td>Point markers</td></tr>
+  <tr><td><code>slice-border-width</code></td><td><code>length</code></td><td><code>2px</code></td><td>Border between pie slices, in the background color</td></tr>
+  <tr><td><code>slice-hover-offset</code></td><td><code>length</code></td><td><code>8px</code></td><td>How far a hovered pie slice moves out</td></tr>
+  <tr><td><code>animation-duration</code></td><td><code>duration</code></td><td><code>900ms</code></td><td>Entry animation</td></tr>
+</table>
+
+<h2 id="interaction">Interaction</h2>
+<ul>
+  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, and gauges the band under the mouse.</li>
+  <li><strong>Legend.</strong> Clicking an entry toggles the dataset's or slice's <code>hidden</code> flag; the axes rescale to the visible data. In a treemap, it hides or shows a group, and in a sunburst a top-level item.</li>
+  <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code> and <code>step-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
+  <li><strong>Keyboard.</strong> Every chart can be used without a mouse. Click a chart (or tab to it) and a focus ring appears; the arrow
+  keys then move the highlight and tooltip, Home and End jump to the ends, and Enter clicks. Charts report their title as an accessibility label.
+    <table>
+      <tr><th>Chart</th><th>Arrow keys</th></tr>
+      <tr><td>Line, bar, horizontal bar</td><td>Left and Right move through the categories</td></tr>
+      <tr><td>Scatter, bubble, time series</td><td>Left and Right move through a dataset's points in x order; Up and Down move to another dataset, at the point closest in x</td></tr>
+      <tr><td>Pie, doughnut, polar area, radar</td><td>Move around the slices or spokes</td></tr>
+      <tr><td>Heatmap</td><td>Move from cell to cell</td></tr>
+      <tr><td>Calendar heatmap</td><td>Left and Right move a week, Up and Down a day</td></tr>
+      <tr><td>Treemap</td><td>Move through the items, group by group and largest first</td></tr>
+      <tr><td>Sunburst</td><td>Move through the items, each parent before its children; Enter also zooms into an item with children, and Escape or Backspace zooms out</td></tr>
+      <tr><td>Funnel, dumbbell</td><td>Move through the stages or rows</td></tr>
+      <tr><td>Waterfall</td><td>Move through the steps</td></tr>
+      <tr><td>Gauge</td><td>None: a gauge shows one value, which its accessibility description reads out</td></tr>
+    </table>
+  </li>
+  <li><strong>Zoom and pan.</strong> With <code>zoom-enabled: true</code>, the mouse wheel zooms around the mouse, dragging pans and double-clicking resets. The value axis fits the visible data.</li>
+</ul>
+<pre><code>chart := LineChart {
+    zoom-enabled: true;
+    labels: root.days;
+    datasets: root.measurements;
+    category-clicked(index) => { root.selected-day = index; }
+}
+
+Button {
+    text: "Show the last 10%";
+    clicked => { chart.view-start = 0.9; chart.view-end = 1.0; }
+}</code></pre>
+
+<h2 id="updating-data">Updating data from Rust</h2>
+<p>Datasets and slices are ordinary Slint models. Use a <code>VecModel</code> and change rows; the chart updates on its own.</p>
+<pre><code>use std::rc::Rc;
+use slint::{Model, ModelRc, VecModel};
+
+slint::include_modules!();
+
+fn main() -> Result&lt;(), slint::PlatformError&gt; {
+    let app = App::new()?;
+    slintplot::register!(app);
+
+    let values = Rc::new(VecModel::from(vec![3.0, 7.0, 4.0]));
+    let datasets = Rc::new(VecModel::from(vec![ChartDataset {
+        label: "Sales".into(),
+        values: values.clone().into(),
+        tension: 0.4,
+        ..Default::default()
+    }]));
+    app.set_datasets(datasets.clone().into());
+
+    // Later: append a value, or replace a row.
+    values.push(9.0);
+    if let Some(mut ds) = datasets.row_data(0) {
+        ds.fill = true;
+        datasets.set_row_data(0, ds);
+    }
+    app.run()
+}</code></pre>
+<p>Here <code>App</code> declares <code>in-out property &lt;[ChartDataset]&gt; datasets;</code> and passes it to a chart with
+<code>datasets &lt;=&gt; root.datasets;</code>. The generated Rust types (<code>ChartDataset</code>, <code>ChartXY</code>, <code>ChartSlice</code>, ...)
+come from <code>slint::include_modules!()</code>.</p>
+<div class="note">For live data, push new values to the dataset's <code>VecModel</code> and remove old ones. The <code>stress</code> example streams at 60 Hz this way.</div>
+
+<h2 id="large-datasets">Large datasets</h2>
+<ul>
+  <li><strong>Turn off point markers</strong> with <code>show-points: false</code>. Each marker is an element.</li>
+  <li><strong>Keep decimation on</strong> (<code>decimate: true</code>, the default). A line with more than twice as many points as pixels is drawn as one span per pixel column, which looks the same and draws far faster: about 250 ms instead of 24 s for 3 lines of 1,000,000 points in the software renderer.</li>
+  <li><strong>Zoom in.</strong> Values are read from the models on demand, so a zoomed-in chart reads only the visible values, and changes outside the view cause no work.</li>
+</ul>
+<p>Measured with the software renderer and three datasets of 1,000,000 points each:</p>
+<table>
+  <tr><th></th><th>Full view</th><th>Zoomed to 0.1%</th></tr>
+  <tr><td>Layout</td><td>170 ms</td><td>1.4 ms</td></tr>
+  <tr><td>Frame</td><td>230 ms</td><td>47 ms</td></tr>
+  <tr><td>Hover</td><td>4 ms</td><td>4 ms</td></tr>
+</table>
+
+<h2 id="rust-api">Rust API</h2>
+<h3><code>slintplot::library_path() -&gt; PathBuf</code></h3>
+<p>The path to the library's <code>.slint</code> entry point, for <code>CompilerConfiguration::with_library_paths</code> in <code>build.rs</code>.
+Register it under the name <code>slintplot</code> to import from <code>"@slintplot"</code>.</p>
+<h3><code>slintplot::register!(component)</code></h3>
+<p>Connects the <code>ChartEngine</code> global of a component to SlintPlot. Call it once after creating the component.
+The <code>Chart*</code> types generated by <code>slint::include_modules!()</code> must be in scope where you call it,
+and the root <code>.slint</code> file must <code>export { ChartEngine }</code>.</p>
+<pre><code>slint::include_modules!();
+let app = App::new()?;
+slintplot::register!(app);</code></pre>
+<h3><code>slintplot::profile</code></h3>
+<table>
+  <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>last_layout_time() -&gt; Duration</code></td><td>How long the most recent chart layout took, including reading the models</td></tr>
+  <tr><td><code>take_totals() -&gt; (u32, Duration)</code></td><td>The number of layout and axis computations, and their total time, since the previous call</td></tr>
+</table>
+<h3>Layout modules <span class="tag">advanced</span></h3>
+<p>The geometry behind the components is public, for tests, custom renderers or server-side use. These modules may change before 1.0.</p>
+<table>
+  <tr><th>Module</th><th>Main items</th></tr>
+  <tr><td><code>slintplot::layout</code></td><td><code>layout(&amp;LayoutRequest) -&gt; Layout</code>, <code>value_axis(&amp;AxisRequest) -&gt; Axis</code>, <code>Dataset</code>, <code>Values</code>, <code>DataPoint</code>, <code>Kind</code>, <code>Stacks</code>, <code>plotted_value</code>, <code>nearest_point</code>, <code>category_window</code>, <code>resolve_color</code>, <code>PALETTE</code></td></tr>
+  <tr><td><code>slintplot::pie</code></td><td><code>layout(&amp;PieRequest) -&gt; PieLayout</code>, <code>hit(&amp;PieLayout, x, y)</code></td></tr>
+  <tr><td><code>slintplot::radar</code></td><td><code>layout(&amp;RadarRequest) -&gt; RadarLayout</code>, <code>hit(&amp;RadarLayout, x, y)</code></td></tr>
+  <tr><td><code>slintplot::time</code></td><td><code>time_ticks</code>, <code>format_datetime</code>, <code>unix_seconds</code>, <code>days_from_civil</code>, <code>civil_from_days</code></td></tr>
+  <tr><td><code>slintplot::heatmap</code></td><td><code>calendar</code> (calendar layout and quantile levels), <code>extent</code></td></tr>
+  <tr><td><code>slintplot::ticks</code></td><td><code>NiceScale</code> (round tick spacing), <code>Format</code>, <code>log_ticks</code>, <code>format_tick</code>, <code>format_value</code></td></tr>
+  <tr><td><code>slintplot::path</code></td><td><code>line</code>, <code>area</code>, <code>band</code>, <code>steps</code>: SVG path commands for Slint's <code>Path</code></td></tr>
+</table>
+<pre><code>use slintplot::ticks::{NiceScale, format_tick};
+
+let scale = NiceScale::new(3.0, 97.0, 6);
+assert_eq!((scale.min, scale.max, scale.step), (0.0, 100.0, 20.0));
+let labels: Vec&lt;String&gt; = scale.ticks().iter().map(|&amp;v| format_tick(v, scale.step)).collect();
+// ["0", "20", "40", "60", "80", "100"]</code></pre>
+
+<h2 id="engine">ChartEngine</h2>
+<p>
+  <code>ChartEngine</code> is the Slint global that the chart components call to compute their geometry. You don't call it yourself,
+  but it has to be exported from your root <code>.slint</code> file so that <code>register!</code> can connect it.
+  Its pure callbacks include <code>layout</code>, <code>value-axis</code>, <code>pie-layout</code>, <code>radar-layout</code>, <code>treemap-layout</code>,
+  <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gauge-layout</code>,
+  the hit tests and <code>format-value</code>.
+</p>
+
+<h2 id="examples">Example apps</h2>
+<p>Two apps show the library in use. They are published on crates.io, so you can install them with Cargo
+(Rust 1.88 or later):</p>
+<pre><code>cargo install slintplot-gallery
+cargo install slintplot-stress</code></pre>
+<p>Then run <code>slintplot-gallery</code> or <code>slintplot-stress</code>. On Linux, Slint needs the fontconfig and xkbcommon
+development packages first, such as <code>libfontconfig-dev</code> and <code>libxkbcommon-dev</code> on Debian and Ubuntu.</p>
+<table>
+  <tr><th>Command</th><th>What it shows</th></tr>
+  <tr><td><code>slintplot-gallery</code></td><td>A sample browser: every chart type, with Randomize, Add dataset, Add data, Remove dataset and Remove data buttons, a theme selector and dark mode</td></tr>
+  <tr><td><code>slintplot-stress</code></td><td>Line, bar, time series and scatter charts with up to 8 × 1,000,000 points; waterfall, dumbbell, funnel and sunburst charts with up to 10,000 steps, rows, stages or items, and a gauge; 60 Hz streaming, zoom, decimation, themes and live performance numbers</td></tr>
+  <tr><td><code>slintplot-gallery --snapshot &lt;dir&gt;</code></td><td>Renders every gallery sample to PNG without a window</td></tr>
+  <tr><td><code>slintplot-stress --bench</code></td><td>Headless timings for 100 to 1,000,000 points</td></tr>
+</table>
+<p>The source of the apps is on GitHub, in <a href="https://github.com/trondegil/slintplot/tree/main/examples/gallery">examples/gallery</a>
+and <a href="https://github.com/trondegil/slintplot/tree/main/examples/stress">examples/stress</a>.
+The gallery's <code>ui/gallery.slint</code> has a working example of every chart.</p>
+<figure class="shot"><img src="screenshots/gallery.png" alt="The gallery sample browser" loading="lazy"></figure>
+
+<h2 id="license">License</h2>
+<p>
+  SlintPlot is source-available under the <a href="https://polyformproject.org/licenses/noncommercial/1.0.0">PolyForm Noncommercial License 1.0.0</a>:
+  free for personal, hobby, research, education and other noncommercial use.
+  <strong>Commercial use requires a commercial license:</strong> email
+  <a href="mailto:license@slintplot.dev">license@slintplot.dev</a> and say briefly how you plan to use the library.
+  <code>COMMERCIAL.md</code>, in the crate, has the details.
+  Your application also needs a suitable <a href="https://slint.dev/pricing">Slint license</a>.
+</p>
+<p class="muted">SlintPlot · <a href="https://slintplot.dev">slintplot.dev</a> · <a href="mailto:license@slintplot.dev">license@slintplot.dev</a></p>
+
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,228 @@
+import { ChartEngine, ChartFormat, ChartLegendItem, ChartTreemapCell, ChartTreemapItem, ChartTreemapLayout } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A treemap: one rectangle per item, with an area proportional to its value.
+// Items with the same `group` are placed together, under the group's label,
+// and share the group's color. Missing, zero and negative values take no
+// space.
+export component TreemapChart {
+    in-out property <[ChartTreemapItem]> items;
+    in property <string> title;
+    // The legend lists the groups; clicking one hides or shows it. Without
+    // groups there is no legend.
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    in property <bool> show-tooltip: true;
+    // Write each item's value under its label, where there is room.
+    in property <bool> show-values: true;
+    in property <length> cell-gap: 2px;
+    in property <length> cell-radius: 3px;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The item under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: root.hovered-cell < 0 ? -1 : map.cells[root.hovered-cell].index;
+
+    callback item-clicked(index: int);
+    callback legend-toggled(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+
+    // Bit i set: group i is hidden.
+    private property <int> hidden-groups: 0;
+    private property <int> key-cell: -1;
+    private property <int> hovered-cell: touch.has-hover ? ChartEngine.treemap-hit(map, touch.mouse-x / 1px, touch.mouse-y / 1px)
+        : keys.has-focus && root.key-cell >= 0 ? min(root.key-cell, map.cells.length - 1)
+        : -1;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    private property <length> header: ChartTheme.font-size + 8px;
+    private property <[ChartLegendItem]> legend: ChartEngine.treemap-legend(root.items, root.hidden-groups, ChartTheme.colors);
+    private property <ChartTreemapLayout> map: ChartEngine.treemap-layout({
+        items: root.items,
+        width: area.width / 1px,
+        height: area.height / 1px,
+        header: root.header / 1px,
+        gap: root.cell-gap / 1px * 3,
+        hidden-groups: root.hidden-groups,
+        palette: ChartTheme.colors,
+    });
+
+    // Light text on dark cells.
+    pure function text-color(fill: color) -> color {
+        fill.red * 0.299 + fill.green * 0.587 + fill.blue * 0.114 < 150 ? #ffffff : #1f2328
+    }
+
+    min-width: 160px;
+    min-height: 120px;
+    preferred-width: 520px;
+    preferred-height: 360px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend && root.legend.length > 0;
+            position: root.legend-position;
+            toggled(index) => {
+                if index < 31 {
+                    let bit = pow(2, index);
+                    root.hidden-groups += mod(floor(root.hidden-groups / bit), 2) == 1 ? -bit : bit;
+                }
+                root.key-cell = -1;
+                root.legend-toggled(index);
+            }
+
+            area := Rectangle {
+                horizontal-stretch: 1;
+
+                for group in map.groups: Text {
+                    visible: group.header;
+                    x: group.x * 1px + 2px;
+                    y: group.y * 1px;
+                    width: max(0px, group.width * 1px - 4px);
+                    height: root.header;
+                    text: group.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                for cell[position] in map.cells: Rectangle {
+                    property <ChartTreemapItem> item: root.items[cell.index];
+                    property <color> ink: root.text-color(cell.color);
+                    x: cell.x * 1px + root.cell-gap / 2;
+                    y: cell.y * 1px + root.cell-gap / 2;
+                    width: max(0px, cell.width * 1px - root.cell-gap);
+                    height: max(0px, cell.height * 1px - root.cell-gap);
+                    border-radius: min(root.cell-radius, self.width / 2, self.height / 2);
+                    background: position == root.hovered-cell ? cell.color.mix(ChartTheme.text-color, 0.85) : cell.color;
+                    border-width: position == root.hovered-cell ? 2px : 0;
+                    border-color: ChartTheme.text-color;
+                    clip: true;
+
+                    // The label, and the value below it, where they fit.
+                    VerticalLayout {
+                        visible: parent.width >= 36px && parent.height >= ChartTheme.font-size + 8px;
+                        padding: 6px;
+                        spacing: 2px;
+                        alignment: start;
+                        Text {
+                            text: item.label;
+                            color: ink;
+                            font-size: ChartTheme.font-size;
+                            font-weight: 600;
+                            overflow: elide;
+                        }
+                        if root.show-values && parent.height >= ChartTheme.font-size * 2 + 16px: Text {
+                            text: ChartEngine.format-value(item.value, root.format);
+                            color: ink;
+                            font-size: ChartTheme.font-size * 0.9;
+                            overflow: elide;
+                        }
+                    }
+                }
+
+                // Keyboard: the arrow keys move through the items, group by
+                // group and largest first, and Enter clicks the selected one.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        if map.cells.length == 0 {
+                            return reject;
+                        }
+                        let current = root.key-cell < 0 ? 0 : min(root.key-cell, map.cells.length - 1);
+                        if event.text == Key.RightArrow || event.text == Key.DownArrow {
+                            root.key-cell = root.key-cell < 0 ? 0 : mod(current + 1, map.cells.length);
+                        } else if event.text == Key.LeftArrow || event.text == Key.UpArrow {
+                            root.key-cell = mod(current - 1 + map.cells.length, map.cells.length);
+                        } else if event.text == Key.Home {
+                            root.key-cell = 0;
+                        } else if event.text == Key.End {
+                            root.key-cell = map.cells.length - 1;
+                        } else if event.text == Key.Return && root.key-cell >= 0 {
+                            root.item-clicked(map.cells[current].index);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-cell >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-cell >= 0 {
+                                root.key-cell = root.hovered-cell;
+                                root.item-clicked(map.cells[root.hovered-cell].index);
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.show-tooltip && root.hovered-cell >= 0: Rectangle {
+                    property <ChartTreemapCell> cell: map.cells[root.hovered-cell];
+                    property <ChartTreemapItem> item: root.items[self.cell.index];
+                    property <length> anchor-x: touch.has-hover ? touch.mouse-x : (self.cell.x + self.cell.width / 2) * 1px;
+                    property <length> anchor-y: touch.has-hover ? touch.mouse-y : (self.cell.y + self.cell.height / 2) * 1px;
+                    x: self.anchor-x + 14px + self.width > area.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
+                    y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, area.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    HorizontalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 6px;
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 10px;
+                                height: 10px;
+                                background: cell.color;
+                                border-color: ChartTheme.tooltip-text;
+                                border-width: 1px;
+                            }
+                        }
+                        Text {
+                            text: (item.group != "" ? item.group + " › " : "") + item.label + ": "
+                                + ChartEngine.format-value(item.value, root.format)
+                                + " (" + ChartEngine.format-value(cell.share * 100, { decimals: 1 }) + "%)";
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

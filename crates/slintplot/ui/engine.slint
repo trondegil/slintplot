@@ -1,0 +1,571 @@
+// Data types and the bridge to the Rust layout engine.
+// `slintplot::register!` implements the callbacks of `ChartEngine`.
+
+export enum ChartKind { line, bar, scatter, bubble }
+
+// How a dataset is drawn: like its chart (`auto`), or as a line or bars,
+// for mixed charts such as a line over bars.
+export enum ChartSeriesType { auto, line, bar }
+
+// A scatter or bubble point. `r` is the bubble radius in pixels.
+export struct ChartXY { x: float, y: float, r: float }
+
+export struct ChartDataset {
+    label: string,
+    // Line and bar charts: draw this dataset as a line or as bars.
+    series-type: ChartSeriesType,
+    values: [float],
+    // Scatter and bubble charts: the points, used instead of `values`.
+    points: [ChartXY],
+    // Leave unset (transparent) to use the default palette.
+    color: color,
+    hidden: bool,
+    // Line charts: fill the area below the line.
+    fill: bool,
+    // Line charts: Bézier curve tension, 0 for straight lines.
+    tension: float,
+    // Line charts: draw steps instead of slopes.
+    stepped: bool,
+}
+
+export struct ChartTick { pos: float, label: string }
+
+// How values are written: a prefix and suffix (such as a currency or unit),
+// and a fixed number of decimals, or -1 to choose automatically.
+export struct ChartFormat { prefix: string, suffix: string, decimals: int }
+
+// A date and time (UTC), such as the origin of a time axis. An all-zero
+// value means 1970-01-01.
+export struct ChartDateTime { year: int, month: int, day: int, hour: int, minute: int, second: int }
+
+export struct ChartAxis {
+    min: float,
+    max: float,
+    ticks: [ChartTick],
+    widest-label: string,
+}
+
+export struct ChartPoint { x: float, y: float, index: int, r: float }
+
+export struct ChartColumn { x: float, top: float, bottom: float }
+
+export struct ChartSeries {
+    // How the dataset is drawn (`line` or `bar` for category charts).
+    kind: ChartKind,
+    color: color,
+    line: string,
+    area: string,
+    points: [ChartPoint],
+    // Decimated lines: one vertical span per pixel column, instead of `line`.
+    columns: [ChartColumn],
+}
+
+export struct ChartBar {
+    dataset: int,
+    index: int,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    color: color,
+}
+
+export struct ChartLegendItem { label: string, color: color, hidden: bool }
+
+export struct ChartLayout {
+    series: [ChartSeries],
+    bars: [ChartBar],
+    x-ticks: [ChartTick],
+    count: int,
+    step: float,
+    offset: bool,
+    // Axis position at the left edge, in categories (non-zero when zoomed).
+    start: float,
+    visible: [int],
+}
+
+export struct ChartAxisRequest {
+    kind: ChartKind,
+    datasets: [ChartDataset],
+    stacked: bool,
+    // Axis length in pixels; for horizontal axes too.
+    height: float,
+    horizontal: bool,
+    // Fixed ends of the axis, used when `fixed` is set.
+    fixed: bool,
+    fixed-min: float,
+    fixed-max: float,
+    logarithmic: bool,
+    format: ChartFormat,
+    // 100% stacked: each category is split into the datasets' shares.
+    percent: bool,
+    labels: [string],
+    // Zoom window along the x axis, as fractions; 0 and 0 mean everything.
+    view-start: float,
+    view-end: float,
+    begin-at-zero: bool,
+    font-size: float,
+    // Extra room beyond the data at both ends, as a share of its range.
+    grace: float,
+}
+
+export struct ChartLayoutRequest {
+    kind: ChartKind,
+    datasets: [ChartDataset],
+    stacked: bool,
+    labels: [string],
+    width: float,
+    height: float,
+    y-min: float,
+    y-max: float,
+    progress: float,
+    font-size: float,
+    show-points: bool,
+    decimate: bool,
+    horizontal: bool,
+    view-start: float,
+    view-end: float,
+    palette: [color],
+    logarithmic: bool,
+    // Scatter charts: x values are seconds after `time-origin`.
+    time-axis: bool,
+    time-origin: ChartDateTime,
+    // Offset of displayed times from UTC, in minutes.
+    utc-offset: int,
+    // Scatter charts: connect each dataset's points with a line.
+    show-lines: bool,
+    x-format: ChartFormat,
+    percent: bool,
+}
+
+// One slice of a pie or doughnut chart.
+export struct ChartSlice {
+    label: string,
+    value: float,
+    // Leave unset (transparent) to use the default palette.
+    color: color,
+    hidden: bool,
+}
+
+export struct ChartArc {
+    // Index of the slice in the input.
+    index: int,
+    path: string,
+    color: color,
+    // Unit vector from the center through the middle of the slice.
+    dx: float,
+    dy: float,
+    // Angular extent (radians, clockwise from 12 o'clock) and outer radius,
+    // for hit testing.
+    start: float,
+    end: float,
+    outer: float,
+}
+
+export struct ChartPieLayout {
+    arcs: [ChartArc],
+    total: float,
+    center-x: float,
+    center-y: float,
+    radius: float,
+    inner-radius: float,
+    // Polar area charts: the value scale rings (radius in `pos`) and outlines.
+    rings: [ChartTick],
+    grid: string,
+}
+
+export struct ChartPieRequest {
+    slices: [ChartSlice],
+    width: float,
+    height: float,
+    cutout: float,
+    hover-offset: float,
+    progress: float,
+    polar: bool,
+    font-size: float,
+    palette: [color],
+}
+
+// A text label. `align` and `valign` are the anchors: 0 when (x, y) is the
+// left/top edge, 0.5 for the center, 1 for the right/bottom edge.
+export struct ChartLabel { x: float, y: float, text: string, align: float, valign: float }
+
+export struct ChartRadarRequest {
+    datasets: [ChartDataset],
+    labels: [string],
+    width: float,
+    height: float,
+    begin-at-zero: bool,
+    progress: float,
+    font-size: float,
+    palette: [color],
+}
+
+export struct ChartRadarLayout {
+    series: [ChartSeries],
+    visible: [int],
+    grid: string,
+    ticks: [ChartLabel],
+    point-labels: [ChartLabel],
+    center-x: float,
+    center-y: float,
+    radius: float,
+    count: int,
+}
+
+// A data point found by hit testing; `dataset` is -1 when there is none.
+export struct ChartHit { dataset: int, index: int, x: float, y: float, r: float }
+
+// The smallest and largest value of a heatmap.
+export struct ChartRange { min: float, max: float }
+
+export struct ChartCalendarDay { index: int, week: int, weekday: int, level: int }
+
+export struct ChartCalendarLayout {
+    days: [ChartCalendarDay],
+    weeks: int,
+    // `pos` is the week (column) where the month starts.
+    months: [ChartTick],
+    thresholds: [float],
+}
+
+// An item of a treemap. Items with the same `group` are placed together.
+export struct ChartTreemapItem {
+    label: string,
+    value: float,
+    group: string,
+    // Leave unset (transparent) to use the group's, or the theme's, color.
+    color: color,
+}
+
+export struct ChartTreemapCell {
+    // Index of the item in the input.
+    index: int,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    color: color,
+    // The item's share of the visible total, from 0 to 1.
+    share: float,
+}
+
+export struct ChartTreemapGroup {
+    label: string,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    color: color,
+    // Whether the group has room for its label above its items.
+    header: bool,
+}
+
+export struct ChartTreemapLayout {
+    cells: [ChartTreemapCell],
+    groups: [ChartTreemapGroup],
+    total: float,
+}
+
+export struct ChartTreemapRequest {
+    items: [ChartTreemapItem],
+    width: float,
+    height: float,
+    // The height of a group header, and the space between groups.
+    header: float,
+    gap: float,
+    // Bit i set: group i is hidden.
+    hidden-groups: int,
+    palette: [color],
+}
+
+export struct ChartFunnelStage {
+    // Index of the stage in the input.
+    index: int,
+    // The slice's outline, relative to its bounding box.
+    path: string,
+    box-x: float,
+    box-y: float,
+    box-width: float,
+    box-height: float,
+    // The widths at the top and bottom of the slice, centered on the axis.
+    top: float,
+    bottom: float,
+    color: color,
+    // The value as a share of the first visible stage, and of the previous one.
+    of-first: float,
+    of-previous: float,
+}
+
+export struct ChartFunnelLayout {
+    stages: [ChartFunnelStage],
+    // Height of a row: a slice and the gap below it.
+    step: float,
+}
+
+export struct ChartFunnelRequest {
+    stages: [ChartSlice],
+    width: float,
+    height: float,
+    // Space between the slices, in pixels.
+    gap: float,
+    curved: bool,
+    progress: float,
+    // Stages without their own color fade from this one, towards the
+    // background.
+    color: color,
+    dark: bool,
+}
+
+// An item of a sunburst chart. Items with a `parent` (the index of an earlier
+// item) form the next ring outwards; top-level items have -1.
+export struct ChartSunburstItem {
+    label: string,
+    // Leave at 0 for parents: their value is the sum of their children.
+    value: float,
+    parent: int,
+    // Leave unset (transparent) for the theme's color, or for children,
+    // their parent's, lightened.
+    color: color,
+    hidden: bool,
+}
+
+export struct ChartSunburstArc {
+    // Index of the item in the input.
+    index: int,
+    // Ring, from 0 (innermost).
+    depth: int,
+    // The outline, relative to the arc's bounding box.
+    path: string,
+    box-x: float,
+    box-y: float,
+    box-width: float,
+    box-height: float,
+    color: color,
+    start: float,
+    end: float,
+    inner: float,
+    outer: float,
+    // The middle of the arc, and whether the item's label fits there.
+    x: float,
+    y: float,
+    show-label: bool,
+    // Whether the item has children to zoom into.
+    has-children: bool,
+    // The item's value (its own, or its children's sum), and its share of the
+    // shown total.
+    value: float,
+    share: float,
+}
+
+export struct ChartSunburstLayout {
+    arcs: [ChartSunburstArc],
+    center-x: float,
+    center-y: float,
+    // The radius of the center circle, and of the whole chart.
+    hole: float,
+    radius: float,
+    // The total of all items, or of the zoomed-in item.
+    total: float,
+}
+
+export struct ChartSunburstRequest {
+    items: [ChartSunburstItem],
+    // The zoomed-in item, or -1 for all items.
+    root: int,
+    width: float,
+    height: float,
+    cutout: float,
+    progress: float,
+    font-size: float,
+    palette: [color],
+}
+
+// A colored range of a gauge, from where the previous band ends (or the
+// gauge's minimum) to `to`.
+export struct ChartGaugeBand {
+    to: float,
+    label: string,
+    // Leave unset (transparent) to use the default palette.
+    color: color,
+}
+
+export struct ChartGaugeArc { index: int, path: string, color: color, start: float, end: float }
+
+export struct ChartGaugeLayout {
+    center-x: float,
+    center-y: float,
+    radius: float,
+    inner: float,
+    // The whole arc, the arc up to the value, and the bands.
+    track: string,
+    fill: string,
+    bands: [ChartGaugeArc],
+    needle: string,
+    // Needle style: the tick marks, as one path, and their labels (centered).
+    ticks: string,
+    tick-labels: [ChartLabel],
+    // The band that holds the value, or -1, and the color the value is drawn in.
+    value-band: int,
+    value-color: color,
+    // The ends of the arc, in the middle of its width.
+    start-x: float,
+    start-y: float,
+    end-x: float,
+    end-y: float,
+    start: float,
+    end: float,
+}
+
+export struct ChartGaugeRequest {
+    value: float,
+    min: float,
+    max: float,
+    bands: [ChartGaugeBand],
+    width: float,
+    height: float,
+    cutout: float,
+    // The angle the arc covers, in degrees.
+    sweep: float,
+    // Space needed below the ends of the arc, and below the center.
+    below-ends: float,
+    below-center: float,
+    needle: bool,
+    // Fill style: round the ends of the track and the fill.
+    rounded: bool,
+    // Needle style: tick marks and labels inside the arc.
+    ticks: bool,
+    font-size: float,
+    format: ChartFormat,
+    // The value's color without bands.
+    color: color,
+    palette: [color],
+}
+
+// A step of a waterfall chart: a change, or a total of the changes so far.
+export struct ChartWaterfallStep {
+    label: string,
+    // The change; ignored for totals.
+    value: float,
+    total: bool,
+}
+
+export enum ChartChange { increase, decrease, total }
+
+export struct ChartWaterfallBar {
+    index: int,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    change: ChartChange,
+}
+
+export struct ChartWaterfallLayout {
+    bars: [ChartWaterfallBar],
+    // Lines from each bar's end to the next bar.
+    connectors: string,
+    // Width of a category.
+    step: float,
+}
+
+export struct ChartWaterfallRequest {
+    steps: [ChartWaterfallStep],
+    y-min: float,
+    y-max: float,
+    width: float,
+    height: float,
+    progress: float,
+}
+
+export struct ChartDumbbellRow { index: int, y: float, from: float, to: float }
+
+export struct ChartDumbbellDot { dataset: int, index: int, x: float, y: float, color: color }
+
+export struct ChartDumbbellLayout {
+    rows: [ChartDumbbellRow],
+    dots: [ChartDumbbellDot],
+    // Height of a category.
+    step: float,
+}
+
+export struct ChartDumbbellRequest {
+    datasets: [ChartDataset],
+    count: int,
+    x-min: float,
+    x-max: float,
+    logarithmic: bool,
+    width: float,
+    height: float,
+    progress: float,
+    palette: [color],
+}
+
+export global ChartEngine {
+    pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
+    pure callback layout(request: ChartLayoutRequest) -> ChartLayout;
+    pure callback format-value(value: float, format: ChartFormat) -> string;
+    // The range of the finite values; 0 to 1 when there are none.
+    pure callback value-range(values: [float]) -> ChartRange;
+    // A value's share of its category, in percent (100% stacked charts).
+    pure callback share(datasets: [ChartDataset], dataset: int, index: int) -> float;
+    // The same share as a whole percentage, rounded so that the category's
+    // labels add up to exactly 100.
+    pure callback rounded-share(datasets: [ChartDataset], dataset: int, index: int) -> int;
+    pure callback calendar-layout(start: ChartDateTime, values: [float], levels: int, week-starts-monday: bool) -> ChartCalendarLayout;
+    // A time axis value as a date, such as "Oct 25, 2026, 14:30".
+    pure callback format-time(origin: ChartDateTime, utc-offset: int, seconds: float) -> string;
+    pure callback widest-label(labels: [string]) -> string;
+    // The point of a scatter layout closest to (x, y), within `radius` pixels.
+    // With `x-only`, the point closest in x at any distance (time series).
+    // Keyboard moves in scatter, bubble and time series charts: from the point
+    // (dataset, data index), or from none when -1, by `key`: 0 next, 1
+    // previous, 2 first, 3 last (in x order), 4 next and 5 previous dataset.
+    pure callback key-point(layout: ChartLayout, dataset: int, index: int, key: int) -> ChartHit;
+    // The visible point (dataset, data index), or a hit with dataset -1.
+    pure callback locate-point(layout: ChartLayout, dataset: int, index: int) -> ChartHit;
+    pure callback nearest-point(layout: ChartLayout, x: float, y: float, radius: float, x-only: bool) -> ChartHit;
+    // Legend entries. Separate from the layouts, which depend on the chart
+    // size, because the legend's own size affects the chart size.
+    pure callback dataset-legend(datasets: [ChartDataset], palette: [color]) -> [ChartLegendItem];
+    pure callback slice-legend(slices: [ChartSlice], palette: [color]) -> [ChartLegendItem];
+    pure callback pie-layout(request: ChartPieRequest) -> ChartPieLayout;
+    // The index of the slice at (x, y), or -1.
+    pure callback pie-hit(layout: ChartPieLayout, x: float, y: float) -> int;
+    pure callback radar-layout(request: ChartRadarRequest) -> ChartRadarLayout;
+    // The category whose spoke is closest to (x, y), or -1.
+    pure callback radar-hit(layout: ChartRadarLayout, x: float, y: float) -> int;
+    pure callback treemap-layout(request: ChartTreemapRequest) -> ChartTreemapLayout;
+    // The legend of a treemap's groups; empty without groups.
+    pure callback treemap-legend(items: [ChartTreemapItem], hidden-groups: int, palette: [color]) -> [ChartLegendItem];
+    // The position in `layout.cells` of the cell at (x, y), or -1.
+    pure callback treemap-hit(layout: ChartTreemapLayout, x: float, y: float) -> int;
+    // The labels of the slices.
+    pure callback slice-labels(slices: [ChartSlice]) -> [string];
+    pure callback funnel-layout(request: ChartFunnelRequest) -> ChartFunnelLayout;
+    // The legend of a funnel, in the stages' colors.
+    pure callback funnel-legend(stages: [ChartSlice], color: color, dark: bool) -> [ChartLegendItem];
+    pure callback sunburst-layout(request: ChartSunburstRequest) -> ChartSunburstLayout;
+    // The position in `layout.arcs` of the arc at (x, y), or -1.
+    pure callback sunburst-hit(layout: ChartSunburstLayout, x: float, y: float) -> int;
+    // The top-level items: their legend, and their indices.
+    pure callback sunburst-legend(items: [ChartSunburstItem], palette: [color]) -> [ChartLegendItem];
+    pure callback sunburst-roots(items: [ChartSunburstItem]) -> [int];
+    // An item's parent, or -1.
+    pure callback sunburst-parent(items: [ChartSunburstItem], index: int) -> int;
+    // An item's labels from the top level down, such as "Europe › Germany".
+    pure callback sunburst-path(items: [ChartSunburstItem], index: int) -> string;
+    // The legend of a gauge's bands; bands without a label show their range.
+    pure callback gauge-legend(bands: [ChartGaugeBand], palette: [color]) -> [ChartLegendItem];
+    pure callback gauge-layout(request: ChartGaugeRequest) -> ChartGaugeLayout;
+    // At (x, y): the band, -1 for the arc outside any band, or -2 off the arc.
+    pure callback gauge-hit(layout: ChartGaugeLayout, x: float, y: float) -> int;
+    // The running total after each step.
+    pure callback waterfall-totals(steps: [ChartWaterfallStep]) -> [float];
+    pure callback waterfall-layout(request: ChartWaterfallRequest) -> ChartWaterfallLayout;
+    // The smallest and largest value of the visible datasets at a category.
+    pure callback dumbbell-extent(datasets: [ChartDataset], index: int) -> ChartRange;
+    pure callback dumbbell-layout(request: ChartDumbbellRequest) -> ChartDumbbellLayout;
+    // The value at which a data point is drawn: itself, or its stacked total.
+    pure callback plotted-value(datasets: [ChartDataset], chart: ChartKind, stacked: bool, dataset: int, index: int) -> float;
+}

@@ -1,0 +1,605 @@
+import { ChartAxis, ChartDataset, ChartDateTime, ChartEngine, ChartFormat, ChartHit, ChartKind, ChartLayout, ChartXY } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+import { Tooltip } from "tooltip.slint";
+
+// A chart with a category (or, for scatter charts, numeric or time) x axis
+// and a value y axis. Use `LineChart`, `BarChart`, `ScatterChart`,
+// `BubbleChart` or `TimeSeriesChart` rather than this component directly.
+export component CartesianChart {
+    in property <ChartKind> kind;
+    in-out property <[ChartDataset]> datasets;
+    in property <[string]> labels;
+    in property <string> title;
+    in property <bool> begin-at-zero: root.kind == ChartKind.bar;
+    // Stack the datasets on top of each other.
+    in property <bool> stacked: false;
+    // 100% stacked: each category is split into the datasets' shares, and
+    // values are shown as percentages.
+    in property <bool> stacked-percent: false;
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    // Bars: corner radius and outline width.
+    in property <length> bar-radius: 0;
+    in property <length> bar-border-width: 1px;
+    // Opacity of the bar fills; the theme's `fill-opacity` by default.
+    in property <float> fill-opacity: ChartTheme.fill-opacity;
+    in property <bool> show-tooltip: true;
+    // Grow the data in when the chart appears, and move bars to new values.
+    in property <bool> animated: true;
+    // Line charts: draw a marker on every data point.
+    in property <bool> show-points: true;
+    // Line charts and time series: when a line has more than twice as many
+    // points as the plot has pixels, draw only the minimum and maximum of each
+    // pixel column (min-max decimation). Smaller data is drawn as is.
+    in property <bool> decimate: true;
+    // Write each value next to its bar or point.
+    in property <bool> show-values: false;
+
+    // Axis titles.
+    in property <string> x-title;
+    in property <string> y-title;
+    // A fixed value axis from `min-value` to `max-value`, instead of fitting
+    // the data.
+    in property <bool> fixed-range: false;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    // A logarithmic value axis. Values that aren't positive are left out.
+    in property <bool> logarithmic: false;
+    // How values are written on the value axis, in tooltips and in data
+    // labels: a prefix and suffix, and a fixed number of decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // Scatter charts: x values are seconds after `time-origin`, and the x axis
+    // shows times and dates. Use `TimeSeriesChart`.
+    in property <bool> time-axis: false;
+    in property <ChartDateTime> time-origin;
+    // Offset of displayed times from UTC, in minutes.
+    in property <int> utc-offset: 0;
+    // Scatter charts: connect each dataset's points with a line.
+    in property <bool> show-lines: false;
+
+    // Zoom and pan along the x axis: the mouse
+    // wheel zooms around the mouse, dragging pans, double-clicking resets.
+    in property <bool> zoom-enabled: false;
+    // The visible part of the x axis, as fractions of the full range. Set
+    // them to zoom from code.
+    in-out property <float> view-start: 0;
+    in-out property <float> view-end: 1;
+    // The smallest visible part of the x axis, as a fraction.
+    in property <float> min-view: 0.0005;
+    out property <bool> zoomed: root.view-start > 0 || root.view-end < 1;
+
+    // The category under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: root.point-chart || chart.count == 0 || chart.step <= 0 ? -1
+        : touch.has-hover ? clamp(chart.offset ? floor(root.mouse-category) : round(root.mouse-category), 0, chart.count - 1)
+        : keys.has-focus && root.key-index >= 0 ? min(root.key-index, chart.count - 1)
+        : -1;
+    // Axis position under the mouse, in categories.
+    private property <float> mouse-category: chart.start + touch.mouse-x / (chart.step * 1px);
+    // The category selected with the keyboard.
+    private property <int> key-index: -1;
+
+    // Scatter, bubble and time series charts: the point under the mouse, or
+    // selected with the arrow keys; `dataset` is -1 when none.
+    out property <ChartHit> hovered-point: !root.point-chart ? { dataset: -1, index: -1 }
+        : touch.has-hover ? ChartEngine.nearest-point(chart, touch.mouse-x / 1px, touch.mouse-y / 1px, ChartTheme.point-hover-radius / 1px * 3, root.show-lines)
+        : keys.has-focus ? ChartEngine.locate-point(chart, root.key-point.dataset, root.key-point.index)
+        : { dataset: -1, index: -1 };
+    // The point selected with the keyboard, as (dataset, data index).
+    private property <ChartHit> key-point: { dataset: -1, index: -1 };
+
+    // Datasets provide (x, y) points, and hovering picks the nearest point.
+    private property <bool> point-chart: root.kind == ChartKind.scatter || root.kind == ChartKind.bubble;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+
+    callback category-clicked(index: int);
+    callback point-clicked(dataset: int, index: int);
+    callback legend-toggled(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-index >= 0 ? root.labels[root.hovered-index] : "";
+
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+
+    // Bars move to new values, except during the entry animation and while
+    // zooming or panning, where they must follow at once.
+    private property <duration> transition: root.animated && root.progress >= 1 && !touch.pressed && !root.zoomed ? 300ms : 0ms;
+
+    public function reset-zoom() {
+        root.view-start = 0;
+        root.view-end = 1;
+    }
+
+    // Zooms by `factor` (below 1 zooms in), keeping the point at `anchor`
+    // (a fraction of the plot width) under the mouse.
+    function zoom-around(anchor: float, factor: float) {
+        let span = root.view-end - root.view-start;
+        let new-span = clamp(span * factor, root.min-view, 1);
+        let start = clamp(root.view-start + anchor * (span - new-span), 0, 1 - new-span);
+        root.view-start = start;
+        root.view-end = start + new-span;
+    }
+
+    // The view when a drag started, to pan relative to it.
+    private property <float> drag-view-start;
+    private property <float> drag-view-end;
+
+    private property <ChartAxis> axis: ChartEngine.value-axis({
+        kind: root.kind,
+        datasets: root.datasets,
+        stacked: root.stacked || root.stacked-percent,
+        percent: root.stacked-percent,
+        height: plot.height / 1px,
+        begin-at-zero: root.begin-at-zero,
+        font-size: ChartTheme.font-size / 1px,
+        labels: root.labels,
+        view-start: root.view-start,
+        view-end: root.view-end,
+        fixed: root.fixed-range,
+        fixed-min: root.min-value,
+        fixed-max: root.max-value,
+        logarithmic: root.logarithmic,
+        format: root.format,
+    });
+    private property <ChartLayout> chart: ChartEngine.layout({
+        kind: root.kind,
+        datasets: root.datasets,
+        stacked: root.stacked || root.stacked-percent,
+        percent: root.stacked-percent,
+        labels: root.labels,
+        width: plot.width / 1px,
+        height: plot.height / 1px,
+        y-min: axis.min,
+        y-max: axis.max,
+        progress: root.progress,
+        font-size: ChartTheme.font-size / 1px,
+        show-points: root.show-points,
+        decimate: root.decimate,
+        horizontal: false,
+        view-start: root.view-start,
+        view-end: root.view-end,
+        palette: ChartTheme.colors,
+        logarithmic: root.logarithmic,
+        time-axis: root.time-axis,
+        time-origin: root.time-origin,
+        utc-offset: root.utc-offset,
+        show-lines: root.show-lines,
+        x-format: { decimals: -1 },
+    });
+
+    pure function category-x(index: int) -> length {
+        // Both branches must be floats: an int branch would truncate the 0.5.
+        (index + (chart.offset ? 0.5 : 0.0) - chart.start) * chart.step * 1px
+    }
+
+    // The position of `value` on the value axis, from the top of the plot.
+    pure function value-y(value: float) -> length {
+        (root.logarithmic
+            ? (ln(axis.max) - ln(max(value, axis.min * 0.001))) / (ln(axis.max) - ln(axis.min))
+            : (axis.max - value) / (axis.max - axis.min)) * plot.height
+    }
+
+    min-width: 160px;
+    min-height: 120px;
+    preferred-width: 480px;
+    preferred-height: 300px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: ChartEngine.dataset-legend(root.datasets, ChartTheme.colors);
+            show-legend: root.show-legend;
+            position: root.legend-position;
+            toggled(index) => {
+                root.datasets[index].hidden = !root.datasets[index].hidden;
+                root.legend-toggled(index);
+            }
+
+            frame := Rectangle {
+                horizontal-stretch: 1;
+
+                // The y title sits above the axis, so it needs no rotated text.
+                property <length> y-title-space: root.y-title != "" ? ChartTheme.font-size * 1.6 : 0px;
+                property <length> x-title-space: root.x-title != "" ? ChartTheme.font-size * 1.8 : 0px;
+
+                plot := Rectangle {
+                    // The y labels can't be measured with a Text element: the axis
+                    // depends on the plot height, which depends on the frame's
+                    // layout constraints, so that would be a binding loop.
+                    // Tick labels are mostly digits, about 0.6em wide each.
+                    x: axis.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px;
+                    y: frame.y-title-space + ChartTheme.font-size * 0.75;
+                    width: max(0px, parent.width - self.x - 12px);
+                    height: max(0px, parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space);
+                    // Zoomed data continues past the edges.
+                    clip: root.zoomed;
+
+                    // Grid
+                    for tick in axis.ticks: Rectangle {
+                        y: tick.pos * 1px - 0.5px;
+                        height: 1px;
+                        background: ChartTheme.grid-color;
+                    }
+                    for tick in chart.x-ticks: Rectangle {
+                        x: tick.pos * 1px - 0.5px;
+                        width: 1px;
+                        background: ChartTheme.grid-color;
+                    }
+                    Rectangle {
+                        x: 0;
+                        width: 1px;
+                        background: ChartTheme.axis-color;
+                    }
+                    Rectangle {
+                        y: parent.height - 0.5px;
+                        height: 1px;
+                        background: ChartTheme.axis-color;
+                    }
+
+                    // Hover highlight: a band when there are bars, else a crosshair.
+                    if root.hovered-index >= 0: Rectangle {
+                        x: category-x(root.hovered-index) - (chart.offset ? chart.step * 1px / 2 : 0.5px);
+                        width: chart.offset ? chart.step * 1px : 1px;
+                        background: chart.offset ? ChartTheme.grid-color : ChartTheme.axis-color;
+                    }
+
+                    for bar in chart.bars: Rectangle {
+                        x: bar.x * 1px;
+                        y: bar.y * 1px;
+                        width: bar.width * 1px;
+                        height: bar.height * 1px;
+                        background: bar.color.with-alpha(root.hovered-index == bar.index ? min(1, root.fill-opacity + 0.3) : root.fill-opacity);
+                        border-radius: root.bar-radius;
+                        border-color: bar.color;
+                        border-width: root.bar-border-width;
+                        animate background { duration: 120ms; }
+                        animate x, y, width, height {
+                            duration: root.transition;
+                            easing: ease-out;
+                        }
+                    }
+
+                    for series in chart.series: Path {
+                        width: 100%;
+                        height: 100%;
+                        viewbox-width: plot.width / 1px;
+                        viewbox-height: plot.height / 1px;
+                        fit: fill;
+                        commands: series.area;
+                        fill: series.color.with-alpha(ChartTheme.fill-opacity);
+                    }
+
+                    // Lines. The path is grown by the stroke width on every side
+                    // because Path insets its geometry by half the stroke width;
+                    // this keeps viewbox coordinates equal to plot pixels.
+                    for series in chart.series: Path {
+                        x: -ChartTheme.line-width / 2;
+                        y: -ChartTheme.line-width / 2;
+                        width: parent.width + ChartTheme.line-width;
+                        height: parent.height + ChartTheme.line-width;
+                        viewbox-width: plot.width / 1px;
+                        viewbox-height: plot.height / 1px;
+                        fit: fill;
+                        commands: series.line;
+                        stroke: series.color;
+                        stroke-width: ChartTheme.line-width;
+                        stroke-line-join: round;
+                        stroke-line-cap: round;
+                    }
+
+                    for series in chart.series: Rectangle {
+                        for column in series.columns: Rectangle {
+                            x: column.x * 1px - ChartTheme.line-width / 2;
+                            y: column.top * 1px - ChartTheme.line-width / 2;
+                            width: ChartTheme.line-width;
+                            height: (column.bottom - column.top) * 1px + ChartTheme.line-width;
+                            background: series.color;
+                        }
+                    }
+
+                    if root.show-points: Rectangle {
+                        for series in chart.series: Rectangle {
+                            for point in series.points: Rectangle {
+                                property <length> radius: point.r > 0 ? point.r * 1px : ChartTheme.point-radius;
+                                x: point.x * 1px - self.radius;
+                                y: point.y * 1px - self.radius;
+                                width: self.radius * 2;
+                                height: self.radius * 2;
+                                border-radius: self.radius;
+                                background: series.color.with-alpha(ChartTheme.fill-opacity);
+                                border-color: series.color;
+                                border-width: root.point-chart ? 1px : 2px;
+                            }
+                        }
+                    }
+
+                    // Data labels.
+                    if root.show-values: Rectangle {
+                        for bar in chart.bars: Text {
+                            property <float> value: root.datasets[bar.dataset].values[bar.index];
+                            text: root.stacked-percent
+                                ? ChartEngine.rounded-share(root.datasets, bar.dataset, bar.index) + "%"
+                                : ChartEngine.format-value(self.value, root.format);
+                            x: bar.x * 1px + (bar.width * 1px - self.width) / 2;
+                            // Inside stacked segments; above (or below) other bars.
+                            y: root.stacked || root.stacked-percent ? (bar.y + bar.height / 2) * 1px - self.height / 2
+                                : self.value >= 0 ? bar.y * 1px - self.height - 2px
+                                : (bar.y + bar.height) * 1px + 2px;
+                            color: ChartTheme.text-color;
+                            font-size: ChartTheme.font-size * 0.9;
+                        }
+                        for series[index] in chart.series: Rectangle {
+                            for point in series.points: Text {
+                                property <float> value: root.point-chart
+                                    ? root.datasets[index].points[point.index].y
+                                    : root.datasets[index].values[point.index];
+                                text: ChartEngine.format-value(self.value, root.format);
+                                x: point.x * 1px - self.width / 2;
+                                y: point.y * 1px - self.height - max(point.r * 1px, ChartTheme.point-radius) - 2px;
+                                color: ChartTheme.text-color;
+                                font-size: ChartTheme.font-size * 0.9;
+                            }
+                        }
+                    }
+
+                    if root.hovered-point.dataset >= 0: Rectangle {
+                        // Bubbles grow a little on hover.
+                        property <length> radius: root.hovered-point.r > 0 ? root.hovered-point.r * 1px + 2px : ChartTheme.point-hover-radius;
+                        x: root.hovered-point.x * 1px - self.radius;
+                        y: root.hovered-point.y * 1px - self.radius;
+                        width: self.radius * 2;
+                        height: self.radius * 2;
+                        border-radius: self.radius;
+                        background: chart.series[root.hovered-point.dataset].color;
+                        border-color: ChartTheme.background;
+                        border-width: 1px;
+                    }
+
+                    // Hovered points, one per visible line. They are positioned
+                    // from the values instead of being a state of every marker, so
+                    // hovering stays cheap with many points and also works when
+                    // point markers are hidden.
+                    if !root.point-chart && root.hovered-index >= 0: Rectangle {
+                        for ds in chart.visible: Rectangle {
+                            property <float> value: ChartEngine.plotted-value(root.datasets, root.kind, root.stacked, ds, root.hovered-index);
+                            x: category-x(root.hovered-index) - ChartTheme.point-hover-radius;
+                            y: value-y(self.value) - ChartTheme.point-hover-radius;
+                            width: ChartTheme.point-hover-radius * 2;
+                            height: ChartTheme.point-hover-radius * 2;
+                            border-radius: ChartTheme.point-hover-radius;
+                            background: chart.series[ds].color;
+                            border-color: ChartTheme.background;
+                            border-width: 1px;
+                            visible: chart.series[ds].kind == ChartKind.line && root.hovered-index < root.datasets[ds].values.length;
+                        }
+                    }
+
+                    // Keyboard: the arrow keys move through the categories,
+                    // Enter clicks the selected one.
+                    keys := FocusScope {
+                        key-pressed(event) => {
+                            if root.point-chart {
+                                // Left and Right move through a dataset's points
+                                // in x order, Up and Down to another dataset.
+                                let key = event.text == Key.RightArrow ? 0 : event.text == Key.LeftArrow ? 1
+                                    : event.text == Key.Home ? 2 : event.text == Key.End ? 3
+                                    : event.text == Key.UpArrow ? 5 : event.text == Key.DownArrow ? 4 : -1;
+                                if key >= 0 {
+                                    let current = ChartEngine.locate-point(chart, root.key-point.dataset, root.key-point.index);
+                                    // The first key press selects the first point.
+                                    root.key-point = ChartEngine.key-point(chart, current.dataset, current.index, current.dataset < 0 ? 0 : key);
+                                    return accept;
+                                }
+                                if event.text == Key.Return && root.hovered-point.dataset >= 0 {
+                                    root.point-clicked(root.hovered-point.dataset, root.hovered-point.index);
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                            if chart.count == 0 {
+                                return reject;
+                            }
+                            let current = root.key-index < 0 ? 0 : min(root.key-index, chart.count - 1);
+                            if event.text == Key.LeftArrow {
+                                root.key-index = max(0, current - 1);
+                            } else if event.text == Key.RightArrow {
+                                root.key-index = root.key-index < 0 ? 0 : min(chart.count - 1, current + 1);
+                            } else if event.text == Key.Home {
+                                root.key-index = 0;
+                            } else if event.text == Key.End {
+                                root.key-index = chart.count - 1;
+                            } else if event.text == Key.Return && root.key-index >= 0 {
+                                root.category-clicked(current);
+                            } else {
+                                return reject;
+                            }
+                            accept
+                        }
+
+                        touch := TouchArea {
+                            mouse-cursor: root.hovered-point.dataset >= 0 ? pointer
+                                : root.zoom-enabled && root.zoomed ? (self.pressed ? MouseCursor.grabbing : MouseCursor.grab) : default;
+                            pointer-event(event) => {
+                                if event.kind == PointerEventKind.down {
+                                    root.drag-view-start = root.view-start;
+                                    root.drag-view-end = root.view-end;
+                                }
+                            }
+                            moved => {
+                                if root.zoom-enabled && self.pressed && plot.width > 0 {
+                                    let span = root.drag-view-end - root.drag-view-start;
+                                    let shift = (self.mouse-x - self.pressed-x) / plot.width * span;
+                                    root.view-start = clamp(root.drag-view-start - shift, 0, 1 - span);
+                                    root.view-end = root.view-start + span;
+                                }
+                            }
+                            scroll-event(event) => {
+                                if !root.zoom-enabled || plot.width <= 0 {
+                                    return reject;
+                                }
+                                root.zoom-around(self.mouse-x / plot.width, pow(1.002, -event.delta-y / 1px));
+                                accept
+                            }
+                            double-clicked => {
+                                if root.zoom-enabled {
+                                    root.reset-zoom();
+                                }
+                            }
+                            clicked => {
+                                keys.focus();
+                                // A drag that panned the chart is not a click.
+                                if abs(self.mouse-x - self.pressed-x) > 3px {
+                                    return;
+                                }
+                                if root.hovered-index >= 0 {
+                                    root.key-index = root.hovered-index;
+                                    root.category-clicked(root.hovered-index);
+                                }
+                                if root.hovered-point.dataset >= 0 {
+                                    root.key-point = root.hovered-point;
+                                    root.point-clicked(root.hovered-point.dataset, root.hovered-point.index);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    x: plot.x - 3px;
+                    y: plot.y - 3px;
+                    width: plot.width + 6px;
+                    height: plot.height + 6px;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                for tick in axis.ticks: Text {
+                    x: 0;
+                    width: plot.x - 8px;
+                    y: plot.y + tick.pos * 1px - self.height / 2;
+                    text: tick.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    horizontal-alignment: right;
+                }
+
+                for tick in chart.x-ticks: Text {
+                    x: plot.x + tick.pos * 1px - self.width / 2;
+                    y: plot.y + plot.height + 6px;
+                    text: tick.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                }
+
+                if root.y-title != "": Text {
+                    x: 0;
+                    y: 0;
+                    text: root.y-title;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                }
+
+                if root.x-title != "": Text {
+                    x: plot.x;
+                    width: plot.width;
+                    y: plot.y + plot.height + ChartTheme.font-size * 1.6 + 6px;
+                    text: root.x-title;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                }
+
+                if root.show-tooltip && root.hovered-index >= 0 && chart.visible.length > 0: Tooltip {
+                    property <length> anchor: plot.x + category-x(root.hovered-index);
+                    x: self.anchor + 12px + self.width > frame.width ? self.anchor - 12px - self.width : self.anchor + 12px;
+                    y: clamp(plot.y + (touch.has-hover ? touch.mouse-y : plot.height * 0.3) - self.height / 2, 0px, max(0px, frame.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    title: root.labels[root.hovered-index];
+                    index: root.hovered-index;
+                    datasets: root.datasets;
+                    series: chart.series;
+                    visible-datasets: chart.visible;
+                    format: root.format;
+                    percent: root.stacked-percent;
+                }
+
+                if root.show-tooltip && root.hovered-point.dataset >= 0: Rectangle {
+                    property <ChartDataset> dataset: root.datasets[root.hovered-point.dataset];
+                    property <length> anchor-x: plot.x + root.hovered-point.x * 1px;
+                    x: self.anchor-x + 12px + self.width > frame.width ? self.anchor-x - 12px - self.width : self.anchor-x + 12px;
+                    y: clamp(plot.y + root.hovered-point.y * 1px - self.height / 2, 0px, max(0px, frame.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    VerticalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 4px;
+                        property <ChartXY> point: dataset.points[root.hovered-point.index];
+                        if root.time-axis: Text {
+                            text: ChartEngine.format-time(root.time-origin, root.utc-offset, point.x);
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                            font-weight: 700;
+                        }
+                        HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 10px;
+                                    height: 10px;
+                                    background: chart.series[root.hovered-point.dataset].color;
+                                    border-color: ChartTheme.tooltip-text;
+                                    border-width: 1px;
+                                }
+                            }
+                            Text {
+                                text: root.time-axis
+                                    ? dataset.label + ": " + ChartEngine.format-value(point.y, root.format)
+                                    : dataset.label + ": (" + ChartEngine.format-value(point.x, { decimals: -1 }) + ", "
+                                        + ChartEngine.format-value(point.y, root.format)
+                                        + (root.kind == ChartKind.bubble ? ", " + ChartEngine.format-value(point.r, { decimals: -1 }) : "") + ")";
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

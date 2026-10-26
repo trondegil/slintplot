@@ -1,0 +1,48 @@
+import { ChartDataset, ChartEngine, ChartFormat, ChartSeries } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+
+// Tooltip listing the value of every visible dataset at one category.
+export component Tooltip inherits Rectangle {
+    in property <string> title;
+    in property <int> index;
+    in property <[ChartDataset]> datasets;
+    in property <[ChartSeries]> series;
+    in property <[int]> visible-datasets;
+    in property <ChartFormat> format: { decimals: -1 };
+    // Show each dataset's share of the category (100% stacked charts).
+    in property <bool> percent: false;
+
+    background: ChartTheme.tooltip-background;
+    border-radius: 6px;
+
+    VerticalLayout {
+        padding: 6px;
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 4px;
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.tooltip-text;
+            font-size: ChartTheme.font-size;
+            font-weight: 700;
+        }
+        for ds in root.visible-datasets: HorizontalLayout {
+            spacing: 6px;
+            Rectangle {
+                y: (parent.height - self.height) / 2;
+                width: 10px;
+                height: 10px;
+                background: series[ds].color;
+                border-color: ChartTheme.tooltip-text;
+                border-width: 1px;
+            }
+            Text {
+                text: datasets[ds].label + ": " + (root.percent
+                    ? ChartEngine.format-value(ChartEngine.share(root.datasets, ds, root.index), { suffix: "%", decimals: 1 })
+                    : ChartEngine.format-value(datasets[ds].values[root.index], root.format));
+                color: ChartTheme.tooltip-text;
+                font-size: ChartTheme.font-size;
+            }
+        }
+    }
+}

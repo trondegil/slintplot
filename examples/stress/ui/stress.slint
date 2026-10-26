@@ -1,0 +1,216 @@
+import { CheckBox, ComboBox, HorizontalBox, Palette, SpinBox, VerticalBox } from "std-widgets.slint";
+import {
+    BarChart,
+    ChartDataset,
+    ChartEngine,
+    ChartPalette,
+    ChartSlice,
+    ChartSunburstItem,
+    ChartTheme,
+    ChartWaterfallStep,
+    DumbbellChart,
+    FunnelChart,
+    GaugeChart,
+    LineChart,
+    ScatterChart,
+    SunburstChart,
+    TimeSeriesChart,
+    WaterfallChart,
+} from "@slintplot";
+export { ChartEngine }
+
+export component Stress inherits Window {
+    title: "SlintPlot stress test";
+    // Shown in the taskbar, and in the Dock on macOS.
+    icon: @image-url("../icon.png");
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    background: ChartTheme.background;
+
+    in-out property <int> point-index: 1;
+    in-out property <int> dataset-count: 3;
+    // 0: line, 1: bars, 2: time series, 3: scatter, 4: waterfall,
+    // 5: dumbbell, 6: funnel, 7: sunburst, 8: gauge.
+    in-out property <int> chart-type: 0;
+    in-out property <bool> show-points: true;
+    in-out property <bool> smooth: true;
+    in-out property <bool> decimate: true;
+    in-out property <bool> streaming: false;
+    in-out property <bool> animated: true;
+    in-out property <float> view-start: 0;
+    in-out property <float> view-end: 1;
+    in-out property <bool> dark-mode: Palette.color-scheme == ColorScheme.dark;
+    // Index into the theme picker.
+    in-out property <int> theme;
+    in property <string> stats;
+    in property <[string]> labels;
+    in-out property <[ChartDataset]> datasets;
+    in property <[ChartWaterfallStep]> steps;
+    in-out property <[ChartSlice]> stages;
+    in-out property <[ChartSunburstItem]> sun;
+    in property <float> gauge-value;
+
+    // Rebuild the data for the selected chart type, point and dataset counts.
+    callback regenerate();
+    // Apply the "smooth" setting to the existing datasets.
+    callback restyle();
+
+    changed dark-mode => {
+        Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
+    }
+    changed theme => {
+        ChartTheme.palette = self.theme == 0 ? ChartPalette.modern
+            : self.theme == 1 ? ChartPalette.material
+            : self.theme == 2 ? ChartPalette.corporate
+            : self.theme == 3 ? ChartPalette.mono
+            : ChartPalette.pastel;
+    }
+
+    VerticalBox {
+        HorizontalBox {
+            alignment: start;
+            ComboBox {
+                model: ["Line", "Bars", "Time series", "Scatter", "Waterfall", "Dumbbell", "Funnel", "Sunburst", "Gauge"];
+                current-index <=> root.chart-type;
+                selected => {
+                    root.view-start = 0;
+                    root.view-end = 1;
+                    root.regenerate();
+                }
+            }
+            Text {
+                text: "Points per dataset";
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
+            }
+            ComboBox {
+                model: ["100", "1,000", "10,000", "100,000", "1,000,000"];
+                current-index <=> root.point-index;
+                selected => {
+                    root.regenerate();
+                }
+            }
+            Text {
+                text: "Datasets";
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
+            }
+            SpinBox {
+                minimum: 1;
+                maximum: 8;
+                value <=> root.dataset-count;
+                edited => {
+                    root.regenerate();
+                }
+            }
+            CheckBox {
+                text: "Points";
+                checked <=> root.show-points;
+            }
+            CheckBox {
+                text: "Smooth";
+                checked <=> root.smooth;
+                toggled => {
+                    root.restyle();
+                }
+            }
+            CheckBox {
+                text: "Decimate";
+                checked <=> root.decimate;
+            }
+            CheckBox {
+                text: "Stream (60 Hz)";
+                checked <=> root.streaming;
+            }
+            ComboBox {
+                model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
+                current-index <=> root.theme;
+            }
+            CheckBox {
+                text: "Dark";
+                checked <=> root.dark-mode;
+            }
+        }
+
+        Text {
+            text: "Scroll on the chart to zoom, drag to pan, double-click to reset. Bars and scatter markers are one element each: keep them to 100,000 points or fewer. Waterfall, dumbbell, funnel and sunburst charts draw one element per step, row, stage or item, and have no decimation: keep them to 10,000.";
+            color: ChartTheme.text-color;
+            wrap: word-wrap;
+        }
+        Text {
+            text: root.stats;
+            color: ChartTheme.text-color;
+            font-family: "Menlo";
+        }
+
+        if root.chart-type == 0: LineChart {
+            vertical-stretch: 1;
+            labels: root.labels;
+            datasets <=> root.datasets;
+            animated: root.animated;
+            begin-at-zero: false;
+            show-points: root.show-points;
+            decimate: root.decimate;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+        }
+        if root.chart-type == 1: BarChart {
+            vertical-stretch: 1;
+            labels: root.labels;
+            datasets <=> root.datasets;
+            animated: root.animated;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+        }
+        if root.chart-type == 2: TimeSeriesChart {
+            vertical-stretch: 1;
+            datasets <=> root.datasets;
+            animated: root.animated;
+            // One point per minute from this time.
+            time-origin: { year: 2026, month: 1, day: 1 };
+            show-points: root.show-points;
+            decimate: root.decimate;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+        }
+        if root.chart-type == 3: ScatterChart {
+            vertical-stretch: 1;
+            datasets <=> root.datasets;
+            animated: root.animated;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+        }
+        if root.chart-type == 4: WaterfallChart {
+            vertical-stretch: 1;
+            steps: root.steps;
+            animated: root.animated;
+        }
+        if root.chart-type == 5: DumbbellChart {
+            vertical-stretch: 1;
+            labels: root.labels;
+            datasets <=> root.datasets;
+            animated: root.animated;
+        }
+        if root.chart-type == 6: FunnelChart {
+            vertical-stretch: 1;
+            stages <=> root.stages;
+            animated: root.animated;
+        }
+        if root.chart-type == 7: SunburstChart {
+            vertical-stretch: 1;
+            items <=> root.sun;
+            animated: root.animated;
+        }
+        if root.chart-type == 8: GaugeChart {
+            vertical-stretch: 1;
+            value: root.gauge-value;
+            show-needle: root.show-points;
+            animated: root.animated;
+            value-decimals: 1;
+        }
+    }
+}

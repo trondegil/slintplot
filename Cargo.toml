@@ -1,0 +1,14 @@
+[workspace]
+resolver = "3"
+members = ["crates/slintplot", "examples/gallery", "examples/stress"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+repository = "https://github.com/trondegil/slintplot"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[workspace.dependencies]
+slint = "1.18"
+slint-build = "1.18"
+slintplot = { path = "crates/slintplot", version = "0.1" }

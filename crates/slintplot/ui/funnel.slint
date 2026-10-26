@@ -1,0 +1,332 @@
+import { ChartEngine, ChartFormat, ChartFunnelLayout, ChartFunnelStage, ChartLegendItem, ChartSlice } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A funnel chart: the stages as slices of one funnel, each as wide at the top
+// as its value and narrowing to the next stage, with curved sides. Stages fade
+// from `color` at the top to lighter shades below, so the order reads in the
+// color. Each slice shows its value and its share of the first stage; badges
+// on the right show how much of the previous stage each one kept.
+export component FunnelChart {
+    in-out property <[ChartSlice]> stages;
+    in property <string> title;
+    // The stage names are on the left already, so the legend is off by
+    // default; clicking an entry hides or shows the stage.
+    in property <bool> show-legend: false;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    in property <bool> show-tooltip: true;
+    // Open the stages out one after the other when the chart appears.
+    in property <bool> animated: true;
+    // The stage names on the left.
+    in property <bool> show-labels: true;
+    // Write each stage's value, and its share of the first stage, on it.
+    in property <bool> show-values: true;
+    in property <bool> show-percentages: true;
+    // Badges between the stages with the share of the previous stage kept.
+    in property <bool> show-conversions: true;
+    // The color of the first stage; the others fade from it. A stage's own
+    // `color` wins.
+    in property <color> color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #3b82f6;
+    // Curved sides between the stages, or straight ones.
+    in property <bool> curved: true;
+    // Space between the slices.
+    in property <length> gap: 4px;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The stage under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: root.hovered-row < 0 ? -1 : funnel.stages[root.hovered-row].index;
+
+    callback stage-clicked(index: int);
+    callback legend-toggled(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+
+    private property <int> key-row: -1;
+    private property <int> hovered-row: touch.has-hover && funnel.step > 0
+        ? (touch.mouse-y >= 0 && touch.mouse-y < funnel.stages.length * funnel.step * 1px ? floor(touch.mouse-y / (funnel.step * 1px)) : -1)
+        : keys.has-focus && root.key-row >= 0 ? min(root.key-row, funnel.stages.length - 1)
+        : -1;
+    // Names, values and badges need rows at least this tall; with many
+    // stages they would overlap, so they are left out and the tooltip shows
+    // them.
+    private property <bool> roomy: funnel.step * 1px >= ChartTheme.font-size * 1.6;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration * 1.4 : 0ms;
+        easing: linear;
+    }
+    init => {
+        progress = 1;
+    }
+    private property <[ChartLegendItem]> legend: ChartEngine.funnel-legend(root.stages, root.color, ChartTheme.dark);
+    private property <ChartFunnelLayout> funnel: ChartEngine.funnel-layout({
+        stages: root.stages,
+        width: plot.width / 1px,
+        height: plot.height / 1px,
+        gap: root.gap / 1px,
+        curved: root.curved,
+        progress: root.progress,
+        color: root.color,
+        dark: ChartTheme.dark,
+    });
+
+    // Light text on dark slices.
+    pure function ink(fill: color) -> color {
+        fill.red * 0.299 + fill.green * 0.587 + fill.blue * 0.114 < 150 ? #ffffff : #1f2328
+    }
+
+    pure function share(fraction: float) -> string {
+        ChartEngine.format-value(fraction * 100, { decimals: fraction >= 0.1 ? 0 : 1 }) + "%"
+    }
+
+    min-width: 200px;
+    min-height: 140px;
+    preferred-width: 520px;
+    preferred-height: 340px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend;
+            position: root.legend-position;
+            toggled(index) => {
+                root.stages[index].hidden = !root.stages[index].hidden;
+                root.key-row = -1;
+                root.legend-toggled(index);
+            }
+
+            frame := Rectangle {
+                horizontal-stretch: 1;
+
+                // Measures the stage names and the widest badge, which don't
+                // depend on the chart size.
+                label-measure := Text {
+                    visible: false;
+                    text: ChartEngine.widest-label(ChartEngine.slice-labels(root.stages));
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                }
+                badge-measure := Text {
+                    visible: false;
+                    text: "↓ 100%";
+                    font-size: ChartTheme.font-size * 0.9;
+                    font-weight: 600;
+                }
+
+                plot := Rectangle {
+                    x: root.show-labels ? label-measure.preferred-width + 16px : 0px;
+                    width: max(0px, parent.width - self.x - (root.show-conversions ? badge-measure.preferred-width + 28px : 0px));
+
+                    for stage[row] in funnel.stages: Path {
+                        x: stage.box-x * 1px;
+                        y: stage.box-y * 1px;
+                        width: stage.box-width * 1px;
+                        height: stage.box-height * 1px;
+                        viewbox-width: stage.box-width;
+                        viewbox-height: stage.box-height;
+                        fit: fill;
+                        commands: stage.path;
+                        fill: row == root.hovered-row ? stage.color.brighter(0.08) : stage.color;
+                        opacity: root.hovered-row < 0 || row == root.hovered-row ? 1 : 0.4;
+                        animate opacity { duration: 150ms; }
+                    }
+
+                    // The value and share on each slice, or beside it when
+                    // the slice is too narrow.
+                    if root.roomy && (root.show-values || root.show-percentages): Rectangle {
+                        for stage[row] in funnel.stages: Rectangle {
+                            property <length> room: min(stage.top, stage.bottom) * 1px;
+                            property <bool> inside: inner.preferred-width + 16px <= self.room
+                                && inner.preferred-height + 4px <= stage.box-height * 1px;
+                            opacity: (root.hovered-row < 0 || row == root.hovered-row ? 1 : 0.4) * root.progress;
+                            inner := VerticalLayout {
+                                visible: parent.inside;
+                                x: (plot.width - self.preferred-width) / 2;
+                                y: (stage.box-y + stage.box-height / 2) * 1px - self.preferred-height / 2;
+                                width: self.preferred-width;
+                                height: self.preferred-height;
+                                if root.show-values: Text {
+                                    text: ChartEngine.format-value(root.stages[stage.index].value, root.format);
+                                    color: root.ink(stage.color);
+                                    font-size: ChartTheme.font-size * 1.3;
+                                    font-weight: 700;
+                                    horizontal-alignment: center;
+                                }
+                                if root.show-percentages: Text {
+                                    text: root.share(stage.of-first);
+                                    color: root.ink(stage.color);
+                                    font-size: ChartTheme.font-size * 0.9;
+                                    horizontal-alignment: center;
+                                    opacity: 0.85;
+                                }
+                            }
+                            Text {
+                                visible: !parent.inside;
+                                x: (plot.width + max(stage.top, stage.bottom) * 1px) / 2 + 8px;
+                                y: (stage.box-y + stage.box-height / 2) * 1px - self.preferred-height / 2;
+                                text: (root.show-values ? ChartEngine.format-value(root.stages[stage.index].value, root.format) : "")
+                                    + (root.show-values && root.show-percentages ? " · " : "")
+                                    + (root.show-percentages ? root.share(stage.of-first) : "");
+                                color: ChartTheme.text-color;
+                                font-size: ChartTheme.font-size;
+                                font-weight: 600;
+                            }
+                        }
+                    }
+                }
+
+                if root.show-labels && root.roomy: Rectangle {
+                    for stage[row] in funnel.stages: Text {
+                        x: 0;
+                        // A little slack, so rounding doesn't cut the widest name.
+                        width: plot.x - 14px;
+                        y: (stage.box-y + stage.box-height / 2) * 1px - self.preferred-height / 2;
+                        text: root.stages[stage.index].label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        font-weight: row == root.hovered-row ? 700 : 600;
+                        horizontal-alignment: right;
+                        overflow: elide;
+                    }
+                }
+
+                // The share of the previous stage kept, between the stages.
+                if root.show-conversions && root.roomy: Rectangle {
+                    for stage[row] in funnel.stages: Rectangle {
+                        visible: row > 0;
+                        x: plot.x + plot.width + 12px;
+                        y: stage.box-y * 1px - root.gap / 2 - self.height / 2;
+                        width: badge.preferred-width + 14px;
+                        height: badge.preferred-height + 6px;
+                        border-radius: self.height / 2;
+                        background: ChartTheme.grid-color;
+                        opacity: root.progress;
+                        badge := Text {
+                            text: "↓ " + root.share(stage.of-previous);
+                            color: ChartTheme.text-color;
+                            font-size: ChartTheme.font-size * 0.9;
+                            font-weight: 600;
+                        }
+                    }
+                }
+
+                // Keyboard: the arrow keys move through the stages, Enter
+                // clicks the selected one.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        if funnel.stages.length == 0 {
+                            return reject;
+                        }
+                        let count = funnel.stages.length;
+                        let current = root.key-row < 0 ? 0 : min(root.key-row, count - 1);
+                        if event.text == Key.DownArrow || event.text == Key.RightArrow {
+                            root.key-row = root.key-row < 0 ? 0 : mod(current + 1, count);
+                        } else if event.text == Key.UpArrow || event.text == Key.LeftArrow {
+                            root.key-row = mod(current - 1 + count, count);
+                        } else if event.text == Key.Home {
+                            root.key-row = 0;
+                        } else if event.text == Key.End {
+                            root.key-row = count - 1;
+                        } else if event.text == Key.Return && root.key-row >= 0 {
+                            root.stage-clicked(funnel.stages[current].index);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        x: plot.x;
+                        width: plot.width;
+                        mouse-cursor: root.hovered-row >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-row >= 0 {
+                                root.key-row = root.hovered-row;
+                                root.stage-clicked(funnel.stages[root.hovered-row].index);
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.show-tooltip && root.hovered-row >= 0: Rectangle {
+                    property <ChartFunnelStage> stage: funnel.stages[root.hovered-row];
+                    property <ChartSlice> slice: root.stages[self.stage.index];
+                    // Beside the slice when selected with the keyboard, clear of its value.
+                    property <length> anchor-x: touch.has-hover ? plot.x + touch.mouse-x : plot.x + (plot.width + max(self.stage.top, self.stage.bottom) * 1px) / 2;
+                    property <length> anchor-y: (self.stage.box-y + self.stage.box-height / 2) * 1px;
+                    x: self.anchor-x + 14px + self.width > frame.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
+                    y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, frame.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    VerticalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 4px;
+                        HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 10px;
+                                    height: 10px;
+                                    background: stage.color;
+                                    border-color: ChartTheme.tooltip-text;
+                                    border-width: 1px;
+                                }
+                            }
+                            Text {
+                                text: slice.label + ": " + ChartEngine.format-value(slice.value, root.format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                font-weight: 700;
+                            }
+                        }
+                        Text {
+                            text: ChartEngine.format-value(stage.of-first * 100, { decimals: 1 }) + "% of the first stage";
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                        }
+                        if root.hovered-row > 0: Text {
+                            text: ChartEngine.format-value(stage.of-previous * 100, { decimals: 1 }) + "% of the previous stage";
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,29 @@
+[package]
+name = "slintplot-gallery"
+version = "0.1.0"
+description = "Sample browser for SlintPlot: every chart type, with live data editing, themes and dark mode"
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage = "https://slintplot.dev"
+keywords = ["slint", "chart", "plot", "gui", "demo"]
+categories = ["gui", "visualization"]
+readme = "README.md"
+include = ["src/**", "ui/**", "build.rs", "icon.png", "README.md", "LICENSE.md", "COMMERCIAL.md"]
+
+[dependencies]
+# `software-renderer-path` lets the software renderer (used by `--snapshot`) draw paths.
+slint = { workspace = true, features = ["software-renderer-path"] }
+png = "0.18"
+slintplot.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The Dock icon (see src/dock_icon.rs).
+objc2 = "0.6"
+objc2-app-kit = "0.3"
+objc2-foundation = "0.3"
+
+[build-dependencies]
+slint-build.workspace = true
+slintplot.workspace = true
