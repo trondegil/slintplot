@@ -19,6 +19,28 @@ pub fn take_totals() -> (u32, Duration) {
     TOTAL.with(|t| t.replace((0, Duration::ZERO)))
 }
 
+/// A started timing. In the browser (`wasm32-unknown-unknown`), which has no
+/// clock in the standard library, timings are recorded as zero.
+#[doc(hidden)]
+pub struct Started(#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))] std::time::Instant);
+
+#[doc(hidden)]
+pub fn start() -> Started {
+    Started(
+        #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+        std::time::Instant::now(),
+    )
+}
+
+impl Started {
+    pub fn elapsed(&self) -> Duration {
+        #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+        return self.0.elapsed();
+        #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+        return Duration::ZERO;
+    }
+}
+
 #[doc(hidden)]
 pub fn record_layout(duration: Duration) {
     LAST_LAYOUT.with(|last| last.set(duration));

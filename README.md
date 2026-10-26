@@ -13,7 +13,7 @@ and react to the mouse.
 
 Full API documentation with examples: [slintplot.dev](https://slintplot.dev).
 
-Try the charts with the gallery app:
+Try the charts in your browser: **[slintplot.dev/demo](https://slintplot.dev/demo/)**, or install the gallery app:
 
 ```sh
 cargo install slintplot-gallery
@@ -551,7 +551,7 @@ cargo run --release -p slintplot-stress -- --bench             # headless timing
 What SlintPlot 0.1 doesn't do yet, or does with restrictions:
 
 - **Rust only.** The chart geometry is computed in Rust and connected with `register!`, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.
-- **Platforms.** Tested on desktop: macOS, Windows and Linux. Embedded (MCU) and WebAssembly builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.
+- **Platforms.** Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs [in the browser](https://slintplot.dev/demo/). Embedded (MCU) builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.
 - **English formatting.** Values use `,` for thousands and `.` for decimals, and month and weekday names are English. There is no locale setting yet; a prefix, suffix and number of decimals can be set.
 - **Time zones.** Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.
 - **One value axis.** Each chart has one value axis; there is no secondary y axis.

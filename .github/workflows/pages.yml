@@ -1,0 +1,50 @@
+# Publishes slintplot.dev: the docs folder, with the gallery built for the
+# browser into docs/demo.
+name: Website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add wasm32-unknown-unknown
+      - name: wasm-bindgen version
+        id: bindgen
+        # The command-line tool must match the wasm-bindgen crate exactly.
+        run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@${{ steps.bindgen.outputs.version }}
+      - name: Build the gallery
+        run: |
+          cargo build --release --locked --target wasm32-unknown-unknown -p slintplot-gallery
+          wasm-bindgen --target web --no-typescript --out-dir docs/demo --out-name gallery \
+            target/wasm32-unknown-unknown/release/slintplot-gallery.wasm
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

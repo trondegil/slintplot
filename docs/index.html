@@ -76,6 +76,8 @@
   main { flex: 1; min-width: 0; padding: 32px 48px 80px; max-width: 980px; }
   .hero { padding: 28px; border-radius: 14px; background: #ffffff; border: 1px solid var(--border); margin-bottom: 28px; text-align: center; }
   .hero img { max-width: 420px; width: 100%; height: auto; }
+  .hero .try { display: inline-block; margin-top: 6px; padding: 9px 18px; border-radius: 8px; background: #2563c9; color: #ffffff; font-weight: 600; }
+  .hero .try:hover { background: #1d4fa6; }
   .hero p { color: #5b6475; margin: 10px 0 0; font-size: 17px; }
   h1 { font-size: 30px; margin: 0 0 8px; }
   h2 { font-size: 24px; margin: 52px 0 12px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -167,6 +169,7 @@
 <div class="hero">
   <img src="assets/slintplot-logo.png" alt="SlintPlot">
   <p>Native, interactive charts for Slint.</p>
+  <a class="try" href="demo/">Try the gallery in your browser</a>
 </div>
 
 <h1 id="overview">Overview</h1>
@@ -185,7 +188,7 @@
 </div>
 <figure class="shot"><img src="screenshots/light.png" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy">
   <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
-  Install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
+  <a href="demo/">Try it in your browser</a>, install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
   <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.1">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
 
 <h2 id="getting-started">Getting started</h2>
@@ -1460,6 +1463,7 @@ development packages first, such as <code>libfontconfig-dev</code> and <code>lib
 <p>The source of the apps is on GitHub, in <a href="https://github.com/trondegil/slintplot/tree/main/examples/gallery">examples/gallery</a>
 and <a href="https://github.com/trondegil/slintplot/tree/main/examples/stress">examples/stress</a>.
 The gallery's <code>ui/gallery.slint</code> has a working example of every chart.</p>
+<p>The gallery also runs in the browser, built with WebAssembly: <a href="demo/">slintplot.dev/demo</a>.</p>
 <p>Ready-built apps for macOS, Windows and Linux are on the
 <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.1">releases page</a>.
 Each download includes the licenses of the open-source crates it is built from.</p>
@@ -1470,7 +1474,7 @@ Each download includes the licenses of the open-source crates it is built from.<
 <p>What SlintPlot 0.1 doesn't do yet, or does with restrictions:</p>
 <ul>
   <li><strong>Rust only.</strong> The chart geometry is computed in Rust and connected with <code>register!</code>, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.</li>
-  <li><strong>Platforms.</strong> Tested on desktop: macOS, Windows and Linux. Embedded (MCU) and WebAssembly builds are untested. With Slint's software renderer, enable its <code>software-renderer-path</code> feature, or charts aren't drawn.</li>
+  <li><strong>Platforms.</strong> Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs <a href="demo/">in the browser</a>. Embedded (MCU) builds are untested. With Slint's software renderer, enable its <code>software-renderer-path</code> feature, or charts aren't drawn.</li>
   <li><strong>English formatting.</strong> Values use <code>,</code> for thousands and <code>.</code> for decimals, and month and weekday names are English. There is no locale setting yet; a prefix, suffix and number of decimals can be set (see <a href="#axes">Axes and formatting</a>).</li>
   <li><strong>Time zones.</strong> Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.</li>
   <li><strong>One value axis.</strong> Each chart has one value axis; there is no secondary y axis.</li>

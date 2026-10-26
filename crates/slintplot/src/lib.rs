@@ -217,7 +217,7 @@ macro_rules! register {
 
         let engine = $ui.global::<ChartEngine>();
         engine.on_value_axis(|req: ChartAxisRequest| {
-            let started = ::std::time::Instant::now();
+            let started = $crate::profile::start();
             let axis = $crate::layout::value_axis(&$crate::layout::AxisRequest {
                 datasets: &datasets(&req.datasets),
                 kind: kind(req.kind),
@@ -246,7 +246,7 @@ macro_rules! register {
             axis
         });
         engine.on_layout(|req: ChartLayoutRequest| {
-            let started = ::std::time::Instant::now();
+            let started = $crate::profile::start();
             let data = datasets(&req.datasets);
             let labels = ModelLabels(req.labels.clone());
             let out = $crate::layout::layout(&$crate::layout::LayoutRequest {
@@ -717,7 +717,7 @@ macro_rules! register {
                 .iter()
                 .map(|s| (!s.hidden).then_some(s.value.into()))
                 .collect();
-            let started = ::std::time::Instant::now();
+            let started = $crate::profile::start();
             let funnel = $crate::funnel::layout(&$crate::funnel::FunnelRequest {
                 values: &values,
                 width: req.width,
@@ -783,7 +783,7 @@ macro_rules! register {
             let items = tracked(&req.items);
             let input = sunburst_items(&items);
             let colors = sunburst_colors(&items, &input, &req.palette);
-            let started = ::std::time::Instant::now();
+            let started = $crate::profile::start();
             let sun = $crate::sunburst::layout(
                 &input,
                 usize::try_from(req.root).ok(),
@@ -1014,7 +1014,7 @@ macro_rules! register {
                 .collect()
         }
         engine.on_waterfall_layout(|req: ChartWaterfallRequest| {
-            let started = ::std::time::Instant::now();
+            let started = $crate::profile::start();
             let fall = $crate::waterfall::layout(
                 &waterfall_steps(&req.steps),
                 req.y_min.into(),
@@ -1066,7 +1066,7 @@ macro_rules! register {
                     (d.hidden, (0..count).map(|i| values.get(i)).collect())
                 })
                 .collect();
-            let started = ::std::time::Instant::now();
+            let started = $crate::profile::start();
             let bell = $crate::waterfall::dumbbell(
                 &data,
                 count,

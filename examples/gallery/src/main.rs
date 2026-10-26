@@ -3,11 +3,14 @@
 //! `cargo run -p gallery` opens it; `cargo run -p gallery -- --snapshot <dir>`
 //! renders every sample to PNG files instead.
 
+#[cfg(not(target_arch = "wasm32"))]
 mod dock_icon;
+#[cfg(not(target_arch = "wasm32"))]
 mod snapshot;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
@@ -1253,21 +1256,10 @@ impl State {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = std::env::args().skip(1);
-    let snapshot_dir = match (args.next().as_deref(), args.next()) {
-        (Some("--snapshot"), Some(dir)) => Some(std::path::PathBuf::from(dir)),
-        (None, _) => None,
-        _ => return Err("usage: gallery [--snapshot <dir>]".into()),
-    };
-    let headless = snapshot_dir.as_ref().map(|_| snapshot::install());
-
+/// Creates the gallery window with its samples and callbacks.
+fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     let ui = Gallery::new()?;
     slintplot::register!(ui);
-    if headless.is_none() {
-        // Once the app has finished launching, which would reset it.
-        slint::Timer::single_shot(Duration::ZERO, dock_icon::set);
-    }
 
     // The sample list, with a header row per category.
     let mut entries = Vec::new();
@@ -1324,145 +1316,179 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ui.on_action(move |index| s.borrow_mut().action(index.max(0) as usize));
     let s = state.clone();
     ui.on_dark_mode_changed(move || s.borrow_mut().recolor_survey());
+    Ok((ui, state))
+}
 
+#[cfg(not(target_arch = "wasm32"))]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = std::env::args().skip(1);
+    let snapshot_dir = match (args.next().as_deref(), args.next()) {
+        (Some("--snapshot"), Some(dir)) => Some(std::path::PathBuf::from(dir)),
+        (None, _) => None,
+        _ => return Err("usage: gallery [--snapshot <dir>]".into()),
+    };
+    let headless = snapshot_dir.as_ref().map(|_| snapshot::install());
+
+    let (ui, state) = gallery()?;
     match (headless, snapshot_dir) {
-        (Some(window), Some(dir)) => {
-            std::fs::create_dir_all(&dir)?;
-            ui.show()?;
-            for (dark, suffix) in [(false, ""), (true, "-dark")] {
-                ui.set_dark_mode(dark);
-                for sample in SAMPLES {
-                    state.borrow_mut().select(sample);
-                    snapshot::render(&window);
-                    snapshot::settle(Duration::from_millis(1100));
-                    snapshot::save(&window, &dir.join(format!("{}{suffix}.png", sample.id)))?;
-                }
-            }
-            // A legend at the side, and hover tooltips.
-            ui.set_dark_mode(false);
-            let legend = SAMPLES.iter().find(|s| s.id == "legend-position").unwrap();
-            state.borrow_mut().select(legend);
-            ui.set_legend_position(ChartLegendPosition::Left);
+        (Some(window), Some(dir)) => snapshots(&ui, &state, &window, &dir),
+        _ => {
+            // Once the app has finished launching, which would reset it.
+            slint::Timer::single_shot(Duration::ZERO, dock_icon::set);
+            Ok(ui.run()?)
+        }
+    }
+}
+
+/// In the browser: the gallery in the page's `<canvas id="canvas">`.
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    console_error_panic_hook::set_once();
+    let (ui, _state) = gallery().expect("the gallery window");
+    ui.run().expect("the event loop");
+}
+
+/// Renders every sample, and a few interactions, to PNG files in `dir`.
+#[cfg(not(target_arch = "wasm32"))]
+fn snapshots(
+    ui: &Gallery,
+    state: &Rc<RefCell<State>>,
+    window: &Rc<slint::platform::software_renderer::MinimalSoftwareWindow>,
+    dir: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    std::fs::create_dir_all(&dir)?;
+    ui.show()?;
+    for (dark, suffix) in [(false, ""), (true, "-dark")] {
+        ui.set_dark_mode(dark);
+        for sample in SAMPLES {
+            state.borrow_mut().select(sample);
             snapshot::render(&window);
             snapshot::settle(Duration::from_millis(1100));
-            snapshot::save(&window, &dir.join("legend-left.png"))?;
-            state.borrow_mut().select(&SAMPLES[0]);
-            snapshot::render(&window);
-            snapshot::settle(Duration::from_millis(1100));
-            snapshot::hover(&window, 640.0, 400.0);
-            snapshot::save(&window, &dir.join("hover-bar.png"))?;
-            // The one-week time series zoomed to narrower and narrower spans.
-            let week = SAMPLES.iter().find(|s| s.id == "time-week").unwrap();
-            state.borrow_mut().select(week);
-            snapshot::render(&window);
-            snapshot::settle(Duration::from_millis(1100));
-            for (action, name) in [(1, "day"), (2, "6h"), (3, "1h")] {
-                state.borrow_mut().action(action);
-                snapshot::render(&window);
-                snapshot::settle(Duration::from_millis(300));
-                snapshot::save(&window, &dir.join(format!("time-week-{name}.png")))?;
-            }
-            // Keyboard navigation: click a chart to focus it, move the mouse
-            // away, then use the arrow keys.
-            use slint::platform::Key;
-            for (id, (x, y), keys) in [
-                (
-                    "scatter",
-                    (700.0, 450.0),
-                    &[Key::RightArrow, Key::RightArrow, Key::DownArrow][..],
-                ),
-                (
-                    "radar",
-                    (760.0, 420.0),
-                    &[Key::RightArrow, Key::RightArrow][..],
-                ),
-                (
-                    "heatmap",
-                    (700.0, 400.0),
-                    &[Key::DownArrow, Key::RightArrow, Key::RightArrow][..],
-                ),
-                (
-                    "calendar",
-                    (700.0, 200.0),
-                    &[Key::RightArrow, Key::RightArrow, Key::DownArrow][..],
-                ),
-                (
-                    "treemap",
-                    (560.0, 300.0),
-                    &[Key::RightArrow, Key::RightArrow][..],
-                ),
-                (
-                    "sunburst",
-                    (300.0, 650.0),
-                    &[Key::RightArrow, Key::RightArrow][..],
-                ),
-                (
-                    "funnel",
-                    (300.0, 650.0),
-                    &[Key::DownArrow, Key::DownArrow][..],
-                ),
-                ("waterfall", (700.0, 400.0), &[Key::RightArrow][..]),
-                ("dumbbell", (700.0, 400.0), &[Key::DownArrow][..]),
-            ] {
-                let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
-                state.borrow_mut().select(sample);
-                snapshot::render(&window);
-                snapshot::settle(Duration::from_millis(1100));
-                snapshot::click(&window, x, y);
-                snapshot::leave(&window);
-                for &k in keys {
-                    snapshot::key(&window, k);
-                }
-                snapshot::render(&window);
-                snapshot::settle(Duration::from_millis(300));
-                snapshot::save(&window, &dir.join(format!("keys-{id}.png")))?;
-            }
-            // The treemap: a tooltip, then Asia hidden from the legend.
-            let tree = SAMPLES.iter().find(|s| s.id == "treemap").unwrap();
-            state.borrow_mut().select(tree);
-            snapshot::render(&window);
-            snapshot::settle(Duration::from_millis(1100));
-            snapshot::hover(&window, 560.0, 300.0);
-            snapshot::save(&window, &dir.join("treemap-hover.png"))?;
-            snapshot::click(&window, 625.0, 126.0);
+            snapshot::save(&window, &dir.join(format!("{}{suffix}.png", sample.id)))?;
+        }
+    }
+    // A legend at the side, and hover tooltips.
+    ui.set_dark_mode(false);
+    let legend = SAMPLES.iter().find(|s| s.id == "legend-position").unwrap();
+    state.borrow_mut().select(legend);
+    ui.set_legend_position(ChartLegendPosition::Left);
+    snapshot::render(&window);
+    snapshot::settle(Duration::from_millis(1100));
+    snapshot::save(&window, &dir.join("legend-left.png"))?;
+    state.borrow_mut().select(&SAMPLES[0]);
+    snapshot::render(&window);
+    snapshot::settle(Duration::from_millis(1100));
+    snapshot::hover(&window, 640.0, 400.0);
+    snapshot::save(&window, &dir.join("hover-bar.png"))?;
+    // The one-week time series zoomed to narrower and narrower spans.
+    let week = SAMPLES.iter().find(|s| s.id == "time-week").unwrap();
+    state.borrow_mut().select(week);
+    snapshot::render(&window);
+    snapshot::settle(Duration::from_millis(1100));
+    for (action, name) in [(1, "day"), (2, "6h"), (3, "1h")] {
+        state.borrow_mut().action(action);
+        snapshot::render(&window);
+        snapshot::settle(Duration::from_millis(300));
+        snapshot::save(&window, &dir.join(format!("time-week-{name}.png")))?;
+    }
+    // Keyboard navigation: click a chart to focus it, move the mouse
+    // away, then use the arrow keys.
+    use slint::platform::Key;
+    for (id, (x, y), keys) in [
+        (
+            "scatter",
+            (700.0, 450.0),
+            &[Key::RightArrow, Key::RightArrow, Key::DownArrow][..],
+        ),
+        (
+            "radar",
+            (760.0, 420.0),
+            &[Key::RightArrow, Key::RightArrow][..],
+        ),
+        (
+            "heatmap",
+            (700.0, 400.0),
+            &[Key::DownArrow, Key::RightArrow, Key::RightArrow][..],
+        ),
+        (
+            "calendar",
+            (700.0, 200.0),
+            &[Key::RightArrow, Key::RightArrow, Key::DownArrow][..],
+        ),
+        (
+            "treemap",
+            (560.0, 300.0),
+            &[Key::RightArrow, Key::RightArrow][..],
+        ),
+        (
+            "sunburst",
+            (300.0, 650.0),
+            &[Key::RightArrow, Key::RightArrow][..],
+        ),
+        (
+            "funnel",
+            (300.0, 650.0),
+            &[Key::DownArrow, Key::DownArrow][..],
+        ),
+        ("waterfall", (700.0, 400.0), &[Key::RightArrow][..]),
+        ("dumbbell", (700.0, 400.0), &[Key::DownArrow][..]),
+    ] {
+        let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
+        state.borrow_mut().select(sample);
+        snapshot::render(&window);
+        snapshot::settle(Duration::from_millis(1100));
+        snapshot::click(&window, x, y);
+        snapshot::leave(&window);
+        for &k in keys {
+            snapshot::key(&window, k);
+        }
+        snapshot::render(&window);
+        snapshot::settle(Duration::from_millis(300));
+        snapshot::save(&window, &dir.join(format!("keys-{id}.png")))?;
+    }
+    // The treemap: a tooltip, then Asia hidden from the legend.
+    let tree = SAMPLES.iter().find(|s| s.id == "treemap").unwrap();
+    state.borrow_mut().select(tree);
+    snapshot::render(&window);
+    snapshot::settle(Duration::from_millis(1100));
+    snapshot::hover(&window, 560.0, 300.0);
+    snapshot::save(&window, &dir.join("treemap-hover.png"))?;
+    snapshot::click(&window, 625.0, 126.0);
+    snapshot::render(&window);
+    snapshot::settle(Duration::from_millis(300));
+    snapshot::save(&window, &dir.join("treemap-hidden.png"))?;
+    // The sunburst zoomed into Asia, a gauge band and a waterfall step.
+    for (id, (x, y), click, name) in [
+        ("sunburst", (850.0, 497.0), true, "sunburst-zoomed"),
+        ("gauge", (1010.0, 300.0), false, "gauge-hover"),
+        ("waterfall", (670.0, 420.0), false, "waterfall-hover"),
+    ] {
+        let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
+        state.borrow_mut().select(sample);
+        snapshot::render(&window);
+        snapshot::settle(Duration::from_millis(1100));
+        if click {
+            snapshot::click(&window, x, y);
             snapshot::render(&window);
             snapshot::settle(Duration::from_millis(300));
-            snapshot::save(&window, &dir.join("treemap-hidden.png"))?;
-            // The sunburst zoomed into Asia, a gauge band and a waterfall step.
-            for (id, (x, y), click, name) in [
-                ("sunburst", (850.0, 497.0), true, "sunburst-zoomed"),
-                ("gauge", (1010.0, 300.0), false, "gauge-hover"),
-                ("waterfall", (670.0, 420.0), false, "waterfall-hover"),
-            ] {
-                let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
-                state.borrow_mut().select(sample);
-                snapshot::render(&window);
-                snapshot::settle(Duration::from_millis(1100));
-                if click {
-                    snapshot::click(&window, x, y);
-                    snapshot::render(&window);
-                    snapshot::settle(Duration::from_millis(300));
-                } else {
-                    snapshot::hover(&window, x, y);
-                }
-                snapshot::save(&window, &dir.join(format!("{name}.png")))?;
-            }
-            let zoom = SAMPLES.iter().find(|s| s.id == "zoom").unwrap();
-            state.borrow_mut().select(zoom);
-            snapshot::render(&window);
-            snapshot::settle(Duration::from_millis(1100));
-            snapshot::scroll(&window, 740.0, 400.0, 800.0);
-            snapshot::save(&window, &dir.join("zoomed.png"))?;
-            // The calendar in GitHub's green, from its own color picker.
-            let calendar = SAMPLES.iter().find(|s| s.id == "calendar").unwrap();
-            state.borrow_mut().select(calendar);
-            ui.set_calendar_colors(1);
-            snapshot::render(&window);
-            snapshot::settle(Duration::from_millis(1100));
-            snapshot::save(&window, &dir.join("calendar-github.png"))?;
-            ui.set_calendar_colors(0);
-            Ok(())
+        } else {
+            snapshot::hover(&window, x, y);
         }
-        _ => Ok(ui.run()?),
+        snapshot::save(&window, &dir.join(format!("{name}.png")))?;
     }
+    let zoom = SAMPLES.iter().find(|s| s.id == "zoom").unwrap();
+    state.borrow_mut().select(zoom);
+    snapshot::render(&window);
+    snapshot::settle(Duration::from_millis(1100));
+    snapshot::scroll(&window, 740.0, 400.0, 800.0);
+    snapshot::save(&window, &dir.join("zoomed.png"))?;
+    // The calendar in GitHub's green, from its own color picker.
+    let calendar = SAMPLES.iter().find(|s| s.id == "calendar").unwrap();
+    state.borrow_mut().select(calendar);
+    ui.set_calendar_colors(1);
+    snapshot::render(&window);
+    snapshot::settle(Duration::from_millis(1100));
+    snapshot::save(&window, &dir.join("calendar-github.png"))?;
+    ui.set_calendar_colors(0);
+    Ok(())
 }

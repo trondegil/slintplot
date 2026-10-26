@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlintPlot Gallery</title>
+<meta name="description" content="Every SlintPlot chart type, running in the browser with WebAssembly.">
+<link rel="icon" href="../assets/slintplot-icon.png">
+<style>
+  :root { --bg: #ffffff; --text: #1d2433; --muted: #5b6475; --border: #e3e6ec; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14161b; --text: #e6e9f0; --muted: #a3abbb; --border: #2a2f3a; }
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+  header img { width: 22px; height: 22px; }
+  header a { color: inherit; text-decoration: none; font-weight: 700; }
+  header .links { margin-left: auto; display: flex; gap: 16px; }
+  header .links a { font-weight: 400; color: var(--muted); }
+  main { position: relative; flex: 1; min-height: 0; }
+  /* Slint sizes the canvas to the app's preferred size; keep it filling the page. */
+  canvas { display: block; width: 100% !important; height: 100% !important; outline: none; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="../"><img src="../assets/slintplot-icon.png" alt=""></a>
+  <a href="../">SlintPlot</a>
+  <span style="color: var(--muted)">Gallery</span>
+  <nav class="links">
+    <a href="../#getting-started">Documentation</a>
+    <a href="https://github.com/trondegil/slintplot">GitHub</a>
+  </nav>
+</header>
+<main>
+  <canvas id="canvas" tabindex="0"></canvas>
+  <div id="status">Loading the gallery…</div>
+</main>
+<script type="module">
+  import init from "./gallery.js";
+  const status = document.getElementById("status");
+  try {
+    await init();
+  } catch (error) {
+    // Slint's event loop runs by throwing out of `main`; the app keeps going.
+    if (!String(error).includes("Using exceptions for control flow")) {
+      status.textContent = "The gallery couldn't start: " + error;
+      throw error;
+    }
+  }
+  status.remove();
+</script>
+</body>
+</html>

@@ -1,3 +1,6 @@
 /target
 **/*.rs.bk
 .DS_Store
+# Built by .github/workflows/pages.yml
+/docs/demo/gallery.js
+/docs/demo/gallery_bg.wasm
