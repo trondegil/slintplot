@@ -111,16 +111,69 @@
   .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-soft); }
   .card h4 { margin: 0 0 4px; font-size: 15px; }
   .card p { margin: 0; font-size: 13px; color: var(--text-muted); }
+  .topbar, .backdrop { display: none; }
   @media (max-width: 820px) {
     .layout { display: block; }
     nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
     main { padding: 20px 16px 60px; }
+    /* Tables become one card per row: the first cell as its heading, the
+       others labelled with their column names (copied in by the script at
+       the end). */
+    .js table, .js tbody, .js tr, .js td { display: block; }
+    .js tr.head { display: none; }
+    .js tr { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .js td { padding: 2px 0; border: 0; }
+    .js td:first-child { font-weight: 600; margin-bottom: 2px; }
+    .js td[data-label]::before {
+      content: attr(data-label); display: inline-block; min-width: 8.5em; margin-right: 6px;
+      color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .js td:empty { display: none; }
+    .hero { padding: 20px 16px; }
+    /* With JavaScript, the menu opens from a button instead of sitting
+       above the content. */
+    .js .topbar {
+      display: flex; align-items: center; gap: 10px;
+      position: sticky; top: 0; z-index: 20;
+      padding: 8px 12px; background: var(--sidebar); border-bottom: 1px solid var(--border);
+    }
+    .topbar .brand { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; font-size: 17px; }
+    .topbar .brand img { width: 26px; height: 26px; }
+    .menu-button {
+      display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; padding: 0; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); cursor: pointer;
+    }
+    .menu-button svg { width: 20px; height: 20px; }
+    .js nav {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
+      width: min(300px, 85vw); height: auto;
+      border-right: 1px solid var(--border); border-bottom: 0;
+      transform: translateX(-100%); visibility: hidden;
+      transition: transform .2s ease, visibility .2s;
+    }
+    .menu-open nav { transform: none; visibility: visible; }
+    .menu-open .backdrop { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .4); }
+    .menu-open { overflow: hidden; }
+    /* Section links land below the sticky top bar. */
+    .js { scroll-padding-top: 68px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    nav { transition: none !important; }
   }
 </style>
 </head>
 <body>
+<script>document.documentElement.classList.add("js");</script>
+<header class="topbar">
+  <button class="menu-button" type="button" aria-label="Menu" aria-controls="menu" aria-expanded="false">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="#top"><img src="assets/slintplot-icon.png" alt="">SlintPlot</a>
+</header>
+<div class="backdrop"></div>
 <div class="layout">
-<nav>
+<nav id="menu">
   <a class="brand" href="#top"><img src="assets/slintplot-icon.png" alt="">SlintPlot</a>
   <h4>Start</h4>
   <a href="#overview">Overview</a>
@@ -1505,5 +1558,38 @@ Each download includes the licenses of the open-source crates it is built from.<
 
 </main>
 </div>
+<script>
+  // The menu on narrow screens: the button opens it, and picking a section,
+  // tapping outside it or pressing Escape closes it.
+  const root = document.documentElement;
+  const button = document.querySelector(".menu-button");
+  const setOpen = (open) => {
+    root.classList.toggle("menu-open", open);
+    button.setAttribute("aria-expanded", String(open));
+    button.setAttribute("aria-label", open ? "Close menu" : "Menu");
+  };
+  button.addEventListener("click", () => setOpen(!root.classList.contains("menu-open")));
+  document.querySelector(".backdrop").addEventListener("click", () => setOpen(false));
+  document.querySelectorAll("nav a").forEach((link) => link.addEventListener("click", () => setOpen(false)));
+  // Column names as labels, for the one-card-per-row tables on narrow screens.
+  document.querySelectorAll("table").forEach((table) => {
+    const head = table.querySelector("tr");
+    if (!head || !head.querySelector("th")) return;
+    head.classList.add("head");
+    const names = [...head.children].map((cell) => cell.textContent.trim());
+    table.querySelectorAll("tr").forEach((row) => {
+      if (row === head) return;
+      [...row.children].forEach((cell, i) => {
+        if (i > 0 && names[i]) cell.dataset.label = names[i];
+      });
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && root.classList.contains("menu-open")) {
+      setOpen(false);
+      button.focus();
+    }
+  });
+</script>
 </body>
 </html>
