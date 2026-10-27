@@ -28,18 +28,31 @@ impl<T: Clone + 'static> StreamModel<T> {
 
     /// Appends a value, dropping the oldest one when the model is full.
     pub fn push(&self, value: T) {
+        self.extend([value]);
+    }
+
+    /// Appends values, dropping the oldest ones beyond the capacity.
+    pub fn extend(&self, new: impl IntoIterator<Item = T>) {
         let mut values = self.values.borrow_mut();
-        let dropped = values.len() >= self.capacity;
-        if dropped {
-            values.pop_front();
-        }
-        values.push_back(value);
+        let before = values.len();
+        values.extend(new);
+        let added = values.len() - before;
+        let dropped = values.len().saturating_sub(self.capacity);
+        values.drain(..dropped);
         let len = values.len();
         drop(values);
-        if dropped {
-            self.notify.row_removed(0, 1);
+        if added == 0 {
+            return;
         }
-        self.notify.row_added(len - 1, 1);
+        if dropped >= before {
+            // Every old value is gone, and some new ones too.
+            self.notify.reset();
+        } else {
+            if dropped > 0 {
+                self.notify.row_removed(0, dropped);
+            }
+            self.notify.row_added(len - added, added);
+        }
     }
 }
 

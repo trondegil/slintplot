@@ -38,9 +38,6 @@ impl Rng {
 /// Seconds between the points of a time series: one point per minute.
 const MINUTE: f32 = 60.0;
 
-/// Streaming updates per second.
-pub const STREAM_RATE: u32 = 60;
-
 /// Random walks, one per dataset, that can be extended for streaming.
 struct Data {
     rng: Rng,
@@ -48,6 +45,11 @@ struct Data {
     series: Vec<Rc<StreamModel<f32>>>,
     /// Time series and scatter charts: the points of each dataset.
     points: Vec<Rc<StreamModel<ChartXY>>>,
+    /// Line, bar and dumbbell charts: the category labels, which move on
+    /// with the values when streaming.
+    labels: Rc<StreamModel<SharedString>>,
+    /// The number of the next label.
+    next_label: usize,
     last: Vec<f32>,
     /// Time series: the time of the newest point.
     last_time: f32,
@@ -132,8 +134,10 @@ impl Data {
             }
             rows.push(row);
         }
-        let labels: Vec<SharedString> = (0..count).map(|i| i.to_string().into()).collect();
-        app.set_labels(ModelRc::new(VecModel::from(labels)));
+        let labels = (0..count).map(|i| SharedString::from(i.to_string()));
+        self.labels = Rc::new(StreamModel::new(count, labels));
+        self.next_label = count;
+        app.set_labels(self.labels.clone().into());
         // The chart types that don't take datasets.
         let flat = matches!(chart_type, 4 | 6 | 7);
         app.set_datasets(ModelRc::new(VecModel::from(if flat {
@@ -192,11 +196,11 @@ impl Data {
         app.set_gauge_value(self.gauge);
     }
 
-    /// Appends a value to every dataset, dropping the oldest one. Time
-    /// series move on by a minute; scatter charts replace a point. Waterfalls
-    /// move on by a step; funnels and sunbursts change one value, and the
-    /// gauge moves.
-    fn stream(&mut self, app: &Stress) {
+    /// Appends `samples` values to every dataset, dropping as many of the
+    /// oldest. Time series move on by a minute per sample; scatter charts
+    /// replace points. Waterfalls move on by a step; funnels and sunbursts
+    /// change one value, and the gauge moves.
+    fn stream(&mut self, app: &Stress, samples: usize) {
         self.tick += 1;
         if self.steps.row_count() > 0 {
             self.steps.remove(0);
@@ -227,29 +231,43 @@ impl Data {
         self.gauge = (self.gauge + (self.rng.next() - 0.5) * 6.0).clamp(0.0, 100.0);
         app.set_gauge_value(self.gauge);
         for d in 0..self.series.len() {
-            let next = self.step(self.last[d], d);
-            self.last[d] = next;
-            self.series[d].push(next);
+            let values: Vec<f32> = (0..samples)
+                .map(|_| {
+                    self.last[d] = self.step(self.last[d], d);
+                    self.last[d]
+                })
+                .collect();
+            self.series[d].extend(values);
         }
-        self.last_time += MINUTE;
+        if !self.series.is_empty() {
+            let first = self.next_label;
+            self.next_label += samples;
+            self.labels
+                .extend((first..self.next_label).map(|i| SharedString::from(i.to_string())));
+        }
+        let first_time = self.last_time;
+        self.last_time += MINUTE * samples as f32;
         for d in 0..self.points.len() {
-            let next = self.step(self.last[d], d);
-            self.last[d] = next;
-            let model = &self.points[d];
-            let point = if self.chart_type == 2 {
-                ChartXY {
-                    x: self.last_time,
-                    y: next,
-                    r: 0.0,
-                }
-            } else {
-                ChartXY {
-                    x: (self.rng.next() - 0.5) * 200.0 + 60.0 * d as f32,
-                    y: next + (self.rng.next() - 0.5) * 60.0,
-                    r: 0.0,
-                }
-            };
-            model.push(point);
+            let points: Vec<ChartXY> = (1..=samples)
+                .map(|i| {
+                    let y = self.step(self.last[d], d);
+                    self.last[d] = y;
+                    if self.chart_type == 2 {
+                        ChartXY {
+                            x: first_time + MINUTE * i as f32,
+                            y,
+                            r: 0.0,
+                        }
+                    } else {
+                        ChartXY {
+                            x: (self.rng.next() - 0.5) * 200.0 + 60.0 * d as f32,
+                            y: y + (self.rng.next() - 0.5) * 60.0,
+                            r: 0.0,
+                        }
+                    }
+                })
+                .collect();
+            self.points[d].extend(points);
         }
     }
 }
@@ -272,6 +290,8 @@ fn setup(app: &Stress) -> Rc<RefCell<Data>> {
         series: Vec::new(),
         points: Vec::new(),
         last: Vec::new(),
+        labels: Rc::new(StreamModel::new(0, [])),
+        next_label: 0,
         last_time: 0.0,
         chart_type: 0,
         steps: Rc::new(VecModel::default()),
@@ -326,18 +346,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Once the app has finished launching, which would reset it.
     Timer::single_shot(Duration::ZERO, dock_icon::set);
 
-    // Streaming: a 60 Hz timer. If rendering can't keep up, ticks are delayed,
-    // so the measured update rate drops below 60.
-    let ticks = Rc::new(Cell::new(0u32));
+    // Streaming: samples arrive at the chosen rate, and a timer adds those
+    // that are due, at most 60 times a second: drawing more often than the
+    // screen refreshes is wasted. When drawing is slow, ticks come later and
+    // carry more samples, so the data rate holds and the frame rate drops.
+    let samples = Rc::new(Cell::new(0usize));
     let stream_timer = Timer::default();
     {
         let weak = app.as_weak();
-        let ticks = ticks.clone();
-        let interval = Duration::from_secs_f64(1.0 / STREAM_RATE as f64);
-        stream_timer.start(TimerMode::Repeated, interval, move || {
-            if let Some(app) = weak.upgrade().filter(|app| app.get_streaming()) {
-                data.borrow_mut().stream(&app);
-                ticks.set(ticks.get() + 1);
+        let samples = samples.clone();
+        let mut last = Instant::now();
+        let mut owed = 0.0;
+        stream_timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
+            let now = Instant::now();
+            let elapsed = now.duration_since(last).as_secs_f64();
+            last = now;
+            let Some(app) = weak.upgrade().filter(|app| app.get_streaming()) else {
+                owed = 0.0;
+                return;
+            };
+            owed += app.get_stream_rate() as f64 * elapsed;
+            let due = owed.floor();
+            owed -= due;
+            // More than a whole dataset at once replaces all of it.
+            let count = POINT_COUNTS[app.get_point_index().clamp(0, 4) as usize];
+            let due = (due as usize).min(count);
+            if due > 0 {
+                data.borrow_mut().stream(&app, due);
+                samples.set(samples.get() + due);
             }
         });
     }
@@ -363,9 +399,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             since = Instant::now();
             let points = POINT_COUNTS[app.get_point_index().clamp(0, 4) as usize];
             let total = points * app.get_dataset_count().max(1) as usize;
-            let updates = ticks.replace(0) as f32 / elapsed;
+            let rate = samples.replace(0) as f64 / elapsed as f64;
             let streaming = if app.get_streaming() {
-                format!("{updates:>4.0} of {STREAM_RATE} updates/s")
+                format!(
+                    "{} samples/s per dataset",
+                    slintplot::ticks::format_value(rate.round())
+                )
             } else {
                 "not streaming".into()
             };

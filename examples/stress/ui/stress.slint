@@ -36,6 +36,11 @@ export component Stress inherits Window {
     in-out property <bool> smooth: true;
     in-out property <bool> decimate: true;
     in-out property <bool> streaming: false;
+    // Streaming: samples per second per dataset, by index into the picker.
+    in-out property <int> stream-rate-index: 1;
+    out property <int> stream-rate: [10, 60, 1000, 10000, 100000][root.stream-rate-index];
+    // How many of the latest values to show: all, 1,000 or 10,000.
+    in-out property <int> latest-index: 0;
     in-out property <bool> animated: true;
     in-out property <float> view-start: 0;
     in-out property <float> view-end: 1;
@@ -55,6 +60,14 @@ export component Stress inherits Window {
     // Apply the "smooth" setting to the existing datasets.
     callback restyle();
 
+    // Zooms to the latest values, as `latest-index` says.
+    function show-latest() {
+        let count = [100, 1000, 10000, 100000, 1000000][root.point-index];
+        let latest = [0, 1000, 10000][root.latest-index];
+        root.view-start = latest > 0 && latest < count ? 1 - latest / count : 0;
+        root.view-end = 1;
+    }
+
     changed dark-mode => {
         Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
     }
@@ -73,9 +86,8 @@ export component Stress inherits Window {
                 model: ["Line", "Bars", "Time series", "Scatter", "Waterfall", "Dumbbell", "Funnel", "Sunburst", "Gauge"];
                 current-index <=> root.chart-type;
                 selected => {
-                    root.view-start = 0;
-                    root.view-end = 1;
                     root.regenerate();
+                    root.show-latest();
                 }
             }
             Text {
@@ -88,6 +100,7 @@ export component Stress inherits Window {
                 current-index <=> root.point-index;
                 selected => {
                     root.regenerate();
+                    root.show-latest();
                 }
             }
             Text {
@@ -118,10 +131,6 @@ export component Stress inherits Window {
                 text: "Decimate";
                 checked <=> root.decimate;
             }
-            CheckBox {
-                text: "Stream (60 Hz)";
-                checked <=> root.streaming;
-            }
             ComboBox {
                 model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
                 current-index <=> root.theme;
@@ -137,10 +146,43 @@ export component Stress inherits Window {
             color: ChartTheme.text-color;
             wrap: word-wrap;
         }
-        Text {
-            text: root.stats;
-            color: ChartTheme.text-color;
-            font-family: "Menlo";
+        HorizontalBox {
+            alignment: start;
+            padding-top: 0;
+            padding-bottom: 0;
+            CheckBox {
+                text: "Stream";
+                checked <=> root.streaming;
+            }
+            Text {
+                text: "Samples/s";
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
+            }
+            ComboBox {
+                width: 110px;
+                model: ["10", "60", "1,000", "10,000", "100,000"];
+                current-index <=> root.stream-rate-index;
+            }
+            Text {
+                text: "Show";
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
+            }
+            ComboBox {
+                width: 150px;
+                model: ["All", "Latest 1,000", "Latest 10,000"];
+                current-index <=> root.latest-index;
+                selected => {
+                    root.show-latest();
+                }
+            }
+            Text {
+                text: root.stats;
+                color: ChartTheme.text-color;
+                font-family: "Menlo";
+                vertical-alignment: center;
+            }
         }
 
         if root.chart-type == 0: LineChart {

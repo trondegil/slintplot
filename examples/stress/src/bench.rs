@@ -235,7 +235,7 @@ fn stream(
                     && (times.len() < 20 || started.elapsed() < Duration::from_secs(15))
                 {
                     let update = Instant::now();
-                    data.borrow_mut().stream(app);
+                    data.borrow_mut().stream(app, 1);
                     frame(window, pixels);
                     times.push(update.elapsed());
                 }
