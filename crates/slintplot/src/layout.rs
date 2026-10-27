@@ -139,6 +139,8 @@ pub struct Dataset {
     /// Draw the line as steps: vertical at each point, then horizontal to
     /// the next. Overrides `tension`.
     pub stepped: bool,
+    /// Plot against the second value axis, on the right.
+    pub right_axis: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -226,8 +228,8 @@ pub fn category_window(count: usize, kinds: &[Kind], view: (f32, f32)) -> Catego
 }
 
 /// Cumulative sums of the visible datasets, for stacked charts. Positive and
-/// negative values stack separately, and so do datasets
-/// drawn as lines and as bars.
+/// negative values stack separately, and so do datasets drawn as lines and as
+/// bars, and datasets on the left and right value axes.
 pub struct Stacks {
     start: usize,
     /// Per dataset, for each index in the range: the (base, top) of its
@@ -238,11 +240,11 @@ pub struct Stacks {
 impl Stacks {
     pub fn new(datasets: &[Dataset], kinds: &[Kind], indices: std::ops::Range<usize>) -> Self {
         let len = indices.len();
-        // [drawn as bars][negative] running sums.
-        let mut sums = [
-            [vec![0.0; len], vec![0.0; len]],
-            [vec![0.0; len], vec![0.0; len]],
-        ];
+        // [right axis][drawn as bars][negative] running sums.
+        let mut sums: [[[Vec<f64>; 2]; 2]; 2] = Default::default();
+        for sum in sums.iter_mut().flatten().flatten() {
+            *sum = vec![0.0; len];
+        }
         let segments = datasets
             .iter()
             .zip(kinds)
@@ -250,7 +252,7 @@ impl Stacks {
                 if d.hidden {
                     return Vec::new();
                 }
-                let group = &mut sums[usize::from(kind == Kind::Bar)];
+                let group = &mut sums[usize::from(d.right_axis)][usize::from(kind == Kind::Bar)];
                 indices
                     .clone()
                     .map(|i| {
@@ -279,8 +281,17 @@ impl Stacks {
             .unwrap_or((0.0, f64::NAN))
     }
 
-    fn all(&self) -> impl Iterator<Item = &(f64, f64)> {
-        self.segments.iter().flatten()
+    /// The segments of the datasets on one value axis, or on any (`None`).
+    fn on_axis<'a>(
+        &'a self,
+        datasets: &'a [Dataset],
+        side: Option<bool>,
+    ) -> impl Iterator<Item = &'a (f64, f64)> {
+        self.segments
+            .iter()
+            .zip(datasets)
+            .filter(move |(_, d)| side.is_none_or(|right| d.right_axis == right))
+            .flat_map(|(segments, _)| segments)
     }
 }
 
@@ -300,8 +311,13 @@ pub fn plotted_value(
     if !stacked {
         return own;
     }
+    let axis = datasets[dataset].right_axis;
     let below: f64 = (0..dataset)
-        .filter(|&i| !datasets[i].hidden && kinds.get(i) == kinds.get(dataset))
+        .filter(|&i| {
+            !datasets[i].hidden
+                && kinds.get(i) == kinds.get(dataset)
+                && datasets[i].right_axis == axis
+        })
         .map(|i| value(&datasets[i]))
         .filter(|v| v.is_finite() && (*v < 0.0) == (own < 0.0))
         .sum();
@@ -330,6 +346,13 @@ pub struct AxisRequest<'a> {
     pub percent: bool,
     /// Extra room beyond the data at both ends, as a share of its range.
     pub grace: f64,
+    /// The datasets the axis is for: those on the right axis
+    /// (`Some(true)`), on the left one (`Some(false)`), or all of them in
+    /// charts with one value axis (`None`).
+    pub side: Option<bool>,
+    /// Give a linear axis exactly this many ticks, to line them up with
+    /// another axis' ticks; 0 chooses freely.
+    pub align_ticks: usize,
 }
 
 /// Computes the value axis for the visible datasets. Tick positions are
@@ -359,7 +382,11 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
         }
     };
     let empty = (f64::INFINITY, f64::NEG_INFINITY);
-    let visible = || req.datasets.iter().filter(|d| !d.hidden);
+    let visible = || {
+        req.datasets
+            .iter()
+            .filter(|d| !d.hidden && req.side.is_none_or(|right| d.right_axis == right))
+    };
     let (mut min, mut max) = if req.kind.uses_points() {
         let (x0, x1) = scatter_x_window(req.datasets, req.view);
         visible()
@@ -372,7 +399,7 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
         let indices = category_window(count, &kinds, req.view).indices;
         if req.stacked {
             Stacks::new(req.datasets, &kinds, indices)
-                .all()
+                .on_axis(req.datasets, req.side)
                 .fold(empty, |acc, &(base, top)| extent(extent(acc, base), top))
         } else {
             visible()
@@ -421,7 +448,11 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
             Some((lo, hi)) if hi > lo => (lo, hi),
             _ => (min, max),
         };
-        let nice = NiceScale::new(lo, hi, max_ticks);
+        let nice = if req.align_ticks >= 2 && req.fixed.is_none() {
+            NiceScale::aligned(lo, hi, req.align_ticks)
+        } else {
+            NiceScale::new(lo, hi, max_ticks)
+        };
         // A fixed range ends exactly at its bounds, with the ticks inside.
         let (lo, hi) = if req.fixed.is_some() {
             (lo, hi)
@@ -507,6 +538,8 @@ pub fn percentages(datasets: &[Dataset]) -> Vec<Dataset> {
                 .collect::<Vec<_>>()
                 .into(),
             points: Vec::new(),
+            // Shares all go on the one percentage axis.
+            right_axis: false,
             ..d.clone()
         })
         .collect()
@@ -545,7 +578,10 @@ fn visible_positive_extent(req: &AxisRequest) -> Option<(f64, f64)> {
             extent = Some(extent.map_or((v, v), |(lo, hi)| (lo.min(v), hi.max(v))));
         }
     };
-    let visible = req.datasets.iter().filter(|d| !d.hidden);
+    let visible = req
+        .datasets
+        .iter()
+        .filter(|d| !d.hidden && req.side.is_none_or(|right| d.right_axis == right));
     if req.kind.uses_points() {
         let (x0, x1) = scatter_x_window(req.datasets, req.view);
         let edge = (x1 - x0) * 1e-6;
@@ -559,7 +595,8 @@ fn visible_positive_extent(req: &AxisRequest) -> Option<(f64, f64)> {
         let count = category_count(req.datasets, req.label_count);
         let indices = category_window(count, &kinds, req.view).indices;
         if req.stacked {
-            for &(_, top) in Stacks::new(req.datasets, &kinds, indices).all() {
+            let stacks = Stacks::new(req.datasets, &kinds, indices);
+            for &(_, top) in stacks.on_axis(req.datasets, req.side) {
                 add(top);
             }
         } else {
@@ -641,6 +678,10 @@ pub struct LayoutRequest<'a> {
     pub height: f32,
     pub y_min: f64,
     pub y_max: f64,
+    /// The range of the right value axis, for datasets with `right_axis`.
+    /// Without a range (`y2_max <= y2_min`), they use the left axis.
+    pub y2_min: f64,
+    pub y2_max: f64,
     /// Entry animation progress, from 0 (all values at the baseline) to 1.
     pub progress: f32,
     pub font_size: f32,
@@ -658,6 +699,8 @@ pub struct LayoutRequest<'a> {
     pub palette: &'a [Rgba],
     /// A logarithmic value axis.
     pub logarithmic: bool,
+    /// A logarithmic right value axis.
+    pub y2_logarithmic: bool,
     /// Scatter charts: x values are seconds after this time axis' origin.
     pub time: Option<TimeAxis>,
     /// Scatter charts: connect each dataset's points with a line.
@@ -749,6 +792,56 @@ impl Layout {
     }
 }
 
+/// One value axis of a layout: maps values to y pixels, moving them up from
+/// the baseline during the entry animation.
+struct YMap {
+    scale: ValueScale,
+    /// Bars and areas grow from 0, or from the bottom of a logarithmic axis.
+    baseline_value: f64,
+    height: f32,
+    progress: f64,
+}
+
+impl YMap {
+    fn new(min: f64, max: f64, logarithmic: bool, req: &LayoutRequest) -> Self {
+        YMap {
+            scale: ValueScale {
+                min,
+                max,
+                logarithmic,
+            },
+            baseline_value: if logarithmic {
+                min
+            } else {
+                0f64.clamp(min, max.max(min))
+            },
+            height: req.height,
+            progress: req.progress.clamp(0.0, 1.0) as f64,
+        }
+    }
+
+    /// The left and right axes of a request.
+    fn both(req: &LayoutRequest) -> [YMap; 2] {
+        let left = YMap::new(req.y_min, req.y_max, req.logarithmic, req);
+        let right = if req.y2_max > req.y2_min {
+            YMap::new(req.y2_min, req.y2_max, req.y2_logarithmic, req)
+        } else {
+            YMap::new(req.y_min, req.y_max, req.logarithmic, req)
+        };
+        [left, right]
+    }
+
+    fn y(&self, v: f64) -> f32 {
+        let from = self.scale.fraction(self.baseline_value);
+        self.height - (from + (self.scale.fraction(v) - from) * self.progress) as f32 * self.height
+    }
+
+    /// The baseline, in pixels from the top.
+    fn baseline(&self) -> f32 {
+        self.scale.pos(self.baseline_value, self.height)
+    }
+}
+
 pub fn layout(req: &LayoutRequest) -> Layout {
     if req.percent {
         let shares = percentages(req.datasets);
@@ -784,31 +877,15 @@ pub fn layout(req: &LayoutRequest) -> Layout {
     };
     let indices = window.indices.clone();
 
-    let scale = ValueScale {
-        min: req.y_min,
-        max: req.y_max,
-        logarithmic: req.logarithmic,
-    };
-    // Bars and areas grow from 0, or from the bottom of a logarithmic axis.
-    let baseline_value = if req.logarithmic {
-        req.y_min
-    } else {
-        0f64.clamp(req.y_min, req.y_max.max(req.y_min))
-    };
-    let baseline = scale.pos(baseline_value, req.height);
-    let progress = req.progress.clamp(0.0, 1.0) as f64;
+    let axes = YMap::both(req);
+    let axis_of = |ds: usize| &axes[usize::from(req.datasets[ds].right_axis)];
     let stacks = req
         .stacked
         .then(|| Stacks::new(req.datasets, &kinds, indices.clone()));
     // (base, top) of every value, as drawn.
     let segment = |ds: usize, index: usize, v: f64| match &stacks {
         Some(s) => s.segment(ds, index),
-        None => (baseline_value, v),
-    };
-    // The entry animation moves values up from the baseline on screen.
-    let y_of = |v: f64| {
-        let from = scale.fraction(baseline_value);
-        req.height - (from + (scale.fraction(v) - from) * progress) as f32 * req.height
+        None => (axis_of(ds).baseline_value, v),
     };
     // Curves stay inside the plot vertically.
     let bounds = (0.0, req.height);
@@ -825,6 +902,8 @@ pub fn layout(req: &LayoutRequest) -> Layout {
         .map(|(i, d)| {
             let kind = kinds[i];
             let color = resolve_color(d.color, i, req.palette);
+            let axis = axis_of(i);
+            let baseline = axis.baseline();
             if d.hidden || kind != Kind::Line {
                 return Series {
                     kind,
@@ -837,7 +916,7 @@ pub fn layout(req: &LayoutRequest) -> Layout {
                 .filter(|(_, v)| v.is_finite())
                 .map(|(index, v)| Point {
                     x: out.category_x(index),
-                    y: y_of(segment(i, index, v).1),
+                    y: axis.y(segment(i, index, v).1),
                     index,
                     r: 0.0,
                 })
@@ -874,7 +953,7 @@ pub fn layout(req: &LayoutRequest) -> Layout {
                     let bases = shape(
                         points
                             .iter()
-                            .map(|p| (p.x, y_of(s.segment(i, p.index).0)))
+                            .map(|p| (p.x, axis.y(s.segment(i, p.index).0)))
                             .collect(),
                     );
                     path::band(&coords, &bases, tension, bounds)
@@ -915,7 +994,7 @@ pub fn layout(req: &LayoutRequest) -> Layout {
                     continue;
                 }
                 let (base, top) = segment(ds, index, v);
-                let (y0, y1) = (y_of(base), y_of(top));
+                let (y0, y1) = (axis_of(ds).y(base), axis_of(ds).y(top));
                 let band_left = out.category_x(index) - step / 2.0;
                 out.bars.push(Bar {
                     dataset: ds,
@@ -980,20 +1059,7 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
     // The window comes from f32 fractions; don't drop points on its edges.
     let edge = (x1 - x0) * 1e-6;
     let progress = req.progress.clamp(0.0, 1.0) as f64;
-    let y_scale = ValueScale {
-        min: req.y_min,
-        max: req.y_max,
-        logarithmic: req.logarithmic,
-    };
-    let baseline = if req.logarithmic {
-        req.y_min
-    } else {
-        0f64.clamp(req.y_min, req.y_max.max(req.y_min))
-    };
-    let y_of = |y: f64| {
-        let from = y_scale.fraction(baseline);
-        req.height - (from + (y_scale.fraction(y) - from) * progress) as f32 * req.height
-    };
+    let axes = YMap::both(req);
     let bounds = (0.0, req.height);
     let series = req
         .datasets
@@ -1001,6 +1067,8 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
         .enumerate()
         .map(|(i, d)| {
             let color = resolve_color(d.color, i, req.palette);
+            let axis = &axes[usize::from(d.right_axis)];
+            let y_of = |y: f64| axis.y(y);
             if d.hidden {
                 return Series {
                     kind: req.kind,
@@ -1097,7 +1165,7 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
                 color,
                 line: path::line(&coords, tension, bounds),
                 area: if d.fill {
-                    path::area(&coords, tension, y_of(baseline), bounds)
+                    path::area(&coords, tension, axis.baseline(), bounds)
                 } else {
                     String::new()
                 },
@@ -1331,6 +1399,8 @@ mod tests {
             format: &PLAIN,
             percent: false,
             grace: 0.0,
+            side: None,
+            align_ticks: 0,
         })
     }
 
@@ -1467,6 +1537,8 @@ mod tests {
             format: &PLAIN,
             percent: false,
             grace: 0.0,
+            side: None,
+            align_ticks: 0,
         });
         assert!(a.min >= 400.0 && a.max <= 700.0, "{} to {}", a.min, a.max);
     }
@@ -1516,6 +1588,8 @@ mod tests {
                 format: &PLAIN,
                 percent: false,
                 grace: 0.0,
+                side: None,
+                align_ticks: 0,
             })
         };
         let fixed = axis_with(Some((0.0, 250.0)), false);
@@ -1556,6 +1630,8 @@ mod tests {
             format: &money,
             percent: false,
             grace: 0.0,
+            side: None,
+            align_ticks: 0,
         });
         assert_eq!(a.ticks.last().map(|t| t.label.as_str()), Some("$6,000"));
     }
@@ -1769,6 +1845,9 @@ mod tests {
             height: 100.0,
             y_min: 0.0,
             y_max: 10.0,
+            y2_min: 0.0,
+            y2_max: 1.0,
+            y2_logarithmic: false,
             progress: 1.0,
             font_size: 12.0,
             show_points: true,
@@ -1915,5 +1994,133 @@ mod tests {
         let mut req = request(Kind::Bar, &data, NO_LABELS);
         req.progress = 0.0;
         assert_eq!(layout(&req).bars[0].height, 0.0);
+    }
+
+    fn right(values: &[f64]) -> Dataset {
+        Dataset {
+            right_axis: true,
+            ..ds(values)
+        }
+    }
+
+    fn side_axis(
+        datasets: &[Dataset],
+        kind: Kind,
+        stacked: bool,
+        right: bool,
+        align: usize,
+    ) -> Axis {
+        value_axis(&AxisRequest {
+            datasets,
+            kind,
+            stacked,
+            label_count: 0,
+            length: 200.0,
+            begin_at_zero: true,
+            tick_spacing: 36.0,
+            view: (0.0, 1.0),
+            fixed: None,
+            logarithmic: false,
+            format: &PLAIN,
+            percent: false,
+            grace: 0.0,
+            side: Some(right),
+            align_ticks: align,
+        })
+    }
+
+    #[test]
+    fn each_axis_fits_its_own_datasets() {
+        let data = [ds(&[2.0, 8.0]), right(&[300.0, 900.0])];
+        let left = side_axis(&data, Kind::Line, false, false, 0);
+        let right_axis = side_axis(&data, Kind::Line, false, true, 0);
+        assert!(
+            left.max < 20.0 && right_axis.max >= 900.0,
+            "{left:?} {right_axis:?}"
+        );
+    }
+
+    #[test]
+    fn aligned_right_axis_has_the_left_axis_ticks() {
+        let data = [ds(&[0.0, 23.0]), right(&[0.0, 410.0])];
+        let left = side_axis(&data, Kind::Bar, false, false, 0);
+        let aligned = side_axis(&data, Kind::Bar, false, true, left.ticks.len());
+        assert_eq!(aligned.ticks.len(), left.ticks.len());
+        assert!(aligned.min <= 0.0 && aligned.max >= 410.0, "{aligned:?}");
+        for (a, b) in left.ticks.iter().zip(&aligned.ticks) {
+            assert!((a.pos - b.pos).abs() < 1e-3, "{left:?} {aligned:?}");
+        }
+    }
+
+    #[test]
+    fn aligned_scales_cover_the_data_with_round_steps() {
+        for (min, max, count) in [
+            (0.0, 410.0, 6),
+            (-3.0, 7.0, 5),
+            (0.0, 0.9, 4),
+            (12.0, 12.0, 3),
+        ] {
+            let s = NiceScale::aligned(min, max, count);
+            assert_eq!(s.ticks().len(), count, "{s:?}");
+            assert!(s.min <= min && s.max >= max, "{s:?}");
+        }
+        // Rainfall up to 112 on 12 ticks: steps of 15, not 20.
+        assert_eq!(NiceScale::aligned(0.0, 112.0, 12).max, 165.0);
+        // Steps of 2.5 keep their decimal.
+        let s = NiceScale::aligned(0.0, 10.0, 5);
+        assert_eq!(s.step, 2.5);
+        assert_eq!(PLAIN.tick(7.5, s.step), "7.5");
+    }
+
+    #[test]
+    fn datasets_stack_per_axis() {
+        let data = [ds(&[1.0]), right(&[100.0]), ds(&[2.0])];
+        let kinds = [Kind::Bar; 3];
+        assert_eq!(plotted_value(&data, &kinds, true, 2, 0), 3.0);
+        assert_eq!(plotted_value(&data, &kinds, true, 1, 0), 100.0);
+        let left = side_axis(&data, Kind::Bar, true, false, 0);
+        assert!(left.max < 10.0, "{left:?}");
+    }
+
+    #[test]
+    fn right_datasets_use_the_right_scale() {
+        let data = [ds(&[5.0]), right(&[50.0])];
+        let mut req = request(Kind::Bar, &data, NO_LABELS);
+        req.y2_max = 100.0;
+        let bars = layout(&req).bars;
+        // Both are half way up their axes.
+        assert_eq!(bars[0].height, 50.0);
+        assert_eq!(bars[1].height, 50.0);
+    }
+
+    #[test]
+    fn scatter_points_use_their_axis_and_one_axis_charts_ignore_it() {
+        let point = |y: f64| {
+            vec![
+                DataPoint { x: 0.0, y, r: 0.0 },
+                DataPoint { x: 1.0, y, r: 0.0 },
+            ]
+        };
+        let data = [
+            Dataset {
+                points: point(5.0),
+                ..Default::default()
+            },
+            Dataset {
+                points: point(50.0),
+                right_axis: true,
+                ..Default::default()
+            },
+        ];
+        let mut req = request(Kind::Scatter, &data, NO_LABELS);
+        req.y2_max = 100.0;
+        let out = layout(&req);
+        assert_eq!(out.series[0].points[0].y, 50.0);
+        assert_eq!(out.series[1].points[0].y, 50.0);
+        // Without a right range, the left axis.
+        req.y2_max = 0.0;
+        assert_eq!(layout(&req).series[1].points[0].y, -400.0);
+        // And an axis for all datasets includes both.
+        assert!(axis(&data, Kind::Scatter, false, 200.0, true).max >= 50.0);
     }
 }

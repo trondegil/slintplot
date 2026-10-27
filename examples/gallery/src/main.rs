@@ -427,6 +427,18 @@ const SAMPLES: &[Sample] = &[
         &["Randomize"],
     ),
     sample(
+        "axes-two",
+        "Axes",
+        "Two value axes",
+        "right-axis puts a dataset on a second value axis, with its own y2-title and y2-value-suffix. Its ticks line up with the left axis' grid.",
+        Shape::Months {
+            datasets: 2,
+            min: 0.0,
+            max: 1.0,
+        },
+        &["Randomize"],
+    ),
+    sample(
         "survey",
         "Bar charts",
         "100% stacked bars",
@@ -824,6 +836,31 @@ impl State {
             "combo-bar-line" | "stacked-bar-line" if index == 0 => {
                 ds.label = "Line".into();
                 ds.series_type = ChartSeriesType::Line;
+            }
+            // Made-up monthly weather: temperature as a line on the left
+            // axis, rainfall as bars on the right one.
+            "axes-two" => {
+                let months = self.labels.row_count();
+                let values = (0..months)
+                    .map(|i| {
+                        if index == 0 {
+                            let season = ((i as f32 - 3.5) / 12.0 * std::f32::consts::TAU).sin();
+                            ((7.0 + 9.0 * season + (self.rng.next() - 0.5) * 3.0) * 10.0).round()
+                                / 10.0
+                        } else {
+                            self.rng.range(40.0, 140.0).round()
+                        }
+                    })
+                    .collect();
+                ds.values = floats(values);
+                if index == 0 {
+                    ds.label = "Temperature".into();
+                    ds.series_type = ChartSeriesType::Line;
+                    ds.tension = 0.4;
+                } else {
+                    ds.label = "Rainfall".into();
+                    ds.right_axis = true;
+                }
             }
             _ => {}
         }
@@ -1469,6 +1506,7 @@ fn snapshots(
         ("sunburst", (850.0, 497.0), true, "sunburst-zoomed"),
         ("gauge", (1010.0, 300.0), false, "gauge-hover"),
         ("waterfall", (670.0, 420.0), false, "waterfall-hover"),
+        ("axes-two", (1000.0, 420.0), false, "axes-two-hover"),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);

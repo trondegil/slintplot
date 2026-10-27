@@ -49,6 +49,41 @@ impl NiceScale {
     }
 }
 
+impl NiceScale {
+    /// A scale with exactly `count` ticks that covers `[min, max]`, so that
+    /// its ticks line up with those of another axis with `count` ticks. Steps
+    /// are 1, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten: more than a
+    /// free axis uses, so the data fills more of the fixed number of ticks.
+    pub fn aligned(min: f64, max: f64, count: usize) -> Self {
+        let (min, max) = if max > min {
+            (min, max)
+        } else {
+            (min - 1.0, max + 1.0)
+        };
+        let intervals = count.max(2) as f64 - 1.0;
+        let raw = (max - min) / intervals;
+        let mut magnitude = 10f64.powf(raw.log10().floor());
+        loop {
+            for factor in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0] {
+                let step = clean(factor * magnitude);
+                if step < raw * (1.0 - 1e-9) {
+                    continue;
+                }
+                let lo = clean((min / step + 1e-9).floor() * step);
+                let hi = clean(lo + step * intervals);
+                if hi >= max - step * 1e-9 {
+                    return NiceScale {
+                        min: lo,
+                        max: hi,
+                        step,
+                    };
+                }
+            }
+            magnitude *= 10.0;
+        }
+    }
+}
+
 /// Rounds `x` to 1, 2, 5 or 10 times a power of ten.
 fn nice_num(x: f64) -> f64 {
     let exp = x.log10().floor();

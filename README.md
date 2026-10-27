@@ -42,7 +42,7 @@ slintplot-gallery
 - **Waterfall charts**: increases, decreases and totals, with connector lines
 - **Dumbbell charts** comparing two (or more) values per category
 - **Gauges**: a filled arc with rounded ends and a ring of bands, or a needle with ticks over colored bands
-- **Axes**: titles, fixed ranges, logarithmic scales, and value formatting (prefix, suffix, decimals)
+- **Axes**: titles, fixed ranges, logarithmic scales, value formatting (prefix, suffix, decimals), and a second value axis on the right with ticks lined up with the first
 - **Data labels** on bars, points and pie slices, as values or percentages
 - Tooltips and hover highlights: by category (`index` mode) for line, bar and
   radar charts, nearest point for scatter and bubble charts, slice under the
@@ -175,12 +175,16 @@ Screenshots from the gallery app (`cargo install slintplot-gallery`), in the def
     <td width="50%" valign="top"><img src="https://slintplot.dev/screenshots/charts/axes-log.png" alt="Logarithmic value axis"><br><em>Logarithmic value axis</em></td>
   </tr>
   <tr>
+    <td width="50%" valign="top"><img src="https://slintplot.dev/screenshots/charts/axes-two.png" alt="A second value axis: rainfall on the right, its ticks on the left axis' grid"><br><em>A second value axis: rainfall on the right, its ticks on the left axis' grid</em></td>
     <td width="50%" valign="top"><img src="https://slintplot.dev/screenshots/charts/legend-position.png" alt="The legend on the left: legend-position places it on any side"><br><em>The legend on the left: legend-position places it on any side</em></td>
-    <td width="50%" valign="top"><img src="https://slintplot.dev/screenshots/charts/zoom.png" alt="Zoom and pan: scroll to zoom around the mouse, drag to pan"><br><em>Zoom and pan: scroll to zoom around the mouse, drag to pan</em></td>
   </tr>
   <tr>
+    <td width="50%" valign="top"><img src="https://slintplot.dev/screenshots/charts/zoom.png" alt="Zoom and pan: scroll to zoom around the mouse, drag to pan"><br><em>Zoom and pan: scroll to zoom around the mouse, drag to pan</em></td>
     <td width="50%" valign="top"><img src="https://slintplot.dev/screenshots/charts/decimation.png" alt="Decimation: two lines of 100,000 points each, drawn as one span per pixel column"><br><em>Decimation: two lines of 100,000 points each, drawn as one span per pixel column</em></td>
+  </tr>
+  <tr>
     <td width="50%" valign="top"><img src="https://slintplot.dev/screenshots/charts/radar-dark.png" alt="Dark mode: every chart and theme has dark colors"><br><em>Dark mode: every chart and theme has dark colors</em></td>
+    <td width="50%" valign="top"></td>
   </tr>
 </table>
 
@@ -236,6 +240,7 @@ export component App inherits Window {
                     tension: 0.4,                   // default 0: straight lines
                     stepped: false,
                     series-type: ChartSeriesType.auto, // .line or .bar in mixed charts
+                    right-axis: false,              // true: the second value axis
                 },
                 { label: "2026", values: [15, 22, 13, 24], tension: 0.4 },
             ];
@@ -262,6 +267,17 @@ export component App inherits Window {
             value-prefix: "";
             value-suffix: "";
             value-decimals: -1;                     // -1: automatic
+
+            // Second value axis, for datasets with right-axis: true
+            y2-title: "";
+            y2-begin-at-zero: false;                // like begin-at-zero
+            y2-fixed-range: false;
+            y2-min-value: 0;
+            y2-max-value: 100;
+            y2-logarithmic: false;
+            y2-value-prefix: "";
+            y2-value-suffix: "";
+            y2-value-decimals: -1;
 
             // Large datasets, zoom and pan
             decimate: true;
@@ -304,11 +320,12 @@ Datasets are ordinary Slint models: change a row from Rust (for example with
 
 | Property | Type | Default | |
 |---|---|---|---|
-| `datasets` | `[ChartDataset]` | | `{ label, values, color, hidden, fill, tension, stepped, series-type, points }`. Leave `color` unset to use the theme's palette. |
+| `datasets` | `[ChartDataset]` | | `{ label, values, color, hidden, fill, tension, stepped, series-type, right-axis, points }`. Leave `color` unset to use the theme's palette. |
 | `labels` | `[string]` | | Category labels on the x axis |
 | `title` | `string` | `""` | |
 | `begin-at-zero` | `bool` | `true` for bars | Include 0 in the value axis |
-| `stacked` | `bool` | `false` | Stack the datasets; lines and bars stack separately |
+| `stacked` | `bool` | `false` | Stack the datasets; lines and bars stack separately, and so do the two value axes |
+| `y2-title`, `y2-value-prefix`, `y2-value-suffix`, `y2-value-decimals`, `y2-fixed-range`, `y2-min-value`, `y2-max-value`, `y2-logarithmic`, `y2-begin-at-zero` | | | The second value axis, for datasets with `right-axis: true`, like the left axis' properties |
 | `legend-position` | `ChartLegendPosition` | `top` | `top`, `bottom`, `left` or `right` |
 | `bar-radius`, `bar-border-width` | `length` | `0`, `1px` | Rounded bars and their outline |
 | `zoom-enabled` | `bool` | `false` | Mouse wheel zooms around the mouse, dragging pans, double-click resets |
@@ -334,6 +351,24 @@ BarChart {
         { label: "Sales", values: [12, 19, 8, 15] },
         { label: "Average", values: [10, 14, 12, 13], series-type: ChartSeriesType.line },
     ];
+}
+```
+
+A dataset with `right-axis: true` is plotted against a second value axis on
+the right, with its own title, format and range. Its ticks line up with the
+left axis' grid lines, unless either axis is fixed or logarithmic:
+
+```slint
+BarChart {
+    labels: ["Jan", "Feb", "Mar", "Apr"];
+    datasets: [
+        { label: "Temperature", values: [-1.5, -1.2, 1.2, 5.5], series-type: ChartSeriesType.line },
+        { label: "Rainfall", values: [86, 136, 88, 103], right-axis: true },
+    ];
+    y-title: "Temperature";
+    value-suffix: " °C";
+    y2-title: "Rainfall";
+    y2-value-suffix: " mm";
 }
 ```
 
@@ -592,7 +627,7 @@ What SlintPlot 0.1 doesn't do yet, or does with restrictions:
 - **Platforms.** Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs [in the browser](https://slintplot.dev/demo/). Embedded (MCU) builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.
 - **English texts.** Numbers and dates follow `ChartTheme.language`, but the few built-in words, such as "no data", "Running total" and "Less" and "More" under a calendar heatmap, are English. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.
 - **Time zones.** Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.
-- **One value axis.** Each chart has one value axis; there is no secondary y axis.
+- **Two value axes at most**, and only in line, bar, scatter, bubble and time series charts: horizontal bar charts have one value axis.
 - **Zoom, pan and decimation** work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.
 - **Eight colors per theme.** With more than eight datasets the colors repeat. Set your own palette for more.
 - **Large charts of separate shapes are slower.** Sunburst, waterfall, dumbbell and funnel charts draw every item as its own shape: about 320 ms for a sunburst with 10,000 items, and about 100 ms for waterfall and dumbbell charts. With up to 1,000 items, a frame takes under 30 ms. Decimation applies to lines only.

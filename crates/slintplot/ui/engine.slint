@@ -29,6 +29,9 @@ export struct ChartDataset {
     tension: float,
     // Line charts: draw steps instead of slopes.
     stepped: bool,
+    // Line, bar and scatter charts: plot against the second value axis, on
+    // the right.
+    right-axis: bool,
 }
 
 export struct ChartTick { pos: float, label: string }
@@ -111,6 +114,12 @@ export struct ChartAxisRequest {
     // Extra room beyond the data at both ends, as a share of its range.
     grace: float,
     locale: ChartLocale,
+    // The datasets the axis is for: 1 for those on the left axis, 2 for
+    // those with `right-axis`, or 0 for all (charts with one value axis).
+    side: int,
+    // Give a linear axis exactly this many ticks, to line them up with
+    // another axis' ticks; 0 chooses freely.
+    align-ticks: int,
 }
 
 export struct ChartLayoutRequest {
@@ -122,6 +131,10 @@ export struct ChartLayoutRequest {
     height: float,
     y-min: float,
     y-max: float,
+    // The right axis, for the datasets with `right-axis`.
+    y2-min: float,
+    y2-max: float,
+    y2-logarithmic: bool,
     progress: float,
     font-size: float,
     show-points: bool,
@@ -513,6 +526,8 @@ export struct ChartDumbbellRequest {
 
 export global ChartEngine {
     pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
+    // Whether any dataset, visible or not, is on the right value axis.
+    pure callback uses-right-axis(datasets: [ChartDataset]) -> bool;
     pure callback layout(request: ChartLayoutRequest) -> ChartLayout;
     pure callback format-number(value: float, format: ChartFormat, locale: ChartLocale) -> string;
     // A value in a format, written the way `ChartTheme.locale` says.

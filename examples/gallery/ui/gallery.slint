@@ -419,6 +419,16 @@ export component Gallery inherits Window {
                         max-value: 150;
                         y-title: "Value";
                     }
+                    if root.sample == "axes-two": BarChart {
+                        title: "Temperature and rainfall";
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        y-title: "Temperature";
+                        value-suffix: " °C";
+                        y2-title: "Rainfall";
+                        y2-value-suffix: " mm";
+                        show-values: false;
+                    }
                     if root.sample == "axes-log": LineChart {
                         title: "Users";
                         labels: root.labels;

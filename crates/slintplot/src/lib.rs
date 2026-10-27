@@ -109,6 +109,7 @@ macro_rules! register {
                     fill: d.fill,
                     tension: d.tension,
                     stepped: d.stepped,
+                    right_axis: d.right_axis,
                 })
                 .collect()
         }
@@ -257,6 +258,12 @@ macro_rules! register {
                 format: &format(&req.format, &req.locale),
                 percent: req.percent,
                 grace: req.grace.into(),
+                side: match req.side {
+                    1 => Some(false),
+                    2 => Some(true),
+                    _ => None,
+                },
+                align_ticks: usize::try_from(req.align_ticks).unwrap_or(0),
             });
             let axis = ChartAxis {
                 min: axis.min as f32,
@@ -266,6 +273,9 @@ macro_rules! register {
             };
             $crate::profile::record(started.elapsed());
             axis
+        });
+        engine.on_uses_right_axis(|data: ::slint::ModelRc<ChartDataset>| {
+            tracked(&data).iter().any(|d| d.right_axis)
         });
         engine.on_layout(|req: ChartLayoutRequest| {
             let started = $crate::profile::start();
@@ -288,6 +298,9 @@ macro_rules! register {
                 view: (req.view_start, req.view_end),
                 palette: &palette(&req.palette),
                 logarithmic: req.logarithmic,
+                y2_min: req.y2_min.into(),
+                y2_max: req.y2_max.into(),
+                y2_logarithmic: req.y2_logarithmic,
                 time: req.time_axis.then(|| $crate::layout::TimeAxis {
                     origin: seconds(&req.time_origin),
                     utc_offset_minutes: req.utc_offset,
@@ -332,6 +345,7 @@ macro_rules! register {
                         render_as: series_type(d.series_type),
                         values: vec![d.values.row_data(index).map_or(f64::NAN, f64::from)].into(),
                         hidden: d.hidden,
+                        right_axis: d.right_axis,
                         ..Default::default()
                     }
                 })

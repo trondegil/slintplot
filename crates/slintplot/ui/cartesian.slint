@@ -52,6 +52,19 @@ export component CartesianChart {
     in property <string> value-suffix;
     in property <int> value-decimals: -1;
 
+    // A second value axis, on the right, for the datasets with `right-axis`.
+    // It appears when a dataset uses it. Its ticks line up with the left
+    // axis' grid lines, unless either axis is fixed or logarithmic.
+    in property <string> y2-title;
+    in property <bool> y2-begin-at-zero: root.begin-at-zero;
+    in property <bool> y2-fixed-range: false;
+    in property <float> y2-min-value: 0;
+    in property <float> y2-max-value: 100;
+    in property <bool> y2-logarithmic: false;
+    in property <string> y2-value-prefix;
+    in property <string> y2-value-suffix;
+    in property <int> y2-value-decimals: -1;
+
     // Scatter charts: x values are seconds after `time-origin`, and the x axis
     // shows times and dates. Use `TimeSeriesChart`.
     in property <bool> time-axis: false;
@@ -98,6 +111,15 @@ export component CartesianChart {
         suffix: root.value-suffix,
         decimals: root.value-decimals,
     };
+    private property <ChartFormat> format2: {
+        prefix: root.y2-value-prefix,
+        suffix: root.y2-value-suffix,
+        decimals: root.y2-value-decimals,
+    };
+    // The format of a dataset's values: its axis' format.
+    pure function format-of(dataset: int) -> ChartFormat {
+        root.datasets[dataset].right-axis ? root.format2 : root.format
+    }
 
     callback category-clicked(index: int);
     callback point-clicked(dataset: int, index: int);
@@ -156,6 +178,30 @@ export component CartesianChart {
         fixed-max: root.max-value,
         logarithmic: root.logarithmic,
         format: root.format,
+        side: 1,
+    });
+    // The right axis, when a dataset uses it (not in 100% stacked charts).
+    private property <bool> has-right-axis: ChartEngine.uses-right-axis(root.datasets) && !root.stacked-percent;
+    private property <ChartAxis> axis2: ChartEngine.value-axis({
+        locale: ChartTheme.locale,
+        kind: root.kind,
+        datasets: root.datasets,
+        stacked: root.stacked,
+        height: plot.height / 1px,
+        begin-at-zero: root.y2-begin-at-zero,
+        font-size: ChartTheme.font-size / 1px,
+        labels: root.labels,
+        view-start: root.view-start,
+        view-end: root.view-end,
+        fixed: root.y2-fixed-range,
+        fixed-min: root.y2-min-value,
+        fixed-max: root.y2-max-value,
+        logarithmic: root.y2-logarithmic,
+        format: root.format2,
+        side: 2,
+        // The left axis' ticks span it exactly unless it is fixed or
+        // logarithmic; then the axes can't line up.
+        align-ticks: root.fixed-range || root.logarithmic || root.y2-logarithmic ? 0 : axis.ticks.length,
     });
     private property <ChartLayout> chart: ChartEngine.layout({
         locale: ChartTheme.locale,
@@ -168,6 +214,9 @@ export component CartesianChart {
         height: plot.height / 1px,
         y-min: axis.min,
         y-max: axis.max,
+        y2-min: axis2.min,
+        y2-max: axis2.max,
+        y2-logarithmic: root.y2-logarithmic,
         progress: root.progress,
         font-size: ChartTheme.font-size / 1px,
         show-points: root.show-points,
@@ -189,11 +238,14 @@ export component CartesianChart {
         (index + (chart.offset ? 0.5 : 0.0) - chart.start) * chart.step * 1px
     }
 
-    // The position of `value` on the value axis, from the top of the plot.
-    pure function value-y(value: float) -> length {
-        (root.logarithmic
-            ? (ln(axis.max) - ln(max(value, axis.min * 0.001))) / (ln(axis.max) - ln(axis.min))
-            : (axis.max - value) / (axis.max - axis.min)) * plot.height
+    // The position of `value` on the left or right value axis, from the top
+    // of the plot.
+    pure function value-y(value: float, right: bool) -> length {
+        let lo = right ? axis2.min : axis.min;
+        let hi = right ? axis2.max : axis.max;
+        ((right ? root.y2-logarithmic : root.logarithmic)
+            ? (ln(hi) - ln(max(value, lo * 0.001))) / (ln(hi) - ln(lo))
+            : (hi - value) / (hi - lo)) * plot.height
     }
 
     min-width: 160px;
@@ -226,8 +278,9 @@ export component CartesianChart {
             frame := Rectangle {
                 horizontal-stretch: 1;
 
-                // The y title sits above the axis, so it needs no rotated text.
-                property <length> y-title-space: root.y-title != "" ? ChartTheme.font-size * 1.6 : 0px;
+                // The y titles sit above the axes, so they need no rotated text.
+                property <length> y-title-space: root.y-title != "" || (root.has-right-axis && root.y2-title != "") ? ChartTheme.font-size * 1.6 : 0px;
+                property <length> right-labels-width: root.has-right-axis ? axis2.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px : 0px;
                 property <length> x-title-space: root.x-title != "" ? ChartTheme.font-size * 1.8 : 0px;
 
                 plot := Rectangle {
@@ -237,7 +290,7 @@ export component CartesianChart {
                     // Tick labels are mostly digits, about 0.6em wide each.
                     x: axis.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px;
                     y: frame.y-title-space + ChartTheme.font-size * 0.75;
-                    width: max(0px, parent.width - self.x - 12px);
+                    width: max(0px, parent.width - self.x - max(12px, frame.right-labels-width));
                     height: max(0px, parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space);
                     // Zoomed data continues past the edges.
                     clip: root.zoomed;
@@ -261,6 +314,11 @@ export component CartesianChart {
                     Rectangle {
                         y: parent.height - 0.5px;
                         height: 1px;
+                        background: ChartTheme.axis-color;
+                    }
+                    if root.has-right-axis: Rectangle {
+                        x: parent.width - 1px;
+                        width: 1px;
                         background: ChartTheme.axis-color;
                     }
 
@@ -347,7 +405,7 @@ export component CartesianChart {
                             property <float> value: root.datasets[bar.dataset].values[bar.index];
                             text: root.stacked-percent
                                 ? ChartEngine.format-percent(ChartEngine.rounded-share(root.datasets, bar.dataset, bar.index), 0)
-                                : ChartEngine.format-value(self.value, root.format);
+                                : ChartEngine.format-value(self.value, root.format-of(bar.dataset));
                             x: bar.x * 1px + (bar.width * 1px - self.width) / 2;
                             // Inside stacked segments; above (or below) other bars.
                             y: root.stacked || root.stacked-percent ? (bar.y + bar.height / 2) * 1px - self.height / 2
@@ -364,7 +422,7 @@ export component CartesianChart {
                                 property <float> value: root.point-chart
                                     ? root.datasets[index].points[point.index].y
                                     : root.datasets[index].values[point.index];
-                                text: ChartEngine.format-value(self.value, root.format);
+                                text: ChartEngine.format-value(self.value, root.format-of(index));
                                 x: point.x * 1px - self.width / 2;
                                 y: point.y * 1px - self.height - max(point.r * 1px, ChartTheme.point-radius) - 2px;
                                 color: ChartTheme.text-color;
@@ -394,7 +452,7 @@ export component CartesianChart {
                         for ds in chart.visible: Rectangle {
                             property <float> value: ChartEngine.plotted-value(root.datasets, root.kind, root.stacked, ds, root.hovered-index);
                             x: category-x(root.hovered-index) - ChartTheme.point-hover-radius;
-                            y: value-y(self.value) - ChartTheme.point-hover-radius;
+                            y: value-y(self.value, root.datasets[ds].right-axis) - ChartTheme.point-hover-radius;
                             width: ChartTheme.point-hover-radius * 2;
                             height: ChartTheme.point-hover-radius * 2;
                             border-radius: ChartTheme.point-hover-radius;
@@ -515,6 +573,16 @@ export component CartesianChart {
                     horizontal-alignment: right;
                 }
 
+                if root.has-right-axis: Rectangle {
+                    for tick in axis2.ticks: Text {
+                        x: plot.x + plot.width + 8px;
+                        y: plot.y + tick.pos * 1px - self.height / 2;
+                        text: tick.label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                    }
+                }
+
                 for tick in chart.x-ticks: Text {
                     x: plot.x + tick.pos * 1px - self.width / 2;
                     y: plot.y + plot.height + 6px;
@@ -527,6 +595,15 @@ export component CartesianChart {
                     x: 0;
                     y: 0;
                     text: root.y-title;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                }
+
+                if root.has-right-axis && root.y2-title != "": Text {
+                    x: parent.width - self.width;
+                    y: 0;
+                    text: root.y2-title;
                     color: ChartTheme.text-color;
                     font-size: ChartTheme.font-size;
                     font-weight: 600;
@@ -555,6 +632,7 @@ export component CartesianChart {
                     series: chart.series;
                     visible-datasets: chart.visible;
                     format: root.format;
+                    format2: root.format2;
                     percent: root.stacked-percent;
                 }
 
@@ -594,9 +672,9 @@ export component CartesianChart {
                             }
                             Text {
                                 text: root.time-axis
-                                    ? dataset.label + ": " + ChartEngine.format-value(point.y, root.format)
+                                    ? dataset.label + ": " + ChartEngine.format-value(point.y, root.format-of(root.hovered-point.dataset))
                                     : dataset.label + ": (" + ChartEngine.format-value(point.x, { decimals: -1 }) + ", "
-                                        + ChartEngine.format-value(point.y, root.format)
+                                        + ChartEngine.format-value(point.y, root.format-of(root.hovered-point.dataset))
                                         + (root.kind == ChartKind.bubble ? ", " + ChartEngine.format-value(point.r, { decimals: -1 }) : "") + ")";
                                 color: ChartTheme.tooltip-text;
                                 font-size: ChartTheme.font-size;

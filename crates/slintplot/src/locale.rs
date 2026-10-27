@@ -150,13 +150,21 @@ impl Locale {
     }
 }
 
-/// Just enough decimals to tell ticks `step` apart.
+/// Just enough decimals to write multiples of `step` exactly: 1 for 0.5 and
+/// for 2.5.
 pub(crate) fn tick_decimals(step: f64) -> usize {
-    if step > 0.0 {
-        (-step.log10().floor()).max(0.0) as usize
-    } else {
-        0
+    if step.is_nan() || step <= 0.0 {
+        return 0;
     }
+    let mut decimals = (-step.log10().floor()).max(0.0) as usize;
+    while decimals < 10 {
+        let scaled = step * 10f64.powi(decimals as i32);
+        if (scaled - scaled.round()).abs() <= scaled * 1e-9 {
+            break;
+        }
+        decimals += 1;
+    }
+    decimals
 }
 
 /// Removes trailing zeros after the decimal separator, and the separator if

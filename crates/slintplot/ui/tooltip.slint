@@ -9,6 +9,8 @@ export component Tooltip inherits Rectangle {
     in property <[ChartSeries]> series;
     in property <[int]> visible-datasets;
     in property <ChartFormat> format: { decimals: -1 };
+    // The format of the datasets on the right value axis.
+    in property <ChartFormat> format2: { decimals: -1 };
     // Show each dataset's share of the category (100% stacked charts).
     in property <bool> percent: false;
 
@@ -39,7 +41,7 @@ export component Tooltip inherits Rectangle {
             Text {
                 text: datasets[ds].label + ": " + (root.percent
                     ? ChartEngine.format-percent(ChartEngine.share(root.datasets, ds, root.index), 1)
-                    : ChartEngine.format-value(datasets[ds].values[root.index], root.format));
+                    : ChartEngine.format-value(datasets[ds].values[root.index], datasets[ds].right-axis ? root.format2 : root.format));
                 color: ChartTheme.tooltip-text;
                 font-size: ChartTheme.font-size;
             }

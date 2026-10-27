@@ -1302,6 +1302,31 @@ GaugeChart {
     value-suffix: " users";
 }</code></pre>
 
+<h3 id="second-axis">A second value axis</h3>
+<p>Datasets with <code>right-axis: true</code> are plotted against a second value axis on the right, for two measures of different
+size or unit in one chart. The axis appears when a dataset uses it, and has its own settings: <code>y2-title</code>,
+<code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code>, <code>y2-fixed-range</code> with
+<code>y2-min-value</code> and <code>y2-max-value</code>, <code>y2-logarithmic</code> and <code>y2-begin-at-zero</code>.
+Tooltips and data labels write each value in its own axis' format, and stacked datasets stack on their own axis.</p>
+<p>The right axis gets as many ticks as the left one, at steps such as 15 or 40, so its ticks sit on the left axis' grid lines.
+When either axis is fixed or logarithmic they can't line up; then the right axis chooses its own ticks, without grid lines.
+It works in <code>LineChart</code>, <code>BarChart</code>, <code>ScatterChart</code>, <code>BubbleChart</code> and
+<code>TimeSeriesChart</code>; other charts ignore <code>right-axis</code>.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-two.webp" alt="Temperature as a line on the left axis and rainfall as bars on the right axis" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-two-dark.webp" alt="Temperature as a line on the left axis and rainfall as bars on the right axis" loading="lazy"></figure>
+<pre><code>BarChart {
+    labels: ["Jan", "Feb", "Mar", "Apr"];
+    datasets: [
+        { label: "Temperature", values: [-1.5, -1.2, 1.2, 5.5], series-type: ChartSeriesType.line },
+        { label: "Rainfall", values: [86, 136, 88, 103], right-axis: true },
+    ];
+    y-title: "Temperature";
+    value-suffix: " °C";
+    y2-title: "Rainfall";
+    y2-value-suffix: " mm";
+}</code></pre>
+<p>Two value axes are easy to misread: the heights of the two datasets can't be compared, and where they cross means nothing.
+Give both axes a title, and make it clear which dataset belongs to which, for example with a line for one and bars for the other.</p>
+
 <h2 id="data-labels">Data labels</h2>
 <p><code>show-values: true</code> writes each value next to its bar or point, or inside stacked segments. Pies write the value inside
 each slice, or its share with <code>show-percentages: true</code>; slices too thin for a label get none.</p>
@@ -1331,6 +1356,9 @@ each slice, or its share with <code>show-percentages: true</code>; slices too th
   <tr><td><code>fixed-range</code>, <code>min-value</code>, <code>max-value</code></td><td><code>bool</code>, <code>float</code></td><td><code>false</code>, <code>0</code>, <code>100</code></td><td>A fixed value axis</td></tr>
   <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis</td></tr>
   <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td><code>string</code>, <code>int</code></td><td><code>""</code>, <code>-1</code></td><td>How values are written; -1 decimals is automatic</td></tr>
+  <tr><td><code>y2-title</code>, <code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code></td><td><code>string</code>, <code>int</code></td><td><code>""</code>, <code>-1</code></td><td>The second value axis, for datasets with <code>right-axis</code>: its title and how its values are written</td></tr>
+  <tr><td><code>y2-fixed-range</code>, <code>y2-min-value</code>, <code>y2-max-value</code>, <code>y2-logarithmic</code></td><td><code>bool</code>, <code>float</code></td><td><code>false</code>, <code>0</code>, <code>100</code></td><td>Its range and scale, like the left axis' properties</td></tr>
+  <tr><td><code>y2-begin-at-zero</code></td><td><code>bool</code></td><td><code>begin-at-zero</code></td><td>Whether its range includes zero</td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Data labels on bars and points</td></tr>
   <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>Opacity of bar fills</td></tr>
   <tr><td><code>time-axis</code>, <code>time-origin</code>, <code>utc-offset</code>, <code>show-lines</code></td><td></td><td></td><td>Scatter charts: a time axis and lines between points (see <a href="#time-series">TimeSeriesChart</a>)</td></tr>
@@ -1371,6 +1399,7 @@ each slice, or its share with <code>show-percentages: true</code>; slices too th
   <tr><td><code>tension</code></td><td><code>float</code></td><td>Line charts: curve tension, 0 for straight segments</td></tr>
   <tr><td><code>stepped</code></td><td><code>bool</code></td><td>Line charts: draw steps</td></tr>
   <tr><td><code>series-type</code></td><td><code>ChartSeriesType</code></td><td><code>auto</code> (like the chart), <code>line</code> or <code>bar</code></td></tr>
+  <tr><td><code>right-axis</code></td><td><code>bool</code></td><td>Plot against the second value axis, on the right (see <a href="#second-axis">A second value axis</a>)</td></tr>
 </table>
 <h3><code>ChartXY</code></h3>
 <p><code>{ x: float, y: float, r: float }</code>. A scatter or bubble point; <code>r</code> is the bubble radius in pixels and is ignored by scatter charts.</p>
@@ -1740,7 +1769,7 @@ slintplot-stress            # the interactive stress test</code></pre>
   <li><strong>Platforms.</strong> Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs <a href="demo/">in the browser</a>. Embedded (MCU) builds are untested. With Slint's software renderer, enable its <code>software-renderer-path</code> feature, or charts aren't drawn.</li>
   <li><strong>English texts.</strong> Numbers and dates follow <a href="#languages"><code>ChartTheme.language</code></a>, but the few built-in words, such as "no data", "Running total" and "Less" and "More" under a calendar heatmap, are English. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.</li>
   <li><strong>Time zones.</strong> Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.</li>
-  <li><strong>One value axis.</strong> Each chart has one value axis; there is no secondary y axis.</li>
+  <li><strong>Two value axes at most</strong>, and only in line, bar, scatter, bubble and time series charts: horizontal bar charts have one value axis.</li>
   <li><strong>Zoom, pan and decimation</strong> work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.</li>
   <li><strong>Eight colors per theme.</strong> With more than eight datasets the colors repeat. Set your own palette for more (see <a href="#theming">Theming</a>).</li>
   <li><strong>Large charts of separate shapes are slower.</strong> Sunburst, waterfall, dumbbell and funnel charts draw every item as its own shape: about 320 ms for a sunburst with 10,000 items, and about 100 ms for waterfall and dumbbell charts. With up to 1,000 items, a frame takes under 30 ms. Decimation applies to lines only.</li>
