@@ -13,15 +13,18 @@ readme = "README.md"
 include = ["src/**", "ui/**", "build.rs", "icon.png", "README.md", "LICENSE.md", "LICENSE-GPL-3.0.txt", "LICENSE-POLYFORM-NC.md", "COMMERCIAL.md"]
 
 [dependencies]
-# `software-renderer-path` lets the software renderer (used by `--snapshot`) draw paths.
-slint = { workspace = true, features = ["software-renderer-path"] }
 slintplot.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# `software-renderer-path` lets the software renderer (used by `--snapshot`) draw paths.
+slint = { workspace = true, features = ["software-renderer-path"] }
 # Writes the `--snapshot` PNG files.
 png = "0.18"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+# Only what the browser uses: WebGL rendering, without the software renderer,
+# accessibility or the system tray.
+slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-femtovg"] }
 # Starts the gallery in the browser (see web/).
 wasm-bindgen = "0.2"
 # Shows Rust panics in the browser console.

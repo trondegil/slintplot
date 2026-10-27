@@ -31,9 +31,9 @@ jobs:
           tool: wasm-bindgen@${{ steps.bindgen.outputs.version }}
       - name: Build the gallery
         run: |
-          cargo build --release --locked --target wasm32-unknown-unknown -p slintplot-gallery
+          cargo build --profile web --locked --target wasm32-unknown-unknown -p slintplot-gallery
           wasm-bindgen --target web --no-typescript --out-dir docs/demo --out-name gallery \
-            target/wasm32-unknown-unknown/release/slintplot-gallery.wasm
+            target/wasm32-unknown-unknown/web/slintplot-gallery.wasm
       - name: WebP images
         run: |
           sudo apt-get install -y --no-install-recommends webp
