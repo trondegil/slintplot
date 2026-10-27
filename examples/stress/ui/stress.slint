@@ -44,6 +44,8 @@ export component Stress inherits Window {
     // Drawing options the benchmark varies; markers also switch the gauge's needle.
     in-out property <bool> show-points: false;
     in-out property <bool> smooth: false;
+    in-out property <bool> fill: false;
+    in-out property <bool> stepped: false;
     in-out property <bool> decimate: true;
     in-out property <bool> streaming: false;
     // Samples per second per dataset, by index into the picker.
@@ -56,6 +58,8 @@ export component Stress inherits Window {
     // Occasional outliers, which decimation must keep.
     in-out property <bool> spikes: false;
     in-out property <bool> animated: true;
+    // Line and time series charts, which have the line options.
+    private property <bool> line-chart: root.chart-type == 0 || root.chart-type == 2;
     in-out property <float> view-start: 0;
     in-out property <float> view-end: 1;
     in-out property <bool> dark-mode: Palette.color-scheme == ColorScheme.dark;
@@ -147,10 +151,6 @@ export component Stress inherits Window {
                 color: ChartTheme.text-color;
                 vertical-alignment: center;
             }
-            CheckBox {
-                text: "Decimate";
-                checked <=> root.decimate;
-            }
             Rectangle {
                 horizontal-stretch: 1;
             }
@@ -227,6 +227,48 @@ export component Stress inherits Window {
                 toggled => {
                     root.rebuild();
                 }
+            }
+            Rectangle {
+                width: 12px;
+            }
+            // Drawing options, for the charts that have them.
+            CheckBox {
+                text: "Points";
+                enabled: root.chart-type == 0 || root.chart-type == 2 || root.chart-type == 8;
+                checked <=> root.show-points;
+            }
+            CheckBox {
+                text: "Smooth";
+                enabled: root.line-chart;
+                checked <=> root.smooth;
+                toggled => {
+                    root.restyle();
+                }
+            }
+            CheckBox {
+                text: "Fill";
+                enabled: root.line-chart;
+                checked <=> root.fill;
+                toggled => {
+                    root.restyle();
+                }
+            }
+            CheckBox {
+                text: "Steps";
+                enabled: root.line-chart;
+                checked <=> root.stepped;
+                toggled => {
+                    root.restyle();
+                }
+            }
+            CheckBox {
+                text: "Decimate";
+                enabled: root.line-chart;
+                checked <=> root.decimate;
+            }
+            CheckBox {
+                text: "Animate";
+                checked <=> root.animated;
             }
         }
 

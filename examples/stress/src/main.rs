@@ -195,6 +195,8 @@ impl Data {
             let mut row = ChartDataset {
                 label: format!("Series {}", d + 1).into(),
                 tension,
+                fill: app.get_fill(),
+                stepped: app.get_stepped(),
                 ..Default::default()
             };
             match chart_type {
@@ -377,6 +379,8 @@ fn restyle(app: &Stress) {
     for row in 0..datasets.row_count() {
         if let Some(mut ds) = datasets.row_data(row) {
             ds.tension = tension;
+            ds.fill = app.get_fill();
+            ds.stepped = app.get_stepped();
             datasets.set_row_data(row, ds);
         }
     }
