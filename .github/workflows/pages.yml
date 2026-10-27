@@ -34,6 +34,10 @@ jobs:
           cargo build --release --locked --target wasm32-unknown-unknown -p slintplot-gallery
           wasm-bindgen --target web --no-typescript --out-dir docs/demo --out-name gallery \
             target/wasm32-unknown-unknown/release/slintplot-gallery.wasm
+      - name: WebP images
+        run: |
+          sudo apt-get install -y --no-install-recommends webp
+          docs/make-webp.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -4,3 +4,4 @@
 # Built by .github/workflows/pages.yml
 /docs/demo/gallery.js
 /docs/demo/gallery_bg.wasm
+/docs/**/*.webp
