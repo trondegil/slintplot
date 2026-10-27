@@ -260,13 +260,21 @@ export component Gallery inherits Window {
                     model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
                     current-index <=> root.theme;
                 }
-                if root.sample == "calendar": ComboBox {
-                    model: ["Theme", "GitHub green", "Blue", "Orange", "Purple", "Red"];
-                    current-index <=> root.calendar-colors;
-                }
                 CheckBox {
                     text: "Dark";
                     checked <=> root.dark-mode;
+                }
+            }
+            if root.narrow && root.sample == "calendar": HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Colors";
+                    color: ChartTheme.text-color;
+                    vertical-alignment: center;
+                }
+                ComboBox {
+                    model: ["Theme", "GitHub green", "Blue", "Orange", "Purple", "Red"];
+                    current-index <=> root.calendar-colors;
                 }
             }
 
