@@ -182,7 +182,9 @@ export component CartesianChart {
     });
     // The right axis, when a dataset uses it (not in 100% stacked charts).
     private property <bool> has-right-axis: ChartEngine.uses-right-axis(root.datasets) && !root.stacked-percent;
-    private property <ChartAxis> axis2: ChartEngine.value-axis({
+    // Only computed when used: for scatter and time series charts, an axis
+    // reads every point.
+    private property <ChartAxis> axis2: !root.has-right-axis ? { min: 0, max: 0 } : ChartEngine.value-axis({
         locale: ChartTheme.locale,
         kind: root.kind,
         datasets: root.datasets,

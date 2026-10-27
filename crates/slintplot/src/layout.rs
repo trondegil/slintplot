@@ -387,7 +387,10 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
             .iter()
             .filter(|d| !d.hidden && req.side.is_none_or(|right| d.right_axis == right))
     };
-    let (mut min, mut max) = if req.kind.uses_points() {
+    let (mut min, mut max) = if visible().next().is_none() {
+        // Nothing on this axis: skip the scan of every point below.
+        empty
+    } else if req.kind.uses_points() {
         let (x0, x1) = scatter_x_window(req.datasets, req.view);
         visible()
             .flat_map(|d| &d.points)
@@ -582,6 +585,9 @@ fn visible_positive_extent(req: &AxisRequest) -> Option<(f64, f64)> {
         .datasets
         .iter()
         .filter(|d| !d.hidden && req.side.is_none_or(|right| d.right_axis == right));
+    if visible.clone().next().is_none() {
+        return None;
+    }
     if req.kind.uses_points() {
         let (x0, x1) = scatter_x_window(req.datasets, req.view);
         let edge = (x1 - x0) * 1e-6;
