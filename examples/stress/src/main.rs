@@ -23,12 +23,30 @@ slint::include_modules!();
 
 pub const POINT_COUNTS: [usize; 5] = [100, 1_000, 10_000, 100_000, 1_000_000];
 
-/// The most values per dataset "Keep everything" collects; streaming stops
+/// The window sizes of the "Window" picker; after them comes unlimited.
+const WINDOWS: [usize; 5] = [1_000, 10_000, 100_000, 500_000, 1_000_000];
+
+/// The most values per dataset an unlimited window collects; streaming stops
 /// there. Three datasets of floats take 120 MB.
 const MAX_KEPT: usize = 10_000_000;
 
-/// The latest values the "Show" picker offers; 0 shows all.
-const LATEST: [usize; 6] = [0, 1_000_000, 500_000, 100_000, 10_000, 1_000];
+/// Streaming stops when drawing falls this far behind, so a window too
+/// large for the machine can't freeze the app.
+const MAX_LAG: Duration = Duration::from_secs(3);
+
+/// The values per dataset when full, and how many are kept: the window
+/// size, or for an unlimited window 1,000,000 that grows to `MAX_KEPT`.
+fn window(app: &Stress) -> (usize, usize) {
+    if let Ok(count) = usize::try_from(app.get_bench_count())
+        && count > 0
+    {
+        return (count, count);
+    }
+    match WINDOWS.get(app.get_window_index().max(0) as usize) {
+        Some(&size) => (size, size),
+        None => (1_000_000, MAX_KEPT),
+    }
+}
 
 /// Small xorshift generator, so the example needs no extra dependencies.
 struct Rng(u64);
@@ -45,9 +63,18 @@ impl Rng {
 /// Seconds between the points of a time series: one point per minute.
 const MINUTE: f32 = 60.0;
 
-/// Random walks, one per dataset, that can be extended for streaming.
+/// Generated signals, one per dataset, that can be extended for streaming.
 struct Data {
     rng: Rng,
+    /// The signal settings (see `Stress.signal`), read when regenerating.
+    signal: i32,
+    noise: f32,
+    spikes: bool,
+    /// Samples per sine or square wave, and the chance of a spike.
+    period: f32,
+    spike_chance: f32,
+    /// Samples generated per dataset so far, for the waves.
+    generated: usize,
     /// Line and bar charts: the values of each dataset.
     series: Vec<Rc<StreamModel<f32>>>,
     /// Time series and scatter charts: the points of each dataset.
@@ -57,7 +84,7 @@ struct Data {
     labels: Rc<StreamModel<SharedString>>,
     /// The number of the next label.
     next_label: usize,
-    /// The most values each dataset keeps: the point count, or `MAX_KEPT`.
+    /// The most values each dataset keeps: the window size, or `MAX_KEPT`.
     capacity: usize,
     last: Vec<f32>,
     /// Time series: the time of the newest point.
@@ -74,10 +101,32 @@ struct Data {
 }
 
 impl Data {
-    fn step(&mut self, last: f32, dataset: usize) -> f32 {
-        let center = 100.0 * dataset as f32;
-        // Mean-reverting walk, so the series stay apart and on screen.
-        last + (self.rng.next() - 0.5) * 8.0 + (center - last) * 0.002
+    /// The next value of dataset `d`, sample number `i`, as the signal
+    /// settings say. Each dataset has its own level, so they stay apart.
+    fn sample(&mut self, d: usize, i: usize) -> f32 {
+        let center = 100.0 * d as f32;
+        let amplitude = 40.0;
+        let last = self.last[d];
+        let wave = || (i as f32 / self.period * std::f32::consts::TAU + d as f32).sin();
+        let value = match self.signal {
+            // A mean-reverting walk; the noise setting sizes its steps.
+            0 => last + (self.rng.next() - 0.5) * 16.0 * self.noise + (center - last) * 0.002,
+            1 => {
+                center + amplitude * wave() + (self.rng.next() - 0.5) * 2.0 * amplitude * self.noise
+            }
+            2 => {
+                center
+                    + amplitude * wave().signum()
+                    + (self.rng.next() - 0.5) * 2.0 * amplitude * self.noise
+            }
+            _ => center + (self.rng.next() - 0.5) * 2.0 * amplitude * self.noise,
+        };
+        self.last[d] = value;
+        if self.spikes && self.rng.next() < self.spike_chance {
+            let sign = if self.rng.next() < 0.5 { -1.0 } else { 1.0 };
+            return value + sign * 3.0 * amplitude;
+        }
+        value
     }
 
     /// The values per dataset: the point count, or more when streaming
@@ -90,49 +139,35 @@ impl Data {
         }
     }
 
-    /// Zooms to the latest values, as the "Show" picker says. With all
-    /// shown, the view is left alone, to zoom by hand.
-    fn show_latest(&self, app: &Stress) {
-        let latest = LATEST[app.get_latest_index().clamp(0, 5) as usize];
-        let len = self.len();
-        if latest == 0 {
-            return;
-        }
-        let start = if latest < len {
-            1.0 - latest as f32 / len as f32
-        } else {
-            0.0
-        };
-        app.set_view_start(start);
-        app.set_view_end(1.0);
-    }
-
     fn regenerate(&mut self, app: &Stress) {
-        let count = POINT_COUNTS[app.get_point_index().clamp(0, 4) as usize];
+        let (full, capacity) = window(app);
         let datasets = app.get_dataset_count().clamp(1, 8) as usize;
         let tension = if app.get_smooth() { 0.4 } else { 0.0 };
         let chart_type = app.get_chart_type();
         self.chart_type = chart_type;
-        self.capacity = if app.get_keep_everything() {
-            MAX_KEPT
+        self.capacity = capacity;
+        self.signal = app.get_signal();
+        self.noise = app.get_noise().clamp(0.0, 1.0);
+        self.spikes = app.get_spikes();
+        // About four waves, and ten spikes, per full window.
+        self.period = (full as f32 / 4.0).max(50.0);
+        self.spike_chance = 10.0 / full as f32;
+        // Charts of datasets start empty and fill as they stream; the
+        // benchmark starts them full. The others change values in place.
+        let streams = matches!(chart_type, 0..=3 | 5);
+        let count = if streams && app.get_bench_count() <= 0 {
+            0
         } else {
-            count
+            full
         };
-        let capacity = self.capacity;
         self.series.clear();
         self.points.clear();
-        self.last.clear();
-        self.last_time = (count.max(1) - 1) as f32 * MINUTE;
+        self.last = (0..datasets).map(|d| 100.0 * d as f32).collect();
+        self.generated = count;
+        self.last_time = (count as f32 - 1.0) * MINUTE;
         let mut rows = Vec::new();
         for d in 0..datasets {
-            let mut v = 100.0 * d as f32;
-            let values: Vec<f32> = (0..count)
-                .map(|_| {
-                    v = self.step(v, d);
-                    v
-                })
-                .collect();
-            self.last.push(v);
+            let values: Vec<f32> = (0..count).map(|i| self.sample(d, i)).collect();
             let mut row = ChartDataset {
                 label: format!("Series {}", d + 1).into(),
                 tension,
@@ -272,12 +307,11 @@ impl Data {
         }
         self.gauge = (self.gauge + (self.rng.next() - 0.5) * 6.0).clamp(0.0, 100.0);
         app.set_gauge_value(self.gauge);
+        let first = self.generated;
+        self.generated += samples;
         for d in 0..self.series.len() {
-            let values: Vec<f32> = (0..samples)
-                .map(|_| {
-                    self.last[d] = self.step(self.last[d], d);
-                    self.last[d]
-                })
+            let values: Vec<f32> = (first..first + samples)
+                .map(|i| self.sample(d, i))
                 .collect();
             self.series[d].extend(values);
         }
@@ -292,8 +326,7 @@ impl Data {
         for d in 0..self.points.len() {
             let points: Vec<ChartXY> = (1..=samples)
                 .map(|i| {
-                    let y = self.step(self.last[d], d);
-                    self.last[d] = y;
+                    let y = self.sample(d, first + i - 1);
                     if self.chart_type == 2 {
                         ChartXY {
                             x: first_time + MINUTE * i as f32,
@@ -329,6 +362,12 @@ fn setup(app: &Stress) -> Rc<RefCell<Data>> {
     slintplot::register!(app);
     let data = Rc::new(RefCell::new(Data {
         rng: Rng(0x9e37_79b9_7f4a_7c15),
+        signal: 0,
+        noise: 0.5,
+        spikes: false,
+        period: 1000.0,
+        spike_chance: 0.0,
+        generated: 0,
         series: Vec::new(),
         points: Vec::new(),
         last: Vec::new(),
@@ -358,18 +397,6 @@ fn setup(app: &Stress) -> Rc<RefCell<Data>> {
             let started = Instant::now();
             d.borrow_mut().regenerate(&app);
             eprintln!("generated data in {:.0?}", started.elapsed());
-            app.set_view_start(0.0);
-            app.set_view_end(1.0);
-            d.borrow().show_latest(&app);
-        }
-    });
-    let weak = app.as_weak();
-    let d = data.clone();
-    app.on_show_latest(move || {
-        if let Some(app) = weak.upgrade() {
-            app.set_view_start(0.0);
-            app.set_view_end(1.0);
-            d.borrow().show_latest(&app);
         }
     });
     let weak = app.as_weak();
@@ -403,56 +430,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Timer::single_shot(Duration::ZERO, dock_icon::set);
 
     // Streaming: samples arrive at the chosen rate, and a timer adds those
-    // that are due, as often as the "Updates/s" picker says: drawing more
-    // often than the screen refreshes is wasted. When drawing is slow,
-    // updates come later and carry more samples, so the data rate holds and
-    // the frame rate drops.
+    // that are due about once per frame: drawing more often than the screen
+    // refreshes is wasted. When drawing is slow, updates come later and carry
+    // more samples, so the data rate holds and the frame rate drops; past
+    // `MAX_LAG` behind, streaming stops.
     let samples = Rc::new(Cell::new(0usize));
-    let stream_timer = Rc::new(Timer::default());
-    let start_stream = {
+    let stream_timer = Timer::default();
+    {
         let weak = app.as_weak();
         let samples = samples.clone();
-        let timer = stream_timer.clone();
-        move || {
-            let Some(app) = weak.upgrade() else { return };
-            let interval = Duration::from_secs_f64(1.0 / app.get_update_rate().max(1) as f64);
-            let (weak, data, samples) = (app.as_weak(), data.clone(), samples.clone());
-            let mut last = Instant::now();
-            let mut owed = 0.0;
-            timer.start(TimerMode::Repeated, interval, move || {
-                let now = Instant::now();
-                let elapsed = now.duration_since(last).as_secs_f64();
-                last = now;
-                let Some(app) = weak.upgrade().filter(|app| app.get_streaming()) else {
-                    owed = 0.0;
-                    return;
-                };
-                owed += app.get_stream_rate() as f64 * elapsed;
-                let due = owed.floor();
-                owed -= due;
-                let mut data = data.borrow_mut();
-                // More than a whole dataset at once replaces all of it; keeping
-                // everything stops at `MAX_KEPT`.
-                let room = if app.get_keep_everything() {
-                    MAX_KEPT.saturating_sub(data.len())
-                } else {
-                    data.capacity
-                };
-                if room == 0 {
-                    app.set_streaming(false);
-                    return;
-                }
-                let due = (due as usize).min(room);
-                if due > 0 {
-                    data.stream(&app, due);
-                    data.show_latest(&app);
-                    samples.set(samples.get() + due);
-                }
-            });
-        }
-    };
-    start_stream();
-    app.on_update_rate_changed(start_stream);
+        let mut last = Instant::now();
+        let mut owed = 0.0;
+        stream_timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
+            let now = Instant::now();
+            let lag = now.duration_since(last);
+            last = now;
+            let Some(app) = weak.upgrade().filter(|app| app.get_streaming()) else {
+                owed = 0.0;
+                return;
+            };
+            if lag > MAX_LAG {
+                owed = 0.0;
+                app.set_streaming(false);
+                app.set_notice(
+                    format!(
+                        "Stopped: a frame took {:.1} s. Try a smaller window, or decimation.",
+                        lag.as_secs_f64()
+                    )
+                    .into(),
+                );
+                return;
+            }
+            owed += app.get_sample_rate() as f64 * lag.as_secs_f64();
+            let due = owed.floor();
+            owed -= due;
+            let mut data = data.borrow_mut();
+            // More than a whole window at once replaces all of it; an
+            // unlimited window stops at `MAX_KEPT`.
+            let room = if data.capacity == MAX_KEPT {
+                MAX_KEPT.saturating_sub(data.len())
+            } else {
+                data.capacity
+            };
+            if room == 0 {
+                app.set_streaming(false);
+                app.set_notice("Stopped: 10,000,000 values per dataset kept.".into());
+                return;
+            }
+            let due = (due as usize).min(room);
+            if due > 0 {
+                data.stream(&app, due);
+                samples.set(samples.get() + due);
+            }
+        });
+    }
 
     // Count rendered frames, when the renderer supports notifications.
     let frames = Rc::new(Cell::new(0u32));
@@ -475,10 +506,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             since = Instant::now();
             let total = data_for_stats.borrow().len() * app.get_dataset_count().max(1) as usize;
             let rate = samples.replace(0) as f64 / elapsed as f64;
-            let full = app.get_keep_everything() && data_for_stats.borrow().len() >= MAX_KEPT;
-            let streaming = if full {
-                "stopped: 10,000,000 values per dataset kept".into()
-            } else if app.get_streaming() {
+            let streaming = if app.get_streaming() {
                 format!(
                     "{} samples/s per dataset",
                     slintplot::ticks::format_value(rate.round())

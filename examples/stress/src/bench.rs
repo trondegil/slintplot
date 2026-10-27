@@ -90,8 +90,8 @@ pub fn run(png_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
         ("gauge", 8, true, false, false),
     ];
     let mut zoom = Vec::new();
-    for (index, &points) in POINT_COUNTS.iter().enumerate() {
-        app.set_point_index(index as i32);
+    for &points in &POINT_COUNTS {
+        app.set_bench_count(points as i32);
         for (label, chart_type, show_points, smooth, decimate) in modes {
             // Markers and bars are one element each, and undecimated lines
             // of a million points take seconds to draw in software: skip the
@@ -201,7 +201,7 @@ fn stream(
         ("time series, decimated", 2, true),
     ];
     for &points in &POINT_COUNTS[1..] {
-        app.set_point_index(POINT_COUNTS.iter().position(|&p| p == points).unwrap_or(0) as i32);
+        app.set_bench_count(points as i32);
         for (label, chart_type, decimate) in modes {
             for latest in [false, true] {
                 let view = if latest { "latest" } else { "all" };
@@ -272,7 +272,7 @@ pub fn snapshot(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     app.set_animated(false);
     let data = setup(&app);
     app.show()?;
-    app.set_point_index(POINT_COUNTS.len() as i32 - 1);
+    app.set_bench_count(1_000_000);
     app.set_chart_type(0);
     data.borrow_mut().regenerate(&app);
     app.set_show_points(false);

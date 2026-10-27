@@ -1,4 +1,4 @@
-import { CheckBox, ComboBox, HorizontalBox, Palette, SpinBox, VerticalBox } from "std-widgets.slint";
+import { Button, CheckBox, ComboBox, HorizontalBox, Palette, Slider, SpinBox, VerticalBox } from "std-widgets.slint";
 import {
     BarChart,
     ChartDataset,
@@ -27,34 +27,39 @@ export component Stress inherits Window {
     preferred-height: 800px;
     background: ChartTheme.background;
 
-    in-out property <int> point-index: 1;
+    // Values per dataset, by index into `windows`: the latest ones are kept
+    // and shown. The last entry, unlimited, starts with 1,000,000 and grows.
+    in-out property <int> window-index: 2;
+    in property <[string]> windows: ["1,000", "10,000", "100,000", "500,000", "1,000,000", "Unlimited"];
+    // The benchmark sets the value count directly; 0 uses `window-index`.
+    in-out property <int> bench-count: 0;
     in-out property <int> dataset-count: 3;
     // 0: line, 1: bars, 2: time series, 3: scatter, 4: waterfall,
     // 5: dumbbell, 6: funnel, 7: sunburst, 8: gauge.
     in-out property <int> chart-type: 0;
-    in-out property <bool> show-points: true;
-    in-out property <bool> smooth: true;
+    // Drawing options the benchmark varies; markers also switch the gauge's needle.
+    in-out property <bool> show-points: false;
+    in-out property <bool> smooth: false;
     in-out property <bool> decimate: true;
     in-out property <bool> streaming: false;
-    // Streaming: samples per second per dataset, by index into the picker.
-    in-out property <int> stream-rate-index: 1;
-    out property <int> stream-rate: [10, 60, 1000, 10000, 100000][root.stream-rate-index];
-    // Chart updates per second while streaming, by index into the picker.
-    in-out property <int> update-rate-index: 2;
-    out property <int> update-rate: [10, 30, 60, 120][root.update-rate-index];
-    // Keep every streamed value (up to 10,000,000 per dataset), instead of
-    // the point count's worth.
-    in-out property <bool> keep-everything: false;
-    // How many of the latest values to show, by index into the picker: all,
-    // or the latest 1,000,000 down to 1,000.
-    in-out property <int> latest-index: 0;
+    // Samples per second per dataset, by index into the picker.
+    in-out property <int> sample-rate-index: 2;
+    out property <int> sample-rate: [10, 100, 1000, 10000, 100000][root.sample-rate-index];
+    // How the values are generated: 0 random walk, 1 sine, 2 square, 3 noise.
+    in-out property <int> signal: 0;
+    // The size of the random part of the signal, from 0 to 1.
+    in-out property <float> noise: 0.5;
+    // Occasional outliers, which decimation must keep.
+    in-out property <bool> spikes: false;
     in-out property <bool> animated: true;
     in-out property <float> view-start: 0;
     in-out property <float> view-end: 1;
     in-out property <bool> dark-mode: Palette.color-scheme == ColorScheme.dark;
     // Index into the theme picker.
     in-out property <int> theme;
+    // The measurements in the status bar, and why streaming stopped.
     in property <string> stats;
+    in-out property <string> notice;
     in property <[string]> labels;
     in-out property <[ChartDataset]> datasets;
     in property <[ChartWaterfallStep]> steps;
@@ -62,15 +67,10 @@ export component Stress inherits Window {
     in-out property <[ChartSunburstItem]> sun;
     in property <float> gauge-value;
 
-    // Rebuild the data for the selected chart type, point and dataset counts.
+    // Rebuild the data for the chart type, window, datasets and signal.
     callback regenerate();
-    // Apply the "smooth" setting to the existing datasets.
+    // Apply the drawing options to the existing datasets.
     callback restyle();
-
-    // Zoom to the latest values, as `latest-index` says.
-    callback show-latest();
-    // Restart streaming at the new `update-rate`.
-    callback update-rate-changed();
 
     changed dark-mode => {
         Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
@@ -83,26 +83,21 @@ export component Stress inherits Window {
             : ChartPalette.pastel;
     }
 
+    function rebuild() {
+        root.notice = "";
+        root.view-start = 0;
+        root.view-end = 1;
+        root.regenerate();
+    }
+
     VerticalBox {
         HorizontalBox {
-            alignment: start;
+            padding: 0;
             ComboBox {
                 model: ["Line", "Bars", "Time series", "Scatter", "Waterfall", "Dumbbell", "Funnel", "Sunburst", "Gauge"];
                 current-index <=> root.chart-type;
                 selected => {
-                    root.regenerate();
-                }
-            }
-            Text {
-                text: "Points per dataset";
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
-            }
-            ComboBox {
-                model: ["100", "1,000", "10,000", "100,000", "1,000,000"];
-                current-index <=> root.point-index;
-                selected => {
-                    root.regenerate();
+                    root.rebuild();
                 }
             }
             Text {
@@ -115,23 +110,27 @@ export component Stress inherits Window {
                 maximum: 8;
                 value <=> root.dataset-count;
                 edited => {
-                    root.regenerate();
+                    root.rebuild();
                 }
             }
-            CheckBox {
-                text: "Points";
-                checked <=> root.show-points;
+            Text {
+                text: "Window";
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
             }
-            CheckBox {
-                text: "Smooth";
-                checked <=> root.smooth;
-                toggled => {
-                    root.restyle();
+            ComboBox {
+                model: root.windows;
+                current-index <=> root.window-index;
+                selected => {
+                    root.rebuild();
                 }
             }
             CheckBox {
                 text: "Decimate";
                 checked <=> root.decimate;
+            }
+            Rectangle {
+                horizontal-stretch: 1;
             }
             ComboBox {
                 model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
@@ -143,18 +142,17 @@ export component Stress inherits Window {
             }
         }
 
-        Text {
-            text: "Scroll on the chart to zoom, drag to pan, double-click to reset. Bars and scatter markers are one element each: keep them to 100,000 points or fewer. Waterfall, dumbbell, funnel and sunburst charts draw one element per step, row, stage or item, and have no decimation: keep them to 10,000.";
-            color: ChartTheme.text-color;
-            wrap: word-wrap;
-        }
         HorizontalBox {
+            padding: 0;
             alignment: start;
-            padding-top: 0;
-            padding-bottom: 0;
-            CheckBox {
-                text: "Stream";
-                checked <=> root.streaming;
+            Button {
+                width: 90px;
+                text: root.streaming ? "Pause" : "Stream";
+                primary: !root.streaming;
+                clicked => {
+                    root.notice = "";
+                    root.streaming = !root.streaming;
+                }
             }
             Text {
                 text: "Samples/s";
@@ -163,54 +161,49 @@ export component Stress inherits Window {
             }
             ComboBox {
                 width: 110px;
-                model: ["10", "60", "1,000", "10,000", "100,000"];
-                current-index <=> root.stream-rate-index;
+                model: ["10", "100", "1,000", "10,000", "100,000"];
+                current-index <=> root.sample-rate-index;
             }
             Text {
-                text: "Updates/s";
+                text: "Signal";
                 color: ChartTheme.text-color;
                 vertical-alignment: center;
             }
             ComboBox {
-                width: 80px;
-                model: ["10", "30", "60", "120"];
-                current-index <=> root.update-rate-index;
+                width: 140px;
+                model: ["Random walk", "Sine", "Square", "Noise"];
+                current-index <=> root.signal;
                 selected => {
-                    root.update-rate-changed();
+                    root.rebuild();
                 }
             }
             Text {
-                text: "Keep";
+                text: "Noise";
                 color: ChartTheme.text-color;
                 vertical-alignment: center;
             }
-            ComboBox {
-                width: 150px;
-                model: ["Point count", "Everything"];
-                current-index: root.keep-everything ? 1 : 0;
-                selected(value) => {
-                    root.keep-everything = value == "Everything";
-                    root.regenerate();
+            Slider {
+                width: 140px;
+                minimum: 0;
+                maximum: 1;
+                value <=> root.noise;
+                released => {
+                    root.rebuild();
                 }
             }
-            Text {
-                text: "Show";
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
-            }
-            ComboBox {
-                width: 150px;
-                model: ["All", "Latest 1,000,000", "Latest 500,000", "Latest 100,000", "Latest 10,000", "Latest 1,000"];
-                current-index <=> root.latest-index;
-                selected => {
-                    root.show-latest();
+            CheckBox {
+                text: "Spikes";
+                checked <=> root.spikes;
+                toggled => {
+                    root.rebuild();
                 }
             }
         }
+
         Text {
-            text: root.stats;
+            text: "Scroll on the chart to zoom, drag to pan, double-click to reset. Bars and scatter markers are one element each: keep them to 100,000 values. Waterfall, dumbbell, funnel and sunburst charts draw one element per value: keep them to 10,000.";
             color: ChartTheme.text-color;
-            font-family: "Menlo";
+            wrap: word-wrap;
         }
 
         if root.chart-type == 0: LineChart {
@@ -281,6 +274,23 @@ export component Stress inherits Window {
             show-needle: root.show-points;
             animated: root.animated;
             value-decimals: 1;
+        }
+
+        // Status bar: what is shown, how fast it draws, and why streaming stopped.
+        HorizontalBox {
+            padding: 0;
+            Text {
+                text: root.stats;
+                color: ChartTheme.text-color;
+                font-family: "Menlo";
+            }
+            Text {
+                horizontal-stretch: 1;
+                text: root.notice;
+                color: #e5484d;
+                horizontal-alignment: right;
+                overflow: elide;
+            }
         }
     }
 }
