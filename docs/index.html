@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SlintPlot API</title>
 <link rel="icon" href="assets/slintplot-icon.png">
+<script>
+  // The theme picked with the theme button; otherwise the system's.
+  try {
+    const theme = localStorage.getItem("theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch (e) {}
+</script>
 <style>
   :root {
     --bg: #ffffff;
@@ -19,6 +26,8 @@
     --note-bg: #eef7f6;
     --placeholder: #f2f4fa;
     --sidebar: #fafbfd;
+    --scrollbar: #c9ceda;
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -34,6 +43,8 @@
       --note-bg: #16302d;
       --placeholder: #1a1f2b;
       --sidebar: #151922;
+      --scrollbar: #3a4254;
+      color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
@@ -49,8 +60,24 @@
     --note-bg: #16302d;
     --placeholder: #1a1f2b;
     --sidebar: #151922;
+    --scrollbar: #3a4254;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  /* Scrollbars in the theme's colors. */
+  html { scrollbar-color: var(--scrollbar) transparent; }
+  nav, pre { scrollbar-width: thin; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+  /* The logo and the theme button's icon follow the theme. */
+  .when-dark { display: none; }
+  :root[data-theme="dark"] .when-dark { display: inline-block; }
+  :root[data-theme="dark"] .when-light { display: none; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .when-dark { display: inline-block; }
+    :root:not([data-theme="light"]) .when-light { display: none; }
+  }
   body {
     margin: 0;
     background: var(--bg);
@@ -68,13 +95,32 @@
     border-right: 1px solid var(--border);
     flex-shrink: 0;
   }
+  .nav-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .nav-head .brand { margin-bottom: 0; }
+  .theme-button {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px;
+    background: transparent; color: var(--text-muted); cursor: pointer;
+  }
+  .theme-button:hover { background: var(--bg-soft); color: var(--text); }
+  .theme-button svg { width: 18px; height: 18px; }
+  pre { position: relative; }
+  .copy {
+    position: absolute; top: 8px; right: 8px;
+    padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text-muted); font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; cursor: pointer;
+    opacity: 0; transition: opacity .15s;
+  }
+  pre:hover .copy, .copy:focus-visible, .copy.done { opacity: 1; }
+  .copy:hover { color: var(--text); }
+  @media (hover: none) { .copy { opacity: 1; } }
   nav .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--text); font-weight: 700; font-size: 18px; }
   nav .brand img { width: 32px; height: 32px; }
   nav h4 { margin: 18px 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
   nav a { display: block; padding: 3px 8px; border-radius: 6px; color: var(--text); font-size: 14px; }
   nav a:hover { background: var(--bg-soft); text-decoration: none; }
   main { flex: 1; min-width: 0; padding: 32px 48px 80px; max-width: 980px; }
-  .hero { padding: 28px; border-radius: 14px; background: #ffffff; border: 1px solid var(--border); margin-bottom: 28px; text-align: center; }
+  .hero { padding: 28px; border-radius: 14px; background: var(--bg-soft); border: 1px solid var(--border); margin-bottom: 28px; text-align: center; }
   .hero img { max-width: 420px; width: 100%; height: auto; }
   .hero .try { display: inline-block; margin-top: 6px; padding: 9px 18px; border-radius: 8px; background: #2563c9; color: #ffffff; font-weight: 600; }
   .hero .try:hover { background: #1d4fa6; }
@@ -138,6 +184,7 @@
       padding: 8px 12px; background: var(--sidebar); border-bottom: 1px solid var(--border);
     }
     .topbar .brand { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; font-size: 17px; }
+    .topbar .theme-button { margin-left: auto; }
     .topbar .brand img { width: 26px; height: 26px; }
     .menu-button {
       display: flex; align-items: center; justify-content: center;
@@ -170,11 +217,21 @@
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
   </button>
   <a class="brand" href="#top"><img src="assets/slintplot-icon.png" alt="">SlintPlot</a>
+  <button class="theme-button" type="button" aria-label="Switch between light and dark mode" title="Light or dark mode">
+    <svg class="when-light" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg>
+    <svg class="when-dark" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4"/></svg>
+  </button>
 </header>
 <div class="backdrop"></div>
 <div class="layout">
 <nav id="menu">
+  <div class="nav-head">
   <a class="brand" href="#top"><img src="assets/slintplot-icon.png" alt="">SlintPlot</a>
+  <button class="theme-button" type="button" aria-label="Switch between light and dark mode" title="Light or dark mode">
+    <svg class="when-light" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg>
+    <svg class="when-dark" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4"/></svg>
+  </button>
+  </div>
   <h4>Start</h4>
   <a href="#overview">Overview</a>
   <a href="#getting-started">Getting started</a>
@@ -220,7 +277,8 @@
 <main id="top">
 
 <div class="hero">
-  <img src="assets/slintplot-logo.png" alt="SlintPlot">
+  <img class="when-light" src="assets/slintplot-logo.png" alt="SlintPlot">
+  <img class="when-dark" src="assets/slintplot-logo-dark.png" alt="SlintPlot">
   <p>Native, interactive charts for Slint.</p>
   <a class="try" href="demo/">Try the gallery in your browser</a>
 </div>
@@ -1571,6 +1629,38 @@ Each download includes the licenses of the open-source crates it is built from.<
   button.addEventListener("click", () => setOpen(!root.classList.contains("menu-open")));
   document.querySelector(".backdrop").addEventListener("click", () => setOpen(false));
   document.querySelectorAll("nav a").forEach((link) => link.addEventListener("click", () => setOpen(false)));
+  // The theme button: switches between light and dark, and remembers it.
+  document.querySelectorAll(".theme-button").forEach((themeButton) => themeButton.addEventListener("click", () => {
+    const dark = root.dataset.theme
+      ? root.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+  }));
+  // A copy button on every code example.
+  document.querySelectorAll("main pre").forEach((pre) => {
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "copy";
+    copy.textContent = "Copy";
+    copy.setAttribute("aria-label", "Copy the code");
+    copy.addEventListener("click", async () => {
+      const text = (pre.querySelector("code") || pre).innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = "Copied";
+      } catch (e) {
+        copy.textContent = "Press Ctrl+C";
+        const range = document.createRange();
+        range.selectNodeContents(pre.querySelector("code") || pre);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+      }
+      copy.classList.add("done");
+      setTimeout(() => { copy.textContent = "Copy"; copy.classList.remove("done"); }, 1600);
+    });
+    pre.appendChild(copy);
+  });
   // Column names as labels, for the one-card-per-row tables on narrow screens.
   document.querySelectorAll("table").forEach((table) => {
     const head = table.querySelector("tr");

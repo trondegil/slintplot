@@ -1,4 +1,9 @@
-<p align="center"><img src="https://slintplot.dev/assets/slintplot-logo.png" alt="SlintPlot" width="420"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/assets/slintplot-logo-dark.png">
+    <img src="https://slintplot.dev/assets/slintplot-logo.png" alt="SlintPlot" width="420">
+  </picture>
+</p>
 
 # SlintPlot
 
