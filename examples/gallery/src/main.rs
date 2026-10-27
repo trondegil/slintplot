@@ -565,6 +565,9 @@ const SAMPLES: &[Sample] = &[
     ),
 ];
 
+/// The random data's seed, so the samples start the same every time.
+const SEED: u64 = 0x2545_f491_4f6c_dd1d;
+
 /// Small xorshift generator, so the example needs no extra dependencies.
 struct Rng(u64);
 
@@ -1281,7 +1284,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
 
     let state = Rc::new(RefCell::new(State {
         ui: ui.as_weak(),
-        rng: Rng(0x2545_f491_4f6c_dd1d),
+        rng: Rng(SEED),
         sample: &SAMPLES[0],
         labels: Rc::new(VecModel::default()),
         datasets: Rc::new(VecModel::default()),
@@ -1360,6 +1363,8 @@ fn snapshots(
     ui.show()?;
     for (dark, suffix) in [(false, ""), (true, "-dark")] {
         ui.set_dark_mode(dark);
+        // The same data in both modes.
+        state.borrow_mut().rng = Rng(SEED);
         for sample in SAMPLES {
             state.borrow_mut().select(sample);
             snapshot::render(&window);

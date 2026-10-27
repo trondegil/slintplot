@@ -70,13 +70,15 @@
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
-  /* The logo and the theme button's icon follow the theme. */
-  .when-dark { display: none; }
-  :root[data-theme="dark"] .when-dark { display: inline-block; }
-  :root[data-theme="dark"] .when-light { display: none; }
+  /* The logo, the screenshots and the theme button's icon follow the
+     theme: .when-light shows in light mode only, .when-dark in dark mode. */
+  :root[data-theme="light"] .when-dark,
+  :root[data-theme="dark"] .when-light { display: none !important; }
+  @media not all and (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .when-dark { display: none !important; }
+  }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .when-dark { display: inline-block; }
-    :root:not([data-theme="light"]) .when-light { display: none; }
+    :root:not([data-theme]) .when-light { display: none !important; }
   }
   body {
     margin: 0;
@@ -297,7 +299,7 @@
   <div class="card"><h4>Interactive</h4><p>Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.</p></div>
   <div class="card"><h4>Large datasets</h4><p>Min-max decimation and on-demand data reading for millions of points.</p></div>
 </div>
-<figure class="shot"><img src="screenshots/light.png" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy">
+<figure class="shot"><img class="when-light" src="screenshots/light.png" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy"><img class="when-dark" src="screenshots/light-dark.png" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy">
   <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
   <a href="demo/">Try it in your browser</a>, install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
   <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.1">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
@@ -417,7 +419,7 @@ fn main() -> Result&lt;(), slint::PlatformError&gt; {
 
 <h2 id="line-chart">LineChart</h2>
 <p>Lines through the values of each dataset, one point per label.</p>
-<figure class="shot"><img src="screenshots/charts/line.png" alt="LineChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/line.png" alt="LineChart" loading="lazy"><img class="when-dark" src="screenshots/charts/line-dark.png" alt="LineChart" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, ChartTheme, LineChart } from "@slintplot";
 
 LineChart {
@@ -470,11 +472,11 @@ All properties are listed under <a href="#cartesian-properties">Cartesian proper
         { label: "Price", values: [5, 7, 6, 8], stepped: true },
     ];
 }</code></pre>
-<figure class="shot"><img src="screenshots/charts/area-stacked.png" alt="A stacked area chart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/area-stacked.png" alt="A stacked area chart" loading="lazy"><img class="when-dark" src="screenshots/charts/area-stacked-dark.png" alt="A stacked area chart" loading="lazy"></figure>
 
 <h2 id="bar-chart">BarChart</h2>
 <p>Vertical bars, grouped by default and stacked with <code>stacked: true</code>. The value axis begins at zero.</p>
-<figure class="shot"><img src="screenshots/charts/bar-vertical.png" alt="BarChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/bar-vertical.png" alt="BarChart" loading="lazy"><img class="when-dark" src="screenshots/charts/bar-vertical-dark.png" alt="BarChart" loading="lazy"></figure>
 <pre><code>import { BarChart, ChartLegendPosition, ChartTheme } from "@slintplot";
 
 BarChart {
@@ -519,7 +521,7 @@ BarChart {
 
 <h2 id="horizontal-bar-chart">HorizontalBarChart</h2>
 <p>Categories run down the left side and bars grow to the right.</p>
-<figure class="shot"><img src="screenshots/charts/bar-horizontal.png" alt="HorizontalBarChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/bar-horizontal.png" alt="HorizontalBarChart" loading="lazy"><img class="when-dark" src="screenshots/charts/bar-horizontal-dark.png" alt="HorizontalBarChart" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, ChartTheme, HorizontalBarChart } from "@slintplot";
 
 HorizontalBarChart {
@@ -570,7 +572,7 @@ HorizontalBarChart {
 <h2 id="scatter-chart">ScatterChart</h2>
 <p>Points on numeric x and y axes. Datasets use <code>points</code> instead of <code>values</code>.
 Hovering highlights the nearest point and shows its coordinates.</p>
-<figure class="shot"><img src="screenshots/charts/scatter.png" alt="ScatterChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/scatter.png" alt="ScatterChart" loading="lazy"><img class="when-dark" src="screenshots/charts/scatter-dark.png" alt="ScatterChart" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, ScatterChart } from "@slintplot";
 
 ScatterChart {
@@ -613,7 +615,7 @@ ScatterChart {
 
 <h2 id="bubble-chart">BubbleChart</h2>
 <p>A scatter chart whose points have a radius: <code>r</code> is the bubble radius in pixels. Hovering works anywhere inside a bubble.</p>
-<figure class="shot"><img src="screenshots/charts/bubble.png" alt="BubbleChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/bubble.png" alt="BubbleChart" loading="lazy"><img class="when-dark" src="screenshots/charts/bubble-dark.png" alt="BubbleChart" loading="lazy"></figure>
 <pre><code>import { BubbleChart, ChartLegendPosition } from "@slintplot";
 
 BubbleChart {
@@ -652,7 +654,7 @@ BubbleChart {
 <h2 id="pie-chart">PieChart</h2>
 <p>Slices proportional to their values. The hovered slice moves outwards, and the tooltip shows its value and share.
 Clicking a legend entry hides the slice.</p>
-<figure class="shot"><img src="screenshots/charts/pie-labels.png" alt="PieChart with percentages" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/pie-labels.png" alt="PieChart with percentages" loading="lazy"><img class="when-dark" src="screenshots/charts/pie-labels-dark.png" alt="PieChart with percentages" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, PieChart } from "@slintplot";
 
 PieChart {
@@ -695,7 +697,7 @@ PieChart {
 
 <h2 id="doughnut-chart">DoughnutChart</h2>
 <p>A <code>PieChart</code> with <code>cutout: 0.5</code>. It has the same properties.</p>
-<figure class="shot"><img src="screenshots/charts/doughnut.png" alt="DoughnutChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/doughnut.png" alt="DoughnutChart" loading="lazy"><img class="when-dark" src="screenshots/charts/doughnut-dark.png" alt="DoughnutChart" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, DoughnutChart } from "@slintplot";
 
 DoughnutChart {
@@ -722,7 +724,7 @@ DoughnutChart {
 
 <h2 id="polar-area-chart">PolarAreaChart</h2>
 <p>Slices of equal angle whose radius shows the value, with labelled value rings. It has the same properties as <code>PieChart</code>.</p>
-<figure class="shot"><img src="screenshots/charts/polar-area.png" alt="PolarAreaChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/polar-area.png" alt="PolarAreaChart" loading="lazy"><img class="when-dark" src="screenshots/charts/polar-area-dark.png" alt="PolarAreaChart" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, PolarAreaChart } from "@slintplot";
 
 PolarAreaChart {
@@ -750,7 +752,7 @@ PolarAreaChart {
 
 <h2 id="radar-chart">RadarChart</h2>
 <p>One spoke per label and one closed polygon per dataset. Hovering a spoke shows every dataset's value for it.</p>
-<figure class="shot"><img src="screenshots/charts/radar.png" alt="RadarChart" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/radar.png" alt="RadarChart" loading="lazy"><img class="when-dark" src="screenshots/charts/radar-dark.png" alt="RadarChart" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, RadarChart } from "@slintplot";
 
 RadarChart {
@@ -786,7 +788,7 @@ RadarChart {
 
 <h2 id="mixed-charts">Mixed charts</h2>
 <p>Any dataset in a line or bar chart can be drawn as the other type with <code>series-type</code>. Lines in a bar chart go through the bar centers, and stacking keeps lines and bars apart.</p>
-<figure class="shot"><img src="screenshots/charts/combo-bar-line.png" alt="Bars with a line" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/combo-bar-line.png" alt="Bars with a line" loading="lazy"><img class="when-dark" src="screenshots/charts/combo-bar-line-dark.png" alt="Bars with a line" loading="lazy"></figure>
 <p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
 <pre><code>import { BarChart, ChartSeriesType } from "@slintplot";
 
@@ -805,7 +807,7 @@ survey answers. The percentage labels use largest remainder rounding, so each ba
 <p>Answers with a natural order, from "Every day" to "Never", read best in shades of one color, as in the screenshot and the example
 below: a fade from dark blue to light blue. Give each dataset its own <code>color</code>, which always wins over the theme; without one,
 the datasets take the theme's colors.</p>
-<figure class="shot"><img src="screenshots/charts/survey.png" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/survey.png" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"><img class="when-dark" src="screenshots/charts/survey-dark.png" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"></figure>
 <p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
 <pre><code>HorizontalBarChart {
     title: "How often do you work from home?";
@@ -829,7 +831,7 @@ The axis picks round times for its ticks: seconds, minutes, hours, days, months 
 tooltip shows the date and time. Hovering anywhere above or below the lines shows the values at that time. Tick steps follow the visible span, from years down to seconds. When no tick falls on a midnight (or on a January), the first
 tick also shows the date (or the year), so a zoomed-in axis always says when it is. Zoomed in between points, lines continue to the
 edges of the plot.</p>
-<figure class="shot"><img src="screenshots/charts/time-hourly.png" alt="TimeSeriesChart with hourly values over two weeks" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/time-hourly.png" alt="TimeSeriesChart with hourly values over two weeks" loading="lazy"><img class="when-dark" src="screenshots/charts/time-hourly-dark.png" alt="TimeSeriesChart with hourly values over two weeks" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, TimeSeriesChart } from "@slintplot";
 
 TimeSeriesChart {
@@ -883,7 +885,7 @@ TimeSeriesChart {
 <h2 id="heatmap">HeatmapChart</h2>
 <p>A matrix of colored cells: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order.
 Missing values (NaN) are drawn as empty cells.</p>
-<figure class="shot"><img src="screenshots/charts/heatmap.png" alt="HeatmapChart: visits by weekday and hour" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/heatmap.png" alt="HeatmapChart: visits by weekday and hour" loading="lazy"><img class="when-dark" src="screenshots/charts/heatmap-dark.png" alt="HeatmapChart: visits by weekday and hour" loading="lazy"></figure>
 <pre><code>import { ChartTheme, HeatmapChart } from "@slintplot";
 
 HeatmapChart {
@@ -911,7 +913,7 @@ HeatmapChart {
     cell-clicked(row, column) =&gt; { debug("clicked", row, column); }
 }</code></pre>
 <p>A diverging scale suits values around a center, such as correlations:</p>
-<figure class="shot"><img src="screenshots/charts/heatmap-diverging.png" alt="A diverging heatmap of correlations" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/heatmap-diverging.png" alt="A diverging heatmap of correlations" loading="lazy"><img class="when-dark" src="screenshots/charts/heatmap-diverging-dark.png" alt="A diverging heatmap of correlations" loading="lazy"></figure>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
   <tr><td><code>x-labels</code>, <code>y-labels</code></td><td><code>[string]</code></td><td></td><td>Column and row labels</td></tr>
@@ -931,7 +933,7 @@ HeatmapChart {
 weekday labels and a "Less … More" legend. Days are colored in <code>levels</code> steps, split by quantiles of the positive values,
 so a few very active days don't wash out the rest; zero or missing days are empty. The days take the theme's first color, in
 lighter shades for fewer contributions; set <code>color</code> for another, such as GitHub's green.</p>
-<figure class="shot"><img src="screenshots/charts/calendar.png" alt="CalendarHeatmap of a year of contributions" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/calendar.png" alt="CalendarHeatmap of a year of contributions" loading="lazy"><img class="when-dark" src="screenshots/charts/calendar-dark.png" alt="CalendarHeatmap of a year of contributions" loading="lazy"></figure>
 <pre><code>import { CalendarHeatmap, ChartTheme } from "@slintplot";
 
 CalendarHeatmap {
@@ -969,7 +971,7 @@ close to square. Items with the same <code>group</code> are placed together unde
 the legend lists the groups, and clicking one hides it. Without groups, every item gets its own theme color and there is no legend.
 Missing, zero and negative values take no space. Labels and values are written in the rectangles where they fit, in white or dark
 text depending on the fill.</p>
-<figure class="shot"><img src="screenshots/charts/treemap.png" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/treemap.png" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"><img class="when-dark" src="screenshots/charts/treemap-dark.png" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, TreemapChart } from "@slintplot";
 
 TreemapChart {
@@ -1011,7 +1013,7 @@ index, and a parent must come before its children; an item whose <code>parent</c
 Top-level items take the theme's colors in order and their children a lighter shade of their parent's. Clicking an item with
 children zooms into it, so that it fills the rings; clicking the center zooms back out. The center shows the total of what is shown.
 Labels are written on the arcs where they fit, and the legend lists the top-level items.</p>
-<figure class="shot"><img src="screenshots/charts/sunburst.png" alt="SunburstChart of world population by continent, region and country" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/sunburst.png" alt="SunburstChart of world population by continent, region and country" loading="lazy"><img class="when-dark" src="screenshots/charts/sunburst-dark.png" alt="SunburstChart of world population by continent, region and country" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, SunburstChart } from "@slintplot";
 
 SunburstChart {
@@ -1064,7 +1066,7 @@ stage's own <code>color</code> wins. Each slice shows its value and its share of
 narrow, and badges on the right show the share of the previous stage each one kept. Hovering a stage fades the others. With so many stages that the
 rows are too short for text, the names, values and badges are left out, and the tooltip shows them. Stages are
 <code>ChartSlice</code>s, as in pie charts.</p>
-<figure class="shot"><img src="screenshots/charts/funnel.png" alt="FunnelChart of website visitors through to a purchase" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/funnel.png" alt="FunnelChart of website visitors through to a purchase" loading="lazy"><img class="when-dark" src="screenshots/charts/funnel-dark.png" alt="FunnelChart of website visitors through to a purchase" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, ChartTheme, FunnelChart } from "@slintplot";
 
 FunnelChart {
@@ -1112,7 +1114,7 @@ FunnelChart {
 Steps with <code>total: true</code> are bars from zero to the running total, in the theme's first color, and their <code>value</code> is
 ignored. Thin lines connect each bar's end to the next bar. The value axis always includes zero; the tooltip shows the change and
 the running total. Negative values are written with the sign before the prefix: "-$48k".</p>
-<figure class="shot"><img src="screenshots/charts/waterfall.png" alt="WaterfallChart of a profit and loss statement" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/waterfall.png" alt="WaterfallChart of a profit and loss statement" loading="lazy"><img class="when-dark" src="screenshots/charts/waterfall-dark.png" alt="WaterfallChart of a profit and loss statement" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, ChartTheme, WaterfallChart } from "@slintplot";
 
 WaterfallChart {
@@ -1163,7 +1165,7 @@ WaterfallChart {
 <p>One row per category, with a dot for each dataset's value and a bar joining the smallest to the largest: a compact way to compare
 two values per category, such as before and after. It takes <code>labels</code> and <code>datasets</code> like a horizontal bar chart,
 and works with more than two datasets too. With exactly two, the tooltip also shows the change from the first to the second.</p>
-<figure class="shot"><img src="screenshots/charts/dumbbell.png" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/dumbbell.png" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"><img class="when-dark" src="screenshots/charts/dumbbell-dark.png" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, DumbbellChart } from "@slintplot";
 
 DumbbellChart {
@@ -1217,7 +1219,7 @@ styles after common dashboard gauges:</p>
   ticks and their labels inside it, and a needle pointing at the value, which is written below the hub.</li>
 </ul>
 <p>The value is sized to the gauge, and the gauge moves smoothly to new values. Hovering a band shows its range.</p>
-<figure class="shot"><img src="screenshots/charts/gauge.png" alt="Three gauges: a half circle fill, a 240° fill with a ring of bands, and a needle with ticks" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/gauge.png" alt="Three gauges: a half circle fill, a 240° fill with a ring of bands, and a needle with ticks" loading="lazy"><img class="when-dark" src="screenshots/charts/gauge-dark.png" alt="Three gauges: a half circle fill, a 240° fill with a ring of bands, and a needle with ticks" loading="lazy"></figure>
 <pre><code>import { ChartLegendPosition, ChartTheme, GaugeChart } from "@slintplot";
 
 GaugeChart {
@@ -1273,7 +1275,7 @@ GaugeChart {
   <li><strong>Logarithmic axis:</strong> <code>logarithmic: true</code>, with ticks at 1, 2 and 5 times powers of ten. Values that aren't positive are left out.</li>
   <li><strong>Formatting:</strong> <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> (-1 for automatic) apply to the value axis, tooltips and data labels. Pies and radar charts have them too. A minus sign goes before the prefix: "-$5".</li>
 </ul>
-<figure class="shot"><img src="screenshots/charts/axes-log.png" alt="A logarithmic axis" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/axes-log.png" alt="A logarithmic axis" loading="lazy"><img class="when-dark" src="screenshots/charts/axes-log-dark.png" alt="A logarithmic axis" loading="lazy"></figure>
 <p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
 <pre><code>LineChart {
     labels: ["Q1", "Q2", "Q3", "Q4"];
@@ -1286,7 +1288,7 @@ GaugeChart {
 <h2 id="data-labels">Data labels</h2>
 <p><code>show-values: true</code> writes each value next to its bar or point, or inside stacked segments. Pies write the value inside
 each slice, or its share with <code>show-percentages: true</code>; slices too thin for a label get none.</p>
-<figure class="shot"><img src="screenshots/charts/axes-format.png" alt="Bars with data labels and dollar formatting" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/charts/axes-format.png" alt="Bars with data labels and dollar formatting" loading="lazy"><img class="when-dark" src="screenshots/charts/axes-format-dark.png" alt="Bars with data labels and dollar formatting" loading="lazy"></figure>
 <p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
 <pre><code>BarChart {
     labels: ["Jan", "Feb", "Mar"];
@@ -1579,7 +1581,7 @@ The gallery's <code>ui/gallery.slint</code> has a working example of every chart
 <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.1">releases page</a>.
 Each download includes the licenses of the open-source crates it is built from.</p>
 <p><a href="https://slint.dev"><img src="assets/MadeWithSlint-logo-whitebg.png" alt="Made with Slint" width="212" height="97"></a></p>
-<figure class="shot"><img src="screenshots/gallery.png" alt="The gallery sample browser" loading="lazy"></figure>
+<figure class="shot"><img class="when-light" src="screenshots/gallery.png" alt="The gallery sample browser" loading="lazy"><img class="when-dark" src="screenshots/gallery-dark.png" alt="The gallery sample browser" loading="lazy"></figure>
 
 <h2 id="limitations">Limitations</h2>
 <p>What SlintPlot 0.1 doesn't do yet, or does with restrictions:</p>
