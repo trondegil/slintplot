@@ -334,10 +334,10 @@ export component CalendarHeatmap {
     accessible-role: image;
     accessible-label: root.title;
 
-    private property <ChartCalendarLayout> calendar: ChartEngine.calendar-layout(root.start-date, root.values, root.levels, root.week-starts-monday);
+    private property <ChartCalendarLayout> calendar: ChartEngine.calendar-layout(root.start-date, root.values, root.levels, root.week-starts-monday, ChartTheme.locale);
     private property <int> first-weekday: root.calendar.days.length > 0 ? root.calendar.days[0].weekday : 0;
     private property <color> empty: ChartTheme.dark ? #2b2f36 : #ebedf0;
-    private property <length> label-width: ChartTheme.font-size * 2.6;
+    private property <length> label-width: max(ChartTheme.font-size * 2.6, weekday-measure.preferred-width + 6px);
     private property <length> label-height: ChartTheme.font-size * 1.6;
     // Square cells: the largest that fit, cell plus gap, but at least
     // `min-cell-size`.
@@ -456,8 +456,14 @@ export component CalendarHeatmap {
                 }
             }
 
+            weekday-measure := Text {
+                visible: false;
+                text: ChartEngine.widest-label(root.calendar.weekdays);
+                font-size: ChartTheme.font-size;
+            }
+
             // Every other weekday, like GitHub.
-            for name[row] in root.week-starts-monday ? ["Mon", "", "Wed", "", "Fri", "", ""] : ["", "Mon", "", "Wed", "", "Fri", ""]: Text {
+            for name[row] in root.calendar.weekdays: Text {
                 x: 0;
                 width: root.label-width - 6px;
                 y: grid.y + row * root.step + (root.step - root.cell-gap) / 2 - self.height / 2;

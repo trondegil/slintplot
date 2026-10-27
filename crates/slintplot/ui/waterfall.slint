@@ -64,6 +64,7 @@ export component WaterfallChart {
     }
     private property <[float]> totals: ChartEngine.waterfall-totals(root.steps);
     private property <ChartAxis> axis: ChartEngine.value-axis({
+        locale: ChartTheme.locale,
         kind: ChartKind.bar,
         datasets: [{ values: root.totals }],
         height: plot.height / 1px,

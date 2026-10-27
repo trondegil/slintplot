@@ -266,7 +266,7 @@ export component SunburstChart {
                         Text {
                             text: ChartEngine.sunburst-path(root.items, arc.index) + ": "
                                 + ChartEngine.format-value(arc.value, root.format)
-                                + " (" + ChartEngine.format-value(arc.share * 100, { decimals: 1 }) + "%)";
+                                + " (" + ChartEngine.format-percent(arc.share * 100, 1) + ")";
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }

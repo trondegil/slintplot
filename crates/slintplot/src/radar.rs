@@ -6,8 +6,9 @@ use std::f32::consts::TAU;
 use std::fmt::Write;
 
 use crate::layout::{Dataset, Labels, Point, Series, resolve_color};
+use crate::locale::Locale;
 use crate::path;
-use crate::ticks::{NiceScale, format_tick};
+use crate::ticks::NiceScale;
 
 /// A text label positioned in pixels.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -33,6 +34,8 @@ pub struct RadarRequest<'a> {
     pub font_size: f32,
     /// Colors for datasets without their own.
     pub palette: &'a [crate::layout::Rgba],
+    /// How the scale labels are written.
+    pub locale: &'a Locale,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -124,7 +127,7 @@ pub fn layout(req: &RadarRequest) -> RadarLayout {
         out.ticks.push(Label {
             x: center.0,
             y: center.1 - r,
-            text: format_tick(v, scale.step),
+            text: req.locale.tick(v, scale.step),
             align: 0.5,
             valign: 0.5,
         });
@@ -240,6 +243,7 @@ mod tests {
             progress: 1.0,
             font_size: 10.0,
             palette: &[],
+            locale: &Locale::default(),
         });
         assert_eq!(l.count, 4);
         let r = l.radius;
@@ -286,6 +290,7 @@ mod tests {
             progress: 1.0,
             font_size: 10.0,
             palette: &[],
+            locale: &Locale::default(),
         });
         assert!(l.series.is_empty() && l.grid.is_empty());
     }

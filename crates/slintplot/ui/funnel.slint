@@ -86,7 +86,7 @@ export component FunnelChart {
     }
 
     pure function share(fraction: float) -> string {
-        ChartEngine.format-value(fraction * 100, { decimals: fraction >= 0.1 ? 0 : 1 }) + "%"
+        ChartEngine.format-percent(fraction * 100, fraction >= 0.1 ? 0 : 1)
     }
 
     min-width: 200px;
@@ -130,7 +130,7 @@ export component FunnelChart {
                 }
                 badge-measure := Text {
                     visible: false;
-                    text: "↓ 100%";
+                    text: "↓ " + ChartEngine.format-percent(100, 0);
                     font-size: ChartTheme.font-size * 0.9;
                     font-weight: 600;
                 }
@@ -315,12 +315,12 @@ export component FunnelChart {
                             }
                         }
                         Text {
-                            text: ChartEngine.format-value(stage.of-first * 100, { decimals: 1 }) + "% of the first stage";
+                            text: ChartEngine.format-percent(stage.of-first * 100, 1) + " of the first stage";
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }
                         if root.hovered-row > 0: Text {
-                            text: ChartEngine.format-value(stage.of-previous * 100, { decimals: 1 }) + "% of the previous stage";
+                            text: ChartEngine.format-percent(stage.of-previous * 100, 1) + " of the previous stage";
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }

@@ -1,6 +1,7 @@
 //! Heatmaps: a matrix of values, and a calendar of daily values like GitHub's
 //! contribution graph.
 
+use crate::locale::Locale;
 use crate::time::civil_from_days;
 
 /// The smallest and largest finite values, or `None` without any.
@@ -36,9 +37,17 @@ pub struct Calendar {
     pub thresholds: Vec<f64>,
 }
 
-const MONTHS: [&str; 12] = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+/// The weekday labels of a calendar's rows: Monday, Wednesday and Friday,
+/// like GitHub, with the other rows blank.
+pub fn weekday_labels(locale: &Locale, week_starts_monday: bool) -> Vec<String> {
+    let first = usize::from(!week_starts_monday);
+    (0..7)
+        .map(|row: usize| match row.checked_sub(first) {
+            Some(day @ (0 | 2 | 4)) => locale.weekdays.get(day).cloned().unwrap_or_default(),
+            _ => String::new(),
+        })
+        .collect()
+}
 
 /// Lays out one value per day, starting on `start_day` (days since
 /// 1970-01-01), in weeks starting on Monday or, like GitHub, on Sunday.
@@ -49,6 +58,23 @@ pub fn calendar(
     values: &[f64],
     levels: usize,
     week_starts_monday: bool,
+) -> Calendar {
+    calendar_in(
+        start_day,
+        values,
+        levels,
+        week_starts_monday,
+        &Locale::default(),
+    )
+}
+
+/// Like [`calendar`], with month names from the given locale.
+pub fn calendar_in(
+    start_day: i64,
+    values: &[f64],
+    levels: usize,
+    week_starts_monday: bool,
+    locale: &Locale,
 ) -> Calendar {
     let levels = levels.max(1);
     // 1970-01-01 was a Thursday: 4 days after Sunday, 3 after Monday.
@@ -86,7 +112,7 @@ pub fn calendar(
             // A month is labeled at the first week that starts inside it.
             let week_starts_in_month = weekday == 0 && day <= 7;
             if (week_starts_in_month || index == 0) && last_month != Some(month) {
-                months.push((week, MONTHS[(month - 1) as usize].to_string()));
+                months.push((week, locale.month(month).to_owned()));
                 last_month = Some(month);
             }
             Day {
@@ -149,5 +175,33 @@ mod tests {
         let names: Vec<_> = cal.months.iter().map(|(_, m)| m.as_str()).collect();
         assert!(names.len() >= 12 && names.contains(&"Jan"), "{names:?}");
         assert!(cal.months.windows(2).all(|w| w[1].0 > w[0].0));
+    }
+
+    #[test]
+    fn weekday_rows_follow_the_first_day() {
+        let en = Locale::default();
+        assert_eq!(
+            weekday_labels(&en, true),
+            ["Mon", "", "Wed", "", "Fri", "", ""]
+        );
+        assert_eq!(
+            weekday_labels(&en, false),
+            ["", "Mon", "", "Wed", "", "Fri", ""]
+        );
+        let fr = Locale {
+            weekdays: ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
+                .map(String::from)
+                .to_vec(),
+            months: [
+                "janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.",
+                "nov.", "déc.",
+            ]
+            .map(String::from)
+            .to_vec(),
+            ..Locale::default()
+        };
+        assert_eq!(weekday_labels(&fr, true)[2], "mer.");
+        let cal = calendar_in(days_from_civil(2026, 1, 1), &[1.0; 40], 4, true, &fr);
+        assert_eq!(cal.months[0].1, "janv.");
     }
 }

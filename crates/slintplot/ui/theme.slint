@@ -1,4 +1,5 @@
 import { Palette } from "std-widgets.slint";
+import { ChartLanguage, ChartLocale, ChartLocales } from "locale.slint";
 
 // Built-in dataset color themes. Each has 8 colors with light and dark mode
 // variants, ordered so that neighboring colors stay distinct, also with
@@ -38,6 +39,11 @@ export global ChartTheme {
     in-out property <color> tooltip-text: #ffffff;
     in-out property <length> font-size: 12px;
     in-out property <length> title-font-size: 15px;
+    // The language whose conventions numbers and dates follow.
+    in-out property <ChartLanguage> language: ChartLanguage.english;
+    // How numbers and dates are written: the conventions of `language`.
+    // Assign your own for other conventions; empty fields are English.
+    in-out property <ChartLocale> locale: ChartLocales.of(root.language);
     // Opacity of filled marks (bars, areas, points, bubbles, polar slices),
     // whose outline stays solid.
     in-out property <float> fill-opacity: 0.5;

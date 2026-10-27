@@ -1,6 +1,9 @@
 // Data types and the bridge to the Rust layout engine.
 // `slintplot::register!` implements the callbacks of `ChartEngine`.
 
+import { ChartLocale } from "locale.slint";
+import { ChartTheme } from "theme.slint";
+
 export enum ChartKind { line, bar, scatter, bubble }
 
 // How a dataset is drawn: like its chart (`auto`), or as a line or bars,
@@ -107,6 +110,7 @@ export struct ChartAxisRequest {
     font-size: float,
     // Extra room beyond the data at both ends, as a share of its range.
     grace: float,
+    locale: ChartLocale,
 }
 
 export struct ChartLayoutRequest {
@@ -136,6 +140,7 @@ export struct ChartLayoutRequest {
     show-lines: bool,
     x-format: ChartFormat,
     percent: bool,
+    locale: ChartLocale,
 }
 
 // One slice of a pie or doughnut chart.
@@ -184,6 +189,7 @@ export struct ChartPieRequest {
     polar: bool,
     font-size: float,
     palette: [color],
+    locale: ChartLocale,
 }
 
 // A text label. `align` and `valign` are the anchors: 0 when (x, y) is the
@@ -199,6 +205,7 @@ export struct ChartRadarRequest {
     progress: float,
     font-size: float,
     palette: [color],
+    locale: ChartLocale,
 }
 
 export struct ChartRadarLayout {
@@ -227,6 +234,8 @@ export struct ChartCalendarLayout {
     // `pos` is the week (column) where the month starts.
     months: [ChartTick],
     thresholds: [float],
+    // The label of each row: Monday, Wednesday and Friday, the others blank.
+    weekdays: [string],
 }
 
 // An item of a treemap. Items with the same `group` are placed together.
@@ -437,6 +446,7 @@ export struct ChartGaugeRequest {
     ticks: bool,
     font-size: float,
     format: ChartFormat,
+    locale: ChartLocale,
     // The value's color without bands.
     color: color,
     palette: [color],
@@ -504,7 +514,16 @@ export struct ChartDumbbellRequest {
 export global ChartEngine {
     pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
     pure callback layout(request: ChartLayoutRequest) -> ChartLayout;
-    pure callback format-value(value: float, format: ChartFormat) -> string;
+    pure callback format-number(value: float, format: ChartFormat, locale: ChartLocale) -> string;
+    // A value in a format, written the way `ChartTheme.locale` says.
+    public pure function format-value(value: float, format: ChartFormat) -> string {
+        self.format-number(value, format, ChartTheme.locale)
+    }
+    pure callback format-percentage(value: float, decimals: int, locale: ChartLocale) -> string;
+    // A percentage with `decimals` decimals, such as "45%" or "45 %".
+    public pure function format-percent(value: float, decimals: int) -> string {
+        self.format-percentage(value, decimals, ChartTheme.locale)
+    }
     // The range of the finite values; 0 to 1 when there are none.
     pure callback value-range(values: [float]) -> ChartRange;
     // A value's share of its category, in percent (100% stacked charts).
@@ -512,9 +531,12 @@ export global ChartEngine {
     // The same share as a whole percentage, rounded so that the category's
     // labels add up to exactly 100.
     pure callback rounded-share(datasets: [ChartDataset], dataset: int, index: int) -> int;
-    pure callback calendar-layout(start: ChartDateTime, values: [float], levels: int, week-starts-monday: bool) -> ChartCalendarLayout;
+    pure callback calendar-layout(start: ChartDateTime, values: [float], levels: int, week-starts-monday: bool, locale: ChartLocale) -> ChartCalendarLayout;
+    pure callback format-date-time(origin: ChartDateTime, utc-offset: int, seconds: float, locale: ChartLocale) -> string;
     // A time axis value as a date, such as "Oct 25, 2026, 14:30".
-    pure callback format-time(origin: ChartDateTime, utc-offset: int, seconds: float) -> string;
+    public pure function format-time(origin: ChartDateTime, utc-offset: int, seconds: float) -> string {
+        self.format-date-time(origin, utc-offset, seconds, ChartTheme.locale)
+    }
     pure callback widest-label(labels: [string]) -> string;
     // The point of a scatter layout closest to (x, y), within `radius` pixels.
     // With `x-only`, the point closest in x at any distance (time series).
@@ -556,7 +578,7 @@ export global ChartEngine {
     // An item's labels from the top level down, such as "Europe › Germany".
     pure callback sunburst-path(items: [ChartSunburstItem], index: int) -> string;
     // The legend of a gauge's bands; bands without a label show their range.
-    pure callback gauge-legend(bands: [ChartGaugeBand], palette: [color]) -> [ChartLegendItem];
+    pure callback gauge-legend(bands: [ChartGaugeBand], palette: [color], locale: ChartLocale) -> [ChartLegendItem];
     pure callback gauge-layout(request: ChartGaugeRequest) -> ChartGaugeLayout;
     // At (x, y): the band, -1 for the arc outside any band, or -2 off the arc.
     pure callback gauge-hit(layout: ChartGaugeLayout, x: float, y: float) -> int;

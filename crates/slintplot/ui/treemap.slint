@@ -216,7 +216,7 @@ export component TreemapChart {
                         Text {
                             text: (item.group != "" ? item.group + " › " : "") + item.label + ": "
                                 + ChartEngine.format-value(item.value, root.format)
-                                + " (" + ChartEngine.format-value(cell.share * 100, { decimals: 1 }) + "%)";
+                                + " (" + ChartEngine.format-percent(cell.share * 100, 1) + ")";
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }

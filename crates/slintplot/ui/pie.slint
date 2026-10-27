@@ -52,6 +52,7 @@ export component PieChart {
 
     private property <[ChartLegendItem]> legend: ChartEngine.slice-legend(root.slices, ChartTheme.colors);
     private property <ChartPieLayout> pie: ChartEngine.pie-layout({
+        locale: ChartTheme.locale,
         slices: root.slices,
         width: area.width / 1px,
         height: area.height / 1px,
@@ -151,7 +152,7 @@ export component PieChart {
                         property <float> distance: root.polar ? arc.outer * 0.65 : (pie.radius + pie.inner-radius) / 2 + (pie.inner-radius > 0 ? 0 : pie.radius * 0.12);
                         visible: arc.end - arc.start > 0.25 && (!root.polar || arc.outer > ChartTheme.font-size / 1px * 2);
                         text: root.show-percentages
-                            ? ChartEngine.format-value(self.slice.value / max(pie.total, 0.000001) * 100, { decimals: 0 }) + "%"
+                            ? ChartEngine.format-percent(self.slice.value / max(pie.total, 0.000001) * 100, 0)
                             : ChartEngine.format-value(self.slice.value, root.format);
                         x: (pie.center-x + arc.dx * self.distance) * 1px - self.width / 2;
                         y: (pie.center-y + arc.dy * self.distance) * 1px - self.height / 2;
@@ -225,7 +226,7 @@ export component PieChart {
                         }
                         Text {
                             text: slice.label + ": " + ChartEngine.format-value(slice.value, root.format)
-                                + " (" + ChartEngine.format-value(slice.value / max(pie.total, 0.000001) * 100, { decimals: 1 }) + "%)";
+                                + " (" + ChartEngine.format-percent(slice.value / max(pie.total, 0.000001) * 100, 1) + ")";
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }

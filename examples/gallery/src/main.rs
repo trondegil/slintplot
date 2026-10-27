@@ -1348,6 +1348,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn main() {
     console_error_panic_hook::set_once();
     let (ui, _state) = gallery().expect("the gallery window");
+    // The browser has no fonts for Japanese and Chinese.
+    ui.set_cjk_fonts(false);
     ui.run().expect("the event loop");
 }
 
@@ -1495,5 +1497,24 @@ fn snapshots(
     snapshot::settle(Duration::from_millis(1100));
     snapshot::save(&window, &dir.join("calendar-github.png"))?;
     ui.set_calendar_colors(0);
+    // Numbers and dates in other languages, by index into the language picker.
+    for (language, name) in [(2, "de"), (7, "nb"), (12, "ja")] {
+        ui.set_language(language);
+        for id in [
+            "axes-format",
+            "time-hourly",
+            "calendar",
+            "pie-labels",
+            "survey",
+            "funnel",
+        ] {
+            let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
+            state.borrow_mut().select(sample);
+            snapshot::render(&window);
+            snapshot::settle(Duration::from_millis(1100));
+            snapshot::save(&window, &dir.join(format!("locale-{name}-{id}.png")))?;
+        }
+    }
+    ui.set_language(0);
     Ok(())
 }

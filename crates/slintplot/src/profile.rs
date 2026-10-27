@@ -22,7 +22,9 @@ pub fn take_totals() -> (u32, Duration) {
 /// A started timing. In the browser (`wasm32-unknown-unknown`), which has no
 /// clock in the standard library, timings are recorded as zero.
 #[doc(hidden)]
-pub struct Started(#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))] std::time::Instant);
+pub struct Started(
+    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))] std::time::Instant,
+);
 
 #[doc(hidden)]
 pub fn start() -> Started {

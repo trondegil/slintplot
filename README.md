@@ -55,6 +55,7 @@ slintplot-gallery
 - "Nice" axis ticks and automatic skipping of crowded category labels
 - Five built-in color themes (modern, Material, corporate, mono, pastel), plus custom palettes
 - Theming through the `ChartTheme` global, with dark mode following `Palette`
+- **Languages**: numbers and dates in the conventions of 14 languages, or your own
 
 ## Gallery
 
@@ -459,6 +460,36 @@ Filled marks (bars, areas, points, bubbles, polar slices) are
 drawn with a translucent fill and a solid outline. `ChartTheme.fill-opacity`
 (default `0.5`) sets the fill's opacity.
 
+### Languages
+
+`ChartTheme.language` sets how numbers and dates are written: separators, the
+percent sign, and month and weekday names and date order on time axes,
+tooltips and calendar heatmaps. Prefixes and suffixes stay as you set them.
+
+```slint
+import { ChartLanguage, ChartTheme } from "@slintplot";
+
+export component App inherits Window {
+    init => {
+        ChartTheme.language = ChartLanguage.german; // 12.345,6 and 25. Okt. 2026
+    }
+}
+```
+
+The built-in languages are English (the default), Chinese, Danish, Dutch,
+Finnish, French, German, Italian, Japanese, Norwegian, Polish, Portuguese,
+Spanish and Swedish. For other conventions, assign a `ChartLocale` to
+`ChartTheme.locale`; fields you leave out are English:
+
+```slint
+ChartTheme.locale = { decimal: ".", group: "'" }; // Swiss numbers, English dates
+```
+
+Japanese and Chinese need a font with their characters, which desktop systems
+have; in the browser, Slint only has its built-in Inter font. See
+[Languages](https://slintplot.dev/#languages) for following the system
+language from Rust.
+
 ### Large datasets
 
 Values are read from the data models on demand. A chart zoomed into part of
@@ -559,7 +590,7 @@ What SlintPlot 0.1 doesn't do yet, or does with restrictions:
 
 - **Rust only.** The chart geometry is computed in Rust and connected with `register!`, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.
 - **Platforms.** Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs [in the browser](https://slintplot.dev/demo/). Embedded (MCU) builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.
-- **English formatting.** Values use `,` for thousands and `.` for decimals, and month and weekday names are English. There is no locale setting yet; a prefix, suffix and number of decimals can be set.
+- **English texts.** Numbers and dates follow `ChartTheme.language`, but the few built-in words, such as "no data", "Running total" and "Less" and "More" under a calendar heatmap, are English. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.
 - **Time zones.** Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.
 - **One value axis.** Each chart has one value axis; there is no secondary y axis.
 - **Zoom, pan and decimation** work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.

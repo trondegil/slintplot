@@ -68,6 +68,7 @@ export component DumbbellChart {
     }
     private property <[ChartLegendItem]> legend: ChartEngine.dataset-legend(root.datasets, ChartTheme.colors);
     private property <ChartAxis> axis: ChartEngine.value-axis({
+        locale: ChartTheme.locale,
         kind: ChartKind.line,
         datasets: root.datasets,
         height: plot.width / 1px,

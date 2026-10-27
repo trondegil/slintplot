@@ -1,9 +1,7 @@
 //! Time axes: calendar-aligned ticks and date formatting, in UTC with an
 //! optional fixed offset. Times are seconds since the Unix epoch.
 
-const MONTH_NAMES: [&str; 12] = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+use crate::locale::Locale;
 
 /// Days since 1970-01-01 of a proleptic Gregorian date (Howard Hinnant's
 /// `days_from_civil`).
@@ -96,40 +94,41 @@ fn split(local: f64) -> (i64, f64) {
     (days as i64, local - days * DAY)
 }
 
-fn two(v: u32) -> String {
-    format!("{v:02}")
-}
-
-/// Formats a time for a tick of the given unit.
-fn label(local: f64, unit: Unit) -> String {
+/// Formats a time for a tick of the given unit. The flag tells whether the
+/// label carries the date (sub-day units) or the year (months).
+fn label(local: f64, unit: Unit, locale: &Locale) -> (String, bool) {
     let (days, secs) = split(local);
     let (year, month, day) = civil_from_days(days);
     let secs = secs.round() as u32;
     let (h, m, s) = (secs / 3600, secs / 60 % 60, secs % 60);
-    let month_name = MONTH_NAMES[(month - 1) as usize];
     match unit {
-        Unit::Seconds(u) if u < 60.0 => format!("{}:{}:{}", two(h), two(m), two(s)),
+        Unit::Seconds(u) if u < 60.0 => (locale.time(h, m, Some(s)), false),
         // At midnight, a date says more than "00:00".
-        Unit::Seconds(u) if u < DAY && secs != 0 => format!("{}:{}", two(h), two(m)),
-        Unit::Seconds(_) => format!("{month_name} {day}"),
-        Unit::Months(_) if month == 1 => format!("{month_name} {year}"),
-        Unit::Months(_) => month_name.to_string(),
-        Unit::Years(_) => year.to_string(),
+        Unit::Seconds(u) if u < DAY && secs != 0 => (locale.time(h, m, None), false),
+        Unit::Seconds(_) => (locale.day_month(day, month), true),
+        Unit::Months(_) if month == 1 => (locale.month_year(month, year), true),
+        Unit::Months(_) => (locale.month(month).to_owned(), false),
+        Unit::Years(_) => (year.to_string(), true),
     }
 }
 
-/// Formats a time for a tooltip, such as "Oct 25, 2026, 14:30".
+/// Formats a time for a tooltip, such as "Oct 25, 2026, 14:30", in English.
 pub fn format_datetime(time: f64, utc_offset_minutes: i32) -> String {
+    format_datetime_in(time, utc_offset_minutes, &Locale::default())
+}
+
+/// Formats a time for a tooltip in the given locale.
+pub fn format_datetime_in(time: f64, utc_offset_minutes: i32, locale: &Locale) -> String {
     let local = time + utc_offset_minutes as f64 * 60.0;
     let (days, secs) = split(local);
     let (year, month, day) = civil_from_days(days);
     let secs = secs.round() as u32;
     let (h, m, s) = (secs / 3600, secs / 60 % 60, secs % 60);
-    let date = format!("{} {day}, {year}", MONTH_NAMES[(month - 1) as usize]);
+    let date = locale.date(day, month, year);
     match (h, m, s) {
         (0, 0, 0) => date,
-        (_, _, 0) => format!("{date}, {}:{}", two(h), two(m)),
-        _ => format!("{date}, {}:{}:{}", two(h), two(m), two(s)),
+        (_, _, 0) => locale.date_time(&date, &locale.time(h, m, None)),
+        _ => locale.date_time(&date, &locale.time(h, m, Some(s))),
     }
 }
 
@@ -141,6 +140,23 @@ pub fn time_ticks(
     end: f64,
     max_ticks: usize,
     utc_offset_minutes: i32,
+) -> Vec<(f64, String)> {
+    time_ticks_in(
+        start,
+        end,
+        max_ticks,
+        utc_offset_minutes,
+        &Locale::default(),
+    )
+}
+
+/// Ticks for the times `start` to `end`, labeled in the given locale.
+pub fn time_ticks_in(
+    start: f64,
+    end: f64,
+    max_ticks: usize,
+    utc_offset_minutes: i32,
+    locale: &Locale,
 ) -> Vec<(f64, String)> {
     // Also rejects NaN.
     if end.partial_cmp(&start) != Some(std::cmp::Ordering::Greater) {
@@ -162,7 +178,7 @@ pub fn time_ticks(
             let shift = if u == 7.0 * DAY { 3.0 * DAY } else { 0.0 };
             let mut t = ((local_start + shift) / u).ceil() * u - shift;
             while t <= local_end + 1e-6 {
-                ticks.push((t - offset, label(t, unit)));
+                ticks.push((t - offset, label(t, unit, locale)));
                 t += u;
             }
         }
@@ -180,7 +196,7 @@ pub fn time_ticks(
                     break;
                 }
                 if t >= local_start - 1e-6 {
-                    ticks.push((t - offset, label(t, unit)));
+                    ticks.push((t - offset, label(t, unit, locale)));
                 }
                 index += step;
             }
@@ -189,18 +205,21 @@ pub fn time_ticks(
     // Zoomed in to less than a day, or a year, no tick may carry the date or
     // the year: the first tick does.
     let context = match unit {
-        Unit::Seconds(u) if u < DAY => !ticks.iter().any(|(_, l)| !l.contains(':')),
-        Unit::Months(_) => !ticks.iter().any(|(_, l)| l.contains(' ')),
+        Unit::Seconds(u) if u < DAY => true,
+        Unit::Months(_) => true,
         _ => false,
-    };
-    if context && let Some((t, label)) = ticks.first_mut() {
+    } && !ticks.iter().any(|(_, (_, dated))| *dated);
+    if context && let Some((t, (label, _))) = ticks.first_mut() {
         let (year, month, day) = civil_from_days(split(*t + offset).0);
         *label = match unit {
-            Unit::Months(_) => format!("{label} {year}"),
-            _ => format!("{} {day} {label}", MONTH_NAMES[(month - 1) as usize]),
+            Unit::Months(_) => locale.month_year(month, year),
+            _ => format!("{} {label}", locale.day_month(day, month)),
         };
     }
     ticks
+        .into_iter()
+        .map(|(t, (label, _))| (t, label))
+        .collect()
 }
 
 #[cfg(test)]
@@ -266,5 +285,45 @@ mod tests {
             format_datetime(unix_seconds(2026, 10, 25, 0, 0, 0), 0),
             "Oct 25, 2026"
         );
+    }
+
+    fn german() -> Locale {
+        Locale {
+            decimal: ",".into(),
+            group: ".".into(),
+            months: [
+                "Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.",
+                "Nov.", "Dez.",
+            ]
+            .map(String::from)
+            .to_vec(),
+            day_month: "{d}. {MMM}".into(),
+            date: "{d}. {MMM} {yyyy}".into(),
+            ..Locale::default()
+        }
+    }
+
+    #[test]
+    fn ticks_and_dates_in_another_language() {
+        let de = german();
+        let start = unix_seconds(2026, 10, 25, 9, 17, 0);
+        let hours = time_ticks_in(start, start + 6.0 * 3600.0, 8, 0, &de);
+        assert_eq!(hours[0].1, "25. Okt. 10:00");
+        let spring = time_ticks_in(
+            unix_seconds(2026, 3, 1, 0, 0, 0),
+            unix_seconds(2026, 6, 1, 0, 0, 0),
+            8,
+            0,
+            &de,
+        );
+        let labels: Vec<_> = spring.iter().map(|(_, l)| l.as_str()).collect();
+        assert_eq!(labels, ["März 2026", "Apr.", "Mai", "Juni"]);
+        let t = unix_seconds(2026, 10, 25, 14, 30, 0);
+        assert_eq!(format_datetime_in(t, 0, &de), "25. Okt. 2026, 14:30");
+        let us = Locale {
+            hour12: true,
+            ..Locale::default()
+        };
+        assert_eq!(format_datetime_in(t, 0, &us), "Oct 25, 2026, 2:30 PM");
     }
 }

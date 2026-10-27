@@ -50,6 +50,7 @@ export component RadarChart {
     }
 
     private property <ChartRadarLayout> radar: ChartEngine.radar-layout({
+        locale: ChartTheme.locale,
         datasets: root.datasets,
         labels: root.labels,
         width: area.width / 1px,

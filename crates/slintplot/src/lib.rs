@@ -40,6 +40,7 @@ pub mod funnel;
 pub mod gauge;
 pub mod heatmap;
 pub mod layout;
+pub mod locale;
 pub mod path;
 pub mod pie;
 pub mod profile;
@@ -137,11 +138,32 @@ macro_rules! register {
                 _ => None,
             }
         }
-        fn format(f: &ChartFormat) -> $crate::ticks::Format {
+        fn locale(l: &ChartLocale) -> $crate::locale::Locale {
+            let names = |model: &::slint::ModelRc<::slint::SharedString>| {
+                tracked(model).into_iter().map(String::from).collect()
+            };
+            $crate::locale::Locale {
+                decimal: l.decimal.to_string(),
+                group: l.group.to_string(),
+                percent: l.percent.to_string(),
+                months: names(&l.months),
+                weekdays: names(&l.weekdays),
+                day_month: l.day_month.to_string(),
+                month_year: l.month_year.to_string(),
+                date: l.date.to_string(),
+                date_time: l.date_time.to_string(),
+                hour12: l.hour12,
+                am: l.am.to_string(),
+                pm: l.pm.to_string(),
+            }
+            .or_english()
+        }
+        fn format(f: &ChartFormat, l: &ChartLocale) -> $crate::ticks::Format {
             $crate::ticks::Format {
                 prefix: f.prefix.to_string(),
                 suffix: f.suffix.to_string(),
                 decimals: usize::try_from(f.decimals).ok(),
+                locale: locale(l),
             }
         }
         fn seconds(t: &ChartDateTime) -> f64 {
@@ -232,7 +254,7 @@ macro_rules! register {
                     .fixed
                     .then(|| (req.fixed_min.into(), req.fixed_max.into())),
                 logarithmic: req.logarithmic,
-                format: &format(&req.format),
+                format: &format(&req.format, &req.locale),
                 percent: req.percent,
                 grace: req.grace.into(),
             });
@@ -271,7 +293,7 @@ macro_rules! register {
                     utc_offset_minutes: req.utc_offset,
                 }),
                 show_lines: req.show_lines,
-                x_format: &format(&req.x_format),
+                x_format: &format(&req.x_format, &req.locale),
                 percent: req.percent,
             });
             let layout = ChartLayout {
@@ -373,6 +395,7 @@ macro_rules! register {
                 polar: req.polar,
                 font_size: req.font_size,
                 palette: &palette(&req.palette),
+                locale: &locale(&req.locale),
             });
             ChartPieLayout {
                 arcs: model(out.slices.iter().map(|a| {
@@ -432,6 +455,7 @@ macro_rules! register {
                 progress: req.progress,
                 font_size: req.font_size,
                 palette: &palette(&req.palette),
+                locale: &locale(&req.locale),
             });
             ChartRadarLayout {
                 series: series(out.series),
@@ -896,12 +920,15 @@ macro_rules! register {
             labels.join(" › ").into()
         });
         engine.on_gauge_legend(
-            |bands: ::slint::ModelRc<ChartGaugeBand>, colors: ::slint::ModelRc<::slint::Color>| {
+            |bands: ::slint::ModelRc<ChartGaugeBand>,
+             colors: ::slint::ModelRc<::slint::Color>,
+             l: ChartLocale| {
                 let palette = palette(&colors);
+                let locale = locale(&l);
                 let bands = tracked(&bands);
                 model(bands.iter().enumerate().map(|(i, b)| ChartLegendItem {
                     label: if b.label.is_empty() {
-                        format!("Up to {}", $crate::ticks::format_value(b.to.into())).into()
+                        format!("Up to {}", locale.value(b.to.into())).into()
                     } else {
                         b.label.clone()
                     },
@@ -937,7 +964,7 @@ macro_rules! register {
                 rounded: req.rounded,
                 ticks: req.ticks,
                 font_size: req.font_size,
-                format: &format(&req.format),
+                format: &format(&req.format, &req.locale),
             });
             ChartGaugeLayout {
                 center_x: gauge.center.0,
@@ -1110,11 +1137,21 @@ macro_rules! register {
             }
         });
         engine.on_calendar_layout(
-            |start: ChartDateTime, values: ::slint::ModelRc<f32>, levels: i32, monday: bool| {
+            |start: ChartDateTime,
+             values: ::slint::ModelRc<f32>,
+             levels: i32,
+             monday: bool,
+             l: ChartLocale| {
                 let values: Vec<f64> = tracked(&values).into_iter().map(f64::from).collect();
                 let start_day = (seconds(&start) / 86_400.0).floor() as i64;
-                let cal =
-                    $crate::heatmap::calendar(start_day, &values, levels.max(1) as usize, monday);
+                let locale = locale(&l);
+                let cal = $crate::heatmap::calendar_in(
+                    start_day,
+                    &values,
+                    levels.max(1) as usize,
+                    monday,
+                    &locale,
+                );
                 ChartCalendarLayout {
                     days: model(cal.days.iter().map(|d| ChartCalendarDay {
                         index: d.index as i32,
@@ -1128,12 +1165,37 @@ macro_rules! register {
                         label: name.into(),
                     })),
                     thresholds: model(cal.thresholds.into_iter().map(|t| t as f32)),
+                    weekdays: model(
+                        $crate::heatmap::weekday_labels(&locale, monday)
+                            .into_iter()
+                            .map(::slint::SharedString::from),
+                    ),
                 }
             },
         );
-        engine.on_format_value(|v: f32, f: ChartFormat| format(&f).value(v.into()).into());
-        engine.on_format_time(|origin: ChartDateTime, utc_offset: i32, t: f32| {
-            $crate::time::format_datetime(seconds(&origin) + f64::from(t), utc_offset).into()
+        engine.on_format_number(|v: f32, f: ChartFormat, l: ChartLocale| {
+            format(&f, &l).value(v.into()).into()
         });
+        engine.on_format_percentage(|v: f32, decimals: i32, l: ChartLocale| {
+            let locale = locale(&l);
+            $crate::ticks::Format {
+                suffix: locale.percent.clone(),
+                decimals: usize::try_from(decimals).ok(),
+                locale,
+                ..Default::default()
+            }
+            .value(v.into())
+            .into()
+        });
+        engine.on_format_date_time(
+            |origin: ChartDateTime, utc_offset: i32, t: f32, l: ChartLocale| {
+                $crate::time::format_datetime_in(
+                    seconds(&origin) + f64::from(t),
+                    utc_offset,
+                    &locale(&l),
+                )
+                .into()
+            },
+        );
     }};
 }

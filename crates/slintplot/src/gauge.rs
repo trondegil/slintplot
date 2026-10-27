@@ -332,11 +332,7 @@ pub fn hit(gauge: &Gauge, bands: &[BandArc], x: f32, y: f32) -> Option<Option<us
 mod tests {
     use super::*;
 
-    static FORMAT: Format = Format {
-        prefix: String::new(),
-        suffix: String::new(),
-        decimals: None,
-    };
+    static FORMAT: std::sync::LazyLock<Format> = std::sync::LazyLock::new(Format::default);
 
     fn request(bands: &[Band]) -> GaugeRequest<'_> {
         GaugeRequest {

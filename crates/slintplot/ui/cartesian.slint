@@ -140,6 +140,7 @@ export component CartesianChart {
     private property <float> drag-view-end;
 
     private property <ChartAxis> axis: ChartEngine.value-axis({
+        locale: ChartTheme.locale,
         kind: root.kind,
         datasets: root.datasets,
         stacked: root.stacked || root.stacked-percent,
@@ -157,6 +158,7 @@ export component CartesianChart {
         format: root.format,
     });
     private property <ChartLayout> chart: ChartEngine.layout({
+        locale: ChartTheme.locale,
         kind: root.kind,
         datasets: root.datasets,
         stacked: root.stacked || root.stacked-percent,
@@ -344,7 +346,7 @@ export component CartesianChart {
                         for bar in chart.bars: Text {
                             property <float> value: root.datasets[bar.dataset].values[bar.index];
                             text: root.stacked-percent
-                                ? ChartEngine.rounded-share(root.datasets, bar.dataset, bar.index) + "%"
+                                ? ChartEngine.format-percent(ChartEngine.rounded-share(root.datasets, bar.dataset, bar.index), 0)
                                 : ChartEngine.format-value(self.value, root.format);
                             x: bar.x * 1px + (bar.width * 1px - self.width) / 2;
                             // Inside stacked segments; above (or below) other bars.

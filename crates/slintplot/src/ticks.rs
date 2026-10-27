@@ -1,5 +1,7 @@
 //! "Nice number" axis scales: bounds and steps of 1, 2 or 5 times a power of ten.
 
+use crate::locale::{Locale, tick_decimals, trim_decimals};
+
 /// A linear scale whose bounds and step are rounded to human-friendly numbers.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NiceScale {
@@ -60,49 +62,41 @@ fn nice_num(x: f64) -> f64 {
 }
 
 /// Removes floating point noise such as `0.30000000000000004`.
-fn clean(v: f64) -> f64 {
+pub(crate) fn clean(v: f64) -> f64 {
     let rounded = (v * 1e9).round() / 1e9;
     if rounded == 0.0 { 0.0 } else { rounded }
 }
 
-/// Formats a tick value with just enough decimals for the given step.
+/// Formats a tick value with just enough decimals for the given step, in
+/// English. [`Locale::tick`] formats for other languages.
 pub fn format_tick(value: f64, step: f64) -> String {
-    let decimals = if step > 0.0 {
-        (-step.log10().floor()).max(0.0) as usize
-    } else {
-        0
-    };
-    format_number(value, decimals)
+    format_number(value, tick_decimals(step))
 }
 
 /// Formats a value with thousands separators and at most two decimals, trimming
-/// trailing zeros.
+/// trailing zeros, in English. [`Locale::value`] formats for other languages.
 pub fn format_value(value: f64) -> String {
-    let s = format_number(value, 2);
-    if s.contains('.') {
-        s.trim_end_matches('0').trim_end_matches('.').to_owned()
-    } else {
-        s
-    }
+    trim_decimals(format_number(value, 2), ".")
 }
 
 /// How values are written on axes, in tooltips and in data labels: a prefix
 /// and suffix (such as a currency or unit), and optionally a fixed number of
-/// decimals.
+/// decimals, in the separators of a language.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Format {
     pub prefix: String,
     pub suffix: String,
     /// `None` chooses the decimals automatically.
     pub decimals: Option<usize>,
+    pub locale: Locale,
 }
 
 impl Format {
     /// A tick label, with just enough decimals for `step` unless fixed.
     pub fn tick(&self, value: f64, step: f64) -> String {
         let text = match self.decimals {
-            Some(d) => format_number(value, d),
-            None => format_tick(value, step),
+            Some(d) => self.locale.number(value, d),
+            None => self.locale.tick(value, step),
         };
         self.wrap(&text)
     }
@@ -110,8 +104,8 @@ impl Format {
     /// A data value, with at most two decimals unless fixed.
     pub fn value(&self, value: f64) -> String {
         let text = match self.decimals {
-            Some(d) => format_number(value, d),
-            None => format_value(value),
+            Some(d) => self.locale.number(value, d),
+            None => self.locale.value(value),
         };
         self.wrap(&text)
     }
@@ -168,25 +162,7 @@ pub fn log_ticks(min: f64, max: f64, max_ticks: usize) -> Vec<f64> {
 }
 
 fn format_number(value: f64, decimals: usize) -> String {
-    let raw = format!("{:.*}", decimals, clean(value).abs());
-    let (int, frac) = raw
-        .split_once('.')
-        .map_or((raw.as_str(), None), |(i, f)| (i, Some(f)));
-    let mut out = String::with_capacity(raw.len() + int.len() / 3 + 1);
-    if value < 0.0 && raw.chars().any(|c| c.is_ascii_digit() && c != '0') {
-        out.push('-');
-    }
-    for (i, c) in int.chars().enumerate() {
-        if i > 0 && (int.len() - i) % 3 == 0 {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    if let Some(frac) = frac {
-        out.push('.');
-        out.push_str(frac);
-    }
-    out
+    crate::locale::number(value, decimals, ".", ",")
 }
 
 #[cfg(test)]
@@ -198,7 +174,7 @@ mod tests {
         let money = Format {
             prefix: "$".into(),
             suffix: "k".into(),
-            decimals: None,
+            ..Default::default()
         };
         assert_eq!(money.value(-185.0), "-$185k");
         assert_eq!(money.tick(-50.0, 50.0), "-$50k");
@@ -229,8 +205,8 @@ mod tests {
     fn custom_formats() {
         let money = Format {
             prefix: "$".into(),
-            suffix: "".into(),
             decimals: Some(2),
+            ..Default::default()
         };
         assert_eq!(money.value(1234.5), "$1,234.50");
         assert_eq!(money.tick(20.0, 20.0), "$20.00");

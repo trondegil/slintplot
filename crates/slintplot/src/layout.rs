@@ -5,7 +5,7 @@
 
 use crate::path;
 use crate::ticks::{Format, NiceScale, log_bounds, log_ticks};
-use crate::time::time_ticks;
+use crate::time::time_ticks_in;
 
 /// RGBA color, 8 bits per channel.
 pub type Rgba = [u8; 4];
@@ -338,7 +338,7 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
     if req.percent {
         let shares = percentages(req.datasets);
         let format = Format {
-            suffix: "%".into(),
+            suffix: req.format.locale.percent.clone(),
             ..req.format.clone()
         };
         return value_axis(&AxisRequest {
@@ -1110,11 +1110,12 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
     let x_ticks = match req.time {
         // Half a pixel either side, so the rounding of the zoom window
         // doesn't drop a tick on the edge.
-        Some(time) => time_ticks(
+        Some(time) => time_ticks_in(
             time.origin + x0 - (x1 - x0) / req.width.max(1.0) as f64 * 0.5,
             time.origin + x1 + (x1 - x0) / req.width.max(1.0) as f64 * 0.5,
             max_ticks,
             time.utc_offset_minutes,
+            &req.x_format.locale,
         )
         .into_iter()
         .map(|(t, label)| Tick {
@@ -1307,11 +1308,7 @@ mod tests {
     use super::*;
 
     const NO_LABELS: &Vec<String> = &Vec::new();
-    const PLAIN: &Format = &Format {
-        prefix: String::new(),
-        suffix: String::new(),
-        decimals: None,
-    };
+    static PLAIN: std::sync::LazyLock<Format> = std::sync::LazyLock::new(Format::default);
 
     fn axis(
         datasets: &[Dataset],
@@ -1331,7 +1328,7 @@ mod tests {
             view: (0.0, 1.0),
             fixed: None,
             logarithmic: false,
-            format: PLAIN,
+            format: &PLAIN,
             percent: false,
             grace: 0.0,
         })
@@ -1467,7 +1464,7 @@ mod tests {
             view: (0.5, 0.6),
             fixed: None,
             logarithmic: false,
-            format: PLAIN,
+            format: &PLAIN,
             percent: false,
             grace: 0.0,
         });
@@ -1516,7 +1513,7 @@ mod tests {
                 view: (0.0, 1.0),
                 fixed,
                 logarithmic,
-                format: PLAIN,
+                format: &PLAIN,
                 percent: false,
                 grace: 0.0,
             })
@@ -1542,8 +1539,8 @@ mod tests {
     fn money_format_on_ticks() {
         let money = Format {
             prefix: "$".into(),
-            suffix: String::new(),
             decimals: Some(0),
+            ..Default::default()
         };
         let a = value_axis(&AxisRequest {
             datasets: &[ds(&[1200.0, 5300.0])],
@@ -1782,7 +1779,7 @@ mod tests {
             logarithmic: false,
             time: None,
             show_lines: false,
-            x_format: PLAIN,
+            x_format: &PLAIN,
             percent: false,
         }
     }

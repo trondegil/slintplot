@@ -15,6 +15,7 @@ import {
     WaterfallChart,
     ChartDataset,
     ChartEngine,
+    ChartLanguage,
     ChartLegendPosition,
     ChartPalette,
     ChartSlice,
@@ -134,6 +135,15 @@ export component Gallery inherits Window {
     in-out property <int> theme;
     // Index into the calendar heatmap's color picker; 0 follows the theme.
     in-out property <int> calendar-colors;
+    // Index into the language picker, in the order of `languages`.
+    in-out property <int> language;
+    // Japanese and Chinese need fonts with their characters; in the browser,
+    // Slint only has Inter.
+    in property <bool> cjk-fonts: true;
+    private property <[string]> language-names: root.cjk-fonts
+        ? ["English", "Dansk", "Deutsch", "Español", "Français", "Italiano", "Nederlands", "Norsk", "Polski", "Português", "Suomi", "Svenska", "日本語", "中文"]
+        : ["English", "Dansk", "Deutsch", "Español", "Français", "Italiano", "Nederlands", "Norsk", "Polski", "Português", "Suomi", "Svenska"];
+    private property <[ChartLanguage]> languages: [ChartLanguage.english, ChartLanguage.danish, ChartLanguage.german, ChartLanguage.spanish, ChartLanguage.french, ChartLanguage.italian, ChartLanguage.dutch, ChartLanguage.norwegian, ChartLanguage.polish, ChartLanguage.portuguese, ChartLanguage.finnish, ChartLanguage.swedish, ChartLanguage.japanese, ChartLanguage.chinese];
 
     // Phone-sized windows: the sample list opens over the chart from the
     // menu button, and the header, buttons and gauges wrap.
@@ -165,6 +175,9 @@ export component Gallery inherits Window {
     }
     changed narrow => {
         self.fit-text();
+    }
+    changed language => {
+        ChartTheme.language = self.languages[self.language];
     }
     changed theme => {
         ChartTheme.palette = self.theme == 0 ? ChartPalette.modern
@@ -231,8 +244,9 @@ export component Gallery inherits Window {
                     model: ["Theme", "GitHub green", "Blue", "Orange", "Purple", "Red"];
                     current-index <=> root.calendar-colors;
                 }
-                // The active palette, in the order datasets use it.
-                if !root.narrow: HorizontalLayout {
+                // The active palette, in the order datasets use it. The
+                // calendar has its own color picker instead.
+                if !root.narrow && root.sample != "calendar": HorizontalLayout {
                     spacing: 3px;
                     alignment: center;
                     for swatch in ChartTheme.colors: VerticalLayout {
@@ -247,8 +261,13 @@ export component Gallery inherits Window {
                         }
                     }
                 }
-                if !root.narrow: CheckBox {
-                    text: "Dark mode";
+                // Numbers and dates in the language's conventions.
+                if !root.narrow: ComboBox {
+                    model: root.language-names;
+                    current-index <=> root.language;
+                }
+                CheckBox {
+                    text: root.narrow ? "Dark" : "Dark mode";
                     checked <=> root.dark-mode;
                 }
             }
@@ -260,9 +279,9 @@ export component Gallery inherits Window {
                     model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
                     current-index <=> root.theme;
                 }
-                CheckBox {
-                    text: "Dark";
-                    checked <=> root.dark-mode;
+                ComboBox {
+                    model: root.language-names;
+                    current-index <=> root.language;
                 }
             }
             if root.narrow && root.sample == "calendar": HorizontalLayout {

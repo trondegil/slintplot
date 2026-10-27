@@ -1,0 +1,162 @@
+// How numbers and dates are written: separators, month and weekday names,
+// and date patterns. Set `ChartTheme.language`, or assign your own
+// `ChartLocale` to `ChartTheme.locale`.
+
+// Number and date conventions. Empty fields, and name lists of the wrong
+// length, are English. Date patterns use {d} for the day, {MMM} for the short
+// month name and {yyyy} for the year; `date-time` combines {date} and {time}.
+export struct ChartLocale {
+    // Before the decimals: "." or ",".
+    decimal: string,
+    // Between groups of thousands, such as "," or "." or "\u{a0}" (a no-break
+    // space). Leave both separators empty for English; set only `decimal`
+    // for no grouping.
+    group: string,
+    // After a percentage: "%" or "\u{a0}%".
+    percent: string,
+    // The 12 short month names, January first.
+    months: [string],
+    // The 7 short weekday names, Monday first.
+    weekdays: [string],
+    // A day in a month: "{MMM} {d}" (Oct 25) or "{d}. {MMM}" (25. Okt.).
+    day-month: string,
+    // A month in a year: "{MMM} {yyyy}".
+    month-year: string,
+    // A full date: "{MMM} {d}, {yyyy}".
+    date: string,
+    // A date with a time: "{date}, {time}".
+    date-time: string,
+    // A 12-hour clock, with `am` and `pm` ("AM" and "PM" when empty).
+    hour12: bool,
+    am: string,
+    pm: string,
+}
+
+// The languages with built-in conventions. Numbers and dates only: texts
+// such as "no data" in tooltips are English.
+export enum ChartLanguage {
+    english,
+    chinese,
+    danish,
+    dutch,
+    finnish,
+    french,
+    german,
+    italian,
+    japanese,
+    norwegian,
+    polish,
+    portuguese,
+    spanish,
+    swedish,
+}
+
+// The built-in conventions of each language, after CLDR.
+export global ChartLocales {
+    public pure function of(language: ChartLanguage) -> ChartLocale {
+        if language == ChartLanguage.chinese {
+            return {
+                months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+                weekdays: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+                day-month: "{MMM}{d}日", month-year: "{yyyy}年{MMM}", date: "{yyyy}年{MMM}{d}日", date-time: "{date} {time}",
+            };
+        }
+        if language == ChartLanguage.danish {
+            return {
+                decimal: ",", group: ".", percent: "\u{a0}%",
+                months: ["jan.", "feb.", "mar.", "apr.", "maj", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "dec."],
+                weekdays: ["man.", "tir.", "ons.", "tor.", "fre.", "lør.", "søn."],
+                day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date} {time}",
+            };
+        }
+        if language == ChartLanguage.dutch {
+            return {
+                decimal: ",", group: ".", percent: "%",
+                months: ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
+                weekdays: ["ma", "di", "wo", "do", "vr", "za", "zo"],
+                day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date} {time}",
+            };
+        }
+        if language == ChartLanguage.finnish {
+            return {
+                decimal: ",", group: "\u{a0}", percent: "\u{a0}%",
+                months: ["tammik.", "helmik.", "maalisk.", "huhtik.", "toukok.", "kesäk.", "heinäk.", "elok.", "syysk.", "lokak.", "marrask.", "jouluk."],
+                weekdays: ["ma", "ti", "ke", "to", "pe", "la", "su"],
+                day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date} {time}",
+            };
+        }
+        if language == ChartLanguage.french {
+            return {
+                decimal: ",", group: "\u{a0}", percent: "\u{a0}%",
+                months: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
+                weekdays: ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."],
+                day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date} {time}",
+            };
+        }
+        if language == ChartLanguage.german {
+            return {
+                decimal: ",", group: ".", percent: "\u{a0}%",
+                months: ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."],
+                weekdays: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+                day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date}, {time}",
+            };
+        }
+        if language == ChartLanguage.italian {
+            return {
+                decimal: ",", group: ".", percent: "%",
+                months: ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"],
+                weekdays: ["lun", "mar", "mer", "gio", "ven", "sab", "dom"],
+                day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date}, {time}",
+            };
+        }
+        if language == ChartLanguage.japanese {
+            return {
+                months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+                weekdays: ["月", "火", "水", "木", "金", "土", "日"],
+                day-month: "{MMM}{d}日", month-year: "{yyyy}年{MMM}", date: "{yyyy}年{MMM}{d}日", date-time: "{date} {time}",
+            };
+        }
+        if language == ChartLanguage.norwegian {
+            return {
+                decimal: ",", group: "\u{a0}", percent: "\u{a0}%",
+                months: ["jan.", "feb.", "mar.", "apr.", "mai", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "des."],
+                weekdays: ["man.", "tir.", "ons.", "tor.", "fre.", "lør.", "søn."],
+                day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date}, {time}",
+            };
+        }
+        if language == ChartLanguage.polish {
+            return {
+                decimal: ",", group: "\u{a0}", percent: "%",
+                months: ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"],
+                weekdays: ["pon.", "wt.", "śr.", "czw.", "pt.", "sob.", "niedz."],
+                day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date}, {time}",
+            };
+        }
+        if language == ChartLanguage.portuguese {
+            return {
+                decimal: ",", group: ".", percent: "%",
+                months: ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."],
+                weekdays: ["seg.", "ter.", "qua.", "qui.", "sex.", "sáb.", "dom."],
+                day-month: "{d} de {MMM}", month-year: "{MMM} de {yyyy}", date: "{d} de {MMM} de {yyyy}", date-time: "{date}, {time}",
+            };
+        }
+        if language == ChartLanguage.spanish {
+            return {
+                decimal: ",", group: ".", percent: "\u{a0}%",
+                months: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"],
+                weekdays: ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"],
+                day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date}, {time}",
+            };
+        }
+        if language == ChartLanguage.swedish {
+            return {
+                decimal: ",", group: "\u{a0}", percent: "\u{a0}%",
+                months: ["jan.", "feb.", "mars", "apr.", "maj", "juni", "juli", "aug.", "sep.", "okt.", "nov.", "dec."],
+                weekdays: ["mån", "tis", "ons", "tors", "fre", "lör", "sön"],
+                day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date} {time}",
+            };
+        }
+        // English: every field falls back to it.
+        { }
+    }
+}

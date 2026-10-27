@@ -6,7 +6,8 @@ use std::f32::consts::{PI, TAU};
 use std::fmt::Write;
 
 use crate::layout::{Rgba, Tick, resolve_color};
-use crate::ticks::{NiceScale, format_tick};
+use crate::locale::Locale;
+use crate::ticks::NiceScale;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Slice {
@@ -70,6 +71,8 @@ pub struct PieRequest<'a> {
     pub font_size: f32,
     /// Colors for slices without their own.
     pub palette: &'a [Rgba],
+    /// How the polar area chart's scale labels are written.
+    pub locale: &'a Locale,
 }
 
 pub fn layout(req: &PieRequest) -> PieLayout {
@@ -116,7 +119,7 @@ pub fn layout(req: &PieRequest) -> PieLayout {
             );
             rings.push(Tick {
                 pos: r,
-                label: format_tick(v, scale.step),
+                label: req.locale.tick(v, scale.step),
             });
         }
         let sweep = TAU / shown.len().max(1) as f32;
@@ -273,8 +276,11 @@ mod tests {
             .collect()
     }
 
+    static ENGLISH: std::sync::LazyLock<Locale> = std::sync::LazyLock::new(Locale::default);
+
     fn request(slices: &[Slice], cutout: f32) -> PieRequest<'_> {
         PieRequest {
+            locale: &ENGLISH,
             polar: false,
             font_size: 12.0,
             palette: &[],

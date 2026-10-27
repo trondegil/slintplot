@@ -278,6 +278,7 @@
   <a href="#cartesian-properties">Cartesian properties</a>
   <a href="#data-types">Data types</a>
   <a href="#theming">Theming</a>
+  <a href="#languages">Languages</a>
   <a href="#interaction">Interaction</a>
   <a href="#updating-data">Updating data from Rust</a>
   <a href="#large-datasets">Large datasets</a>
@@ -1289,7 +1290,7 @@ GaugeChart {
   <li><strong>Titles:</strong> <code>x-title</code> below the x axis, <code>y-title</code> above the y axis.</li>
   <li><strong>Fixed range:</strong> <code>fixed-range: true</code> with <code>min-value</code> and <code>max-value</code>, so the axis stays put when the data changes.</li>
   <li><strong>Logarithmic axis:</strong> <code>logarithmic: true</code>, with ticks at 1, 2 and 5 times powers of ten. Values that aren't positive are left out.</li>
-  <li><strong>Formatting:</strong> <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> (-1 for automatic) apply to the value axis, tooltips and data labels. Pies and radar charts have them too. A minus sign goes before the prefix: "-$5".</li>
+  <li><strong>Formatting:</strong> <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> (-1 for automatic) apply to the value axis, tooltips and data labels. Pies and radar charts have them too. A minus sign goes before the prefix: "-$5". Separators and dates follow <code>ChartTheme.language</code> (see <a href="#languages">Languages</a>).</li>
 </ul>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-log.webp" alt="A logarithmic axis" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-log-dark.webp" alt="A logarithmic axis" loading="lazy"></figure>
 <p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
@@ -1395,12 +1396,25 @@ Leave <code>color</code> unset for the theme's next color.</p>
 <h3><code>ChartFormat</code></h3>
 <p><code>{ prefix: string, suffix: string, decimals: int }</code>. How a value is written; <code>decimals: -1</code> chooses automatically.
 Charts build it from their <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> properties.</p>
+<h3 id="chart-locale"><code>ChartLocale</code></h3>
+<p>How numbers and dates are written. Empty fields, and name lists of the wrong length, are English.</p>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>decimal</code>, <code>group</code></td><td><code>string</code></td><td>The decimal separator, and the separator between thousands, such as <code>"\u{a0}"</code> (a no-break space). Set only <code>decimal</code> for no grouping.</td></tr>
+  <tr><td><code>percent</code></td><td><code>string</code></td><td>After a percentage: <code>"%"</code> or <code>"\u{a0}%"</code></td></tr>
+  <tr><td><code>months</code></td><td><code>[string]</code></td><td>The 12 short month names, January first</td></tr>
+  <tr><td><code>weekdays</code></td><td><code>[string]</code></td><td>The 7 short weekday names, Monday first</td></tr>
+  <tr><td><code>day-month</code>, <code>month-year</code>, <code>date</code></td><td><code>string</code></td><td>Date patterns with <code>{d}</code>, <code>{MMM}</code> and <code>{yyyy}</code>, such as <code>"{d}. {MMM}"</code>, <code>"{MMM} {yyyy}"</code> and <code>"{d}. {MMM} {yyyy}"</code></td></tr>
+  <tr><td><code>date-time</code></td><td><code>string</code></td><td>A date with a time: <code>"{date}, {time}"</code></td></tr>
+  <tr><td><code>hour12</code>, <code>am</code>, <code>pm</code></td><td><code>bool</code>, <code>string</code></td><td>A 12-hour clock, as in "2:30 PM", instead of 24 hours</td></tr>
+</table>
 <h3>Enums</h3>
 <table>
   <tr><th>Enum</th><th>Values</th></tr>
   <tr><td><code>ChartSeriesType</code></td><td><code>auto</code>, <code>line</code>, <code>bar</code></td></tr>
   <tr><td><code>ChartLegendPosition</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code></td></tr>
   <tr><td><code>ChartPalette</code></td><td><code>modern</code>, <code>material</code>, <code>corporate</code>, <code>mono</code>, <code>pastel</code></td></tr>
+  <tr><td><code>ChartLanguage</code></td><td><code>english</code>, <code>chinese</code>, <code>danish</code>, <code>dutch</code>, <code>finnish</code>, <code>french</code>, <code>german</code>, <code>italian</code>, <code>japanese</code>, <code>norwegian</code>, <code>polish</code>, <code>portuguese</code>, <code>spanish</code>, <code>swedish</code></td></tr>
   <tr><td><code>ChartKind</code></td><td><code>line</code>, <code>bar</code>, <code>scatter</code>, <code>bubble</code> (used internally by the chart components)</td></tr>
   <tr><td><code>ChartChange</code></td><td><code>increase</code>, <code>decrease</code>, <code>total</code> (waterfall bars, used internally)</td></tr>
 </table>
@@ -1429,6 +1443,50 @@ export component App inherits Window {
   <tr><td><code>pastel</code></td><td><div class="swatches"><span style="background:#a1c9f4"></span><span style="background:#8de5a1"></span><span style="background:#f5a8d8"></span><span style="background:#bae6fd"></span><span style="background:#ff9f9b"></span><span style="background:#99e2dc"></span><span style="background:#ffb482"></span><span style="background:#d0bbff"></span></div></td><td>Soft, light colors; best for up to three series</td></tr>
 </table>
 <p>Each palette has separate dark mode colors. Neighboring colors, and the first three, stay distinct with red-green color blindness.</p>
+<h3 id="languages">Languages</h3>
+<p><code>ChartTheme.language</code> sets how every chart writes numbers and dates: the decimal and thousands separators, the
+percent sign, and the month and weekday names and date order on time axes, tooltips and calendar heatmaps.
+Prefixes and suffixes stay as you set them, so a currency goes where <code>value-prefix</code> or <code>value-suffix</code> puts it.</p>
+<pre><code>import { ChartLanguage, ChartTheme } from "@slintplot";
+
+export component App inherits Window {
+    init => {
+        ChartTheme.language = ChartLanguage.german;
+    }
+}</code></pre>
+<table>
+  <tr><th><code>ChartLanguage</code></th><th>Number</th><th>Date</th><th>Percentage</th></tr>
+  <tr><td><code>english</code> (default)</td><td>12,345.6</td><td>Oct 25, 2026</td><td>45%</td></tr>
+  <tr><td><code>chinese</code></td><td>12,345.6</td><td>2026年10月25日</td><td>45%</td></tr>
+  <tr><td><code>danish</code></td><td>12.345,6</td><td>25. okt. 2026</td><td>45&nbsp;%</td></tr>
+  <tr><td><code>dutch</code></td><td>12.345,6</td><td>25 okt 2026</td><td>45%</td></tr>
+  <tr><td><code>finnish</code></td><td>12&nbsp;345,6</td><td>25. lokak. 2026</td><td>45&nbsp;%</td></tr>
+  <tr><td><code>french</code></td><td>12&nbsp;345,6</td><td>25 oct. 2026</td><td>45&nbsp;%</td></tr>
+  <tr><td><code>german</code></td><td>12.345,6</td><td>25. Okt. 2026</td><td>45&nbsp;%</td></tr>
+  <tr><td><code>italian</code></td><td>12.345,6</td><td>25 ott 2026</td><td>45%</td></tr>
+  <tr><td><code>japanese</code></td><td>12,345.6</td><td>2026年10月25日</td><td>45%</td></tr>
+  <tr><td><code>norwegian</code></td><td>12&nbsp;345,6</td><td>25. okt. 2026</td><td>45&nbsp;%</td></tr>
+  <tr><td><code>polish</code></td><td>12&nbsp;345,6</td><td>25 paź 2026</td><td>45%</td></tr>
+  <tr><td><code>portuguese</code></td><td>12.345,6</td><td>25 de out. de 2026</td><td>45%</td></tr>
+  <tr><td><code>spanish</code></td><td>12.345,6</td><td>25 oct 2026</td><td>45&nbsp;%</td></tr>
+  <tr><td><code>swedish</code></td><td>12&nbsp;345,6</td><td>25 okt. 2026</td><td>45&nbsp;%</td></tr>
+</table>
+<p>For other conventions, assign your own <a href="#chart-locale"><code>ChartLocale</code></a> to <code>ChartTheme.locale</code>.
+Fields you leave out are English:</p>
+<pre><code>// Swiss numbers, English dates.
+ChartTheme.locale = { decimal: ".", group: "'" };</code></pre>
+<p>To follow the user's system language, read it in Rust, for example with the
+<a href="https://crates.io/crates/sys-locale"><code>sys-locale</code></a> crate, and set the language. Export
+<code>ChartTheme</code> and <code>ChartLanguage</code> from your root <code>.slint</code> file to reach them from Rust:</p>
+<pre><code>let language = match sys_locale::get_locale().unwrap_or_default().get(..2) {
+    Some("de") =&gt; ChartLanguage::German,
+    Some("nb" | "nn" | "no") =&gt; ChartLanguage::Norwegian,
+    Some("sv") =&gt; ChartLanguage::Swedish,
+    _ =&gt; ChartLanguage::English,
+};
+app.global::&lt;ChartTheme&gt;().set_language(language);</code></pre>
+<p>Japanese and Chinese need a font with their characters. Desktop systems have one; in the browser, Slint
+only has its built-in Inter font, so the web gallery leaves these two languages out.</p>
 <h3><code>ChartTheme</code> properties</h3>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1446,6 +1504,8 @@ export component App inherits Window {
   <tr><td><code>slice-border-width</code></td><td><code>length</code></td><td><code>2px</code></td><td>Border between pie slices, in the background color</td></tr>
   <tr><td><code>slice-hover-offset</code></td><td><code>length</code></td><td><code>8px</code></td><td>How far a hovered pie slice moves out</td></tr>
   <tr><td><code>animation-duration</code></td><td><code>duration</code></td><td><code>900ms</code></td><td>Entry animation</td></tr>
+  <tr><td><code>language</code></td><td><code>ChartLanguage</code></td><td><code>english</code></td><td>How numbers and dates are written (see <a href="#languages">Languages</a>)</td></tr>
+  <tr><td><code>locale</code></td><td><code>ChartLocale</code></td><td>from <code>language</code></td><td>The conventions themselves; assign your own for others</td></tr>
 </table>
 
 <h2 id="interaction">Interaction</h2>
@@ -1555,9 +1615,10 @@ slintplot::register!(app);</code></pre>
   <tr><td><code>slintplot::layout</code></td><td><code>layout(&amp;LayoutRequest) -&gt; Layout</code>, <code>value_axis(&amp;AxisRequest) -&gt; Axis</code>, <code>Dataset</code>, <code>Values</code>, <code>DataPoint</code>, <code>Kind</code>, <code>Stacks</code>, <code>plotted_value</code>, <code>nearest_point</code>, <code>category_window</code>, <code>resolve_color</code>, <code>PALETTE</code></td></tr>
   <tr><td><code>slintplot::pie</code></td><td><code>layout(&amp;PieRequest) -&gt; PieLayout</code>, <code>hit(&amp;PieLayout, x, y)</code></td></tr>
   <tr><td><code>slintplot::radar</code></td><td><code>layout(&amp;RadarRequest) -&gt; RadarLayout</code>, <code>hit(&amp;RadarLayout, x, y)</code></td></tr>
-  <tr><td><code>slintplot::time</code></td><td><code>time_ticks</code>, <code>format_datetime</code>, <code>unix_seconds</code>, <code>days_from_civil</code>, <code>civil_from_days</code></td></tr>
-  <tr><td><code>slintplot::heatmap</code></td><td><code>calendar</code> (calendar layout and quantile levels), <code>extent</code></td></tr>
-  <tr><td><code>slintplot::ticks</code></td><td><code>NiceScale</code> (round tick spacing), <code>Format</code>, <code>log_ticks</code>, <code>format_tick</code>, <code>format_value</code></td></tr>
+  <tr><td><code>slintplot::time</code></td><td><code>time_ticks</code>, <code>format_datetime</code> (English), <code>time_ticks_in</code>, <code>format_datetime_in</code> (a <code>Locale</code>), <code>unix_seconds</code>, <code>days_from_civil</code>, <code>civil_from_days</code></td></tr>
+  <tr><td><code>slintplot::heatmap</code></td><td><code>calendar</code>, <code>calendar_in</code> (calendar layout and quantile levels), <code>weekday_labels</code>, <code>extent</code></td></tr>
+  <tr><td><code>slintplot::ticks</code></td><td><code>NiceScale</code> (round tick spacing), <code>Format</code>, <code>log_ticks</code>, <code>format_tick</code>, <code>format_value</code> (English)</td></tr>
+  <tr><td><code>slintplot::locale</code></td><td><code>Locale</code>: separators, names and date patterns, with <code>number</code>, <code>tick</code>, <code>value</code>, <code>date</code> and <code>time</code></td></tr>
   <tr><td><code>slintplot::path</code></td><td><code>line</code>, <code>area</code>, <code>band</code>, <code>steps</code>: SVG path commands for Slint's <code>Path</code></td></tr>
 </table>
 <pre><code>use slintplot::ticks::{NiceScale, format_tick};
@@ -1677,7 +1738,7 @@ slintplot-stress            # the interactive stress test</code></pre>
 <ul>
   <li><strong>Rust only.</strong> The chart geometry is computed in Rust and connected with <code>register!</code>, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.</li>
   <li><strong>Platforms.</strong> Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs <a href="demo/">in the browser</a>. Embedded (MCU) builds are untested. With Slint's software renderer, enable its <code>software-renderer-path</code> feature, or charts aren't drawn.</li>
-  <li><strong>English formatting.</strong> Values use <code>,</code> for thousands and <code>.</code> for decimals, and month and weekday names are English. There is no locale setting yet; a prefix, suffix and number of decimals can be set (see <a href="#axes">Axes and formatting</a>).</li>
+  <li><strong>English texts.</strong> Numbers and dates follow <a href="#languages"><code>ChartTheme.language</code></a>, but the few built-in words, such as "no data", "Running total" and "Less" and "More" under a calendar heatmap, are English. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.</li>
   <li><strong>Time zones.</strong> Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.</li>
   <li><strong>One value axis.</strong> Each chart has one value axis; there is no secondary y axis.</li>
   <li><strong>Zoom, pan and decimation</strong> work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.</li>

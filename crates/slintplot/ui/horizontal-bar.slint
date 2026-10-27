@@ -74,6 +74,7 @@ export component HorizontalBarChart {
     // The engine lays out vertical bars. They are drawn rotated: the engine's
     // category axis becomes the plot height and its value axis the plot width.
     private property <ChartAxis> axis: ChartEngine.value-axis({
+        locale: ChartTheme.locale,
         kind: ChartKind.bar,
         datasets: root.datasets,
         stacked: root.stacked || root.stacked-percent,
@@ -90,6 +91,7 @@ export component HorizontalBarChart {
         format: root.format,
     });
     private property <ChartLayout> chart: ChartEngine.layout({
+        locale: ChartTheme.locale,
         kind: ChartKind.bar,
         datasets: root.datasets,
         stacked: root.stacked || root.stacked-percent,
@@ -199,7 +201,7 @@ export component HorizontalBarChart {
                             property <float> value: root.datasets[bar.dataset].values[bar.index];
                             property <length> left: (plot.width / 1px - bar.y - bar.height) * 1px;
                             text: root.stacked-percent
-                                ? ChartEngine.rounded-share(root.datasets, bar.dataset, bar.index) + "%"
+                                ? ChartEngine.format-percent(ChartEngine.rounded-share(root.datasets, bar.dataset, bar.index), 0)
                                 : ChartEngine.format-value(self.value, root.format);
                             y: bar.x * 1px + (bar.width * 1px - self.height) / 2;
                             // Inside stacked segments; past the end of other bars.

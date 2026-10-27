@@ -38,7 +38,7 @@ export component Tooltip inherits Rectangle {
             }
             Text {
                 text: datasets[ds].label + ": " + (root.percent
-                    ? ChartEngine.format-value(ChartEngine.share(root.datasets, ds, root.index), { suffix: "%", decimals: 1 })
+                    ? ChartEngine.format-percent(ChartEngine.share(root.datasets, ds, root.index), 1)
                     : ChartEngine.format-value(datasets[ds].values[root.index], root.format));
                 color: ChartTheme.tooltip-text;
                 font-size: ChartTheme.font-size;
