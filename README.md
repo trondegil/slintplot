@@ -538,7 +538,7 @@ The source of the apps is in [`examples/gallery`](https://github.com/trondegil/s
 [`examples/stress`](https://github.com/trondegil/slintplot/tree/main/examples/stress).
 
 Ready-built apps for macOS, Windows and Linux are on the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.1).
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.2).
 
 <a href="https://slint.dev"><img src="https://slintplot.dev/assets/MadeWithSlint-logo-whitebg.png" alt="Made with Slint" width="212"></a>
 
