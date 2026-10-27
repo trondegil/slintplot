@@ -7,6 +7,9 @@
 <meta name="description" content="Every SlintPlot chart type, running in the browser with WebAssembly.">
 <link rel="canonical" href="https://slintplot.dev/demo/">
 <link rel="icon" href="../assets/slintplot-icon.png">
+<!-- Fetched in parallel with the page instead of one after the other. -->
+<link rel="modulepreload" href="gallery.js">
+<link rel="preload" href="gallery_bg.wasm" as="fetch" type="application/wasm" crossorigin>
 <style>
   :root { --bg: #ffffff; --text: #1d2433; --muted: #5b6475; --border: #e3e6ec; }
   @media (prefers-color-scheme: dark) {
@@ -17,6 +20,7 @@
   header { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
   header img { width: 22px; height: 22px; }
   header a { color: inherit; text-decoration: none; font-weight: 700; }
+  header .brand { display: flex; align-items: center; gap: 10px; }
   header .links { margin-left: auto; display: flex; gap: 16px; }
   header .links a { font-weight: 400; color: var(--muted); }
   main { position: relative; flex: 1; min-height: 0; }
@@ -27,31 +31,37 @@
 </head>
 <body>
 <header>
-  <a href="../"><img src="../assets/slintplot-icon.png" alt=""></a>
-  <a href="../">SlintPlot</a>
+  <a class="brand" href="../"><img src="../assets/slintplot-icon.png" alt="" width="22" height="22">SlintPlot</a>
   <span style="color: var(--muted)">Gallery</span>
-  <nav class="links">
+  <nav class="links" aria-label="Site">
     <a href="../#getting-started">Documentation</a>
     <a href="https://github.com/trondegil/slintplot">GitHub</a>
   </nav>
 </header>
 <main>
-  <canvas id="canvas" tabindex="0"></canvas>
-  <div id="status">Loading the gallery…</div>
+  <canvas id="canvas" tabindex="0" role="application" aria-label="SlintPlot gallery: interactive charts" aria-describedby="about">
+    <p id="about">The SlintPlot gallery, drawn with Slint on this canvas: every chart type, with live data,
+    themes and dark mode. Screen readers can't read its contents yet; the
+    <a href="../">documentation</a> describes every chart in text.</p>
+  </canvas>
+  <div id="status" role="status">Loading the gallery…</div>
 </main>
 <script type="module">
   import init from "./gallery.js";
   const status = document.getElementById("status");
-  try {
-    await init();
-  } catch (error) {
-    // Slint's event loop runs by throwing out of `main`; the app keeps going.
-    if (!String(error).includes("Using exceptions for control flow")) {
-      status.textContent = "The gallery couldn't start: " + error;
-      throw error;
+  // Slint draws with WebGL, and can't start without it.
+  if (!document.createElement("canvas").getContext("webgl")) {
+    status.textContent = "The gallery needs WebGL, which this browser has turned off.";
+  } else {
+    try {
+      await init();
+      status.remove();
+    } catch (error) {
+      // Slint's event loop runs by throwing out of `main`; the app keeps going.
+      if (String(error).includes("Using exceptions for control flow")) status.remove();
+      else status.textContent = "The gallery couldn't start: " + error;
     }
   }
-  status.remove();
 </script>
 </body>
 </html>
