@@ -393,9 +393,11 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
         min = min.min(0.0);
         max = max.max(0.0);
     }
+    // At least three ticks, even in little room: a range across zero needs
+    // them, or the step jumps far past the data (-500 to 500 for ±90).
     let max_ticks = (req.length / req.tick_spacing.max(1.0))
         .floor()
-        .clamp(2.0, 11.0) as usize;
+        .clamp(3.0, 11.0) as usize;
     let (min, max, ticks) = if req.logarithmic {
         let (lo, hi) = match req.fixed {
             Some((lo, hi)) if lo > 0.0 && hi > lo => (lo, hi),
@@ -1333,6 +1335,13 @@ mod tests {
             percent: false,
             grace: 0.0,
         })
+    }
+
+    #[test]
+    fn little_room_keeps_the_axis_close_to_the_data() {
+        // Room for one tick only: still -100, 0 and 100, not -500 to 500.
+        let a = axis(&[ds(&[-90.0, 85.0])], Kind::Bar, false, 40.0, true);
+        assert_eq!((a.min, a.max, a.ticks.len()), (-100.0, 100.0, 3));
     }
 
     #[test]

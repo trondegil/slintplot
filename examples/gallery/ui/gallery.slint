@@ -284,7 +284,8 @@ export component Gallery inherits Window {
                         title: "Horizontal bar chart";
                         labels: root.labels;
                         datasets <=> root.datasets;
-                        legend-position: ChartLegendPosition.right;
+                        // Beside the chart there's no room for it on narrow windows.
+                        legend-position: root.narrow ? ChartLegendPosition.top : ChartLegendPosition.right;
                     }
                     if root.sample == "bar-stacked": BarChart {
                         title: "Stacked bar chart";

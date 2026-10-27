@@ -225,7 +225,7 @@ const SAMPLES: &[Sample] = &[
         "bar-horizontal",
         "Bar charts",
         "Horizontal bar chart",
-        "HorizontalBarChart: the categories run down the left side. The legend is on the right.",
+        "HorizontalBarChart: the categories run down the left side. The legend is on the right, or above the chart on narrow screens.",
         MONTHLY,
         DATA_ACTIONS,
     ),
