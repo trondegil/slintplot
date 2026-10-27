@@ -353,6 +353,9 @@ export component CartesianChart {
                                 : (bar.y + bar.height) * 1px + 2px;
                             color: ChartTheme.text-color;
                             font-size: ChartTheme.font-size * 0.9;
+                            // Inside stacked segments, only where it fits.
+                            visible: !(root.stacked || root.stacked-percent)
+                                || (self.preferred-height + 2px <= bar.height * 1px && self.preferred-width + 4px <= bar.width * 1px);
                         }
                         for series[index] in chart.series: Rectangle {
                             for point in series.points: Text {

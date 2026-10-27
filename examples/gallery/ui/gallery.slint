@@ -155,6 +155,17 @@ export component Gallery inherits Window {
         Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
         root.dark-mode-changed();
     }
+    // Slightly smaller chart text on narrow windows, for more room.
+    function fit-text() {
+        ChartTheme.font-size = self.narrow ? 11px : 12px;
+        ChartTheme.title-font-size = self.narrow ? 14px : 15px;
+    }
+    init => {
+        self.fit-text();
+    }
+    changed narrow => {
+        self.fit-text();
+    }
     changed theme => {
         ChartTheme.palette = self.theme == 0 ? ChartPalette.modern
             : self.theme == 1 ? ChartPalette.material
@@ -273,7 +284,7 @@ export component Gallery inherits Window {
                 border-color: ChartTheme.grid-color;
 
                 VerticalLayout {
-                    padding: 12px;
+                    padding: root.narrow ? 6px : 12px;
 
                     if root.sample == "bar-vertical": BarChart {
                         title: "Vertical bar chart";

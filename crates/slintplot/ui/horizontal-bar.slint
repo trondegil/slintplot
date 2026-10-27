@@ -211,6 +211,9 @@ export component HorizontalBarChart {
                             color: !((root.stacked || root.stacked-percent) && root.fill-opacity > 0.7) ? ChartTheme.text-color
                                 : bar.color.red * 0.299 + bar.color.green * 0.587 + bar.color.blue * 0.114 < 150 ? #ffffff : #1f2328;
                             font-size: ChartTheme.font-size * 0.9;
+                            // Only where it fits inside its segment.
+                            visible: !(root.stacked || root.stacked-percent)
+                                || (self.preferred-width + 6px <= bar.height * 1px && self.preferred-height <= bar.width * 1px);
                         }
                     }
 
