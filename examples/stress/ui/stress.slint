@@ -176,6 +176,14 @@ export component Stress inherits Window {
                     root.streaming = !root.streaming;
                 }
             }
+            // Clears the data, so the window fills again from empty, and
+            // resets the zoom; the settings stay.
+            Button {
+                text: "Reset";
+                clicked => {
+                    root.rebuild();
+                }
+            }
             Text {
                 text: "Samples/s";
                 color: ChartTheme.text-color;
