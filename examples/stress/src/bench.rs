@@ -152,6 +152,108 @@ pub fn run(png_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     for (points, engine, frame) in zoom {
         println!("{points:>10}  {engine:>10.1?}  {frame:>10.1?}");
     }
+    stream(&app, &data, &window, &mut pixels)
+}
+
+/// Runs only the streaming part of the benchmark.
+pub fn run_stream() -> Result<(), Box<dyn std::error::Error>> {
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+    window.set_size(PhysicalSize::new(WIDTH, HEIGHT));
+    slint::platform::set_platform(Box::new(Headless(window.clone())))?;
+    let mut pixels = vec![PremultipliedRgbaColor::default(); (WIDTH * HEIGHT) as usize];
+    let app = Stress::new()?;
+    app.set_dataset_count(3);
+    app.set_animated(false);
+    let data = setup(&app);
+    app.show()?;
+    println!(
+        "{} datasets, {WIDTH}x{HEIGHT}, software renderer",
+        app.get_dataset_count()
+    );
+    stream(&app, &data, &window, &mut pixels)
+}
+
+/// The latest values a live view shows, in the "latest" streaming view.
+const LATEST: usize = 1_000;
+
+/// Streaming: every update appends one value to each dataset, drops the
+/// oldest, and renders a frame. Prints the median and 95th percentile time
+/// per update, and the update rate the 95th percentile allows.
+fn stream(
+    app: &Stress,
+    data: &std::cell::RefCell<crate::Data>,
+    window: &MinimalSoftwareWindow,
+    pixels: &mut [PremultipliedRgbaColor],
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "\nStreaming: one new value per dataset per update, the oldest dropped, and a frame rendered.\n\
+         \"latest\" shows the newest {LATEST} values of each dataset, \"all\" every value.\n"
+    );
+    println!(
+        "{:>10}  {:<22}  {:<6}  {:>7}  {:>10}  {:>10}  {:>10}",
+        "points", "mode", "view", "updates", "median", "95%", "updates/s"
+    );
+    let modes = [
+        // label, chart type (see `Stress.chart-type`), decimate
+        ("line", 0, false),
+        ("line, decimated", 0, true),
+        ("time series", 2, false),
+        ("time series, decimated", 2, true),
+    ];
+    for &points in &POINT_COUNTS[1..] {
+        app.set_point_index(POINT_COUNTS.iter().position(|&p| p == points).unwrap_or(0) as i32);
+        for (label, chart_type, decimate) in modes {
+            for latest in [false, true] {
+                let view = if latest { "latest" } else { "all" };
+                if latest && points <= LATEST {
+                    continue;
+                }
+                // Undecimated lines of 100,000 points take over a second per
+                // frame (see above): streaming them is not an option.
+                if !decimate && !latest && points > 10_000 {
+                    println!("{points:>10}  {label:<22}  {view:<6}  {:>7}", "skipped");
+                    continue;
+                }
+                app.set_chart_type(chart_type);
+                data.borrow_mut().regenerate(app);
+                app.set_show_points(false);
+                app.set_smooth(false);
+                app.invoke_restyle();
+                app.set_decimate(decimate);
+                let start = if latest {
+                    1.0 - LATEST as f32 / points as f32
+                } else {
+                    0.0
+                };
+                app.set_view_start(start);
+                app.set_view_end(1.0);
+                frame(window, pixels);
+                // 300 updates, or as many as fit in 15 seconds (at least 20).
+                let mut times = Vec::new();
+                let started = Instant::now();
+                while times.len() < 300
+                    && (times.len() < 20 || started.elapsed() < Duration::from_secs(15))
+                {
+                    let update = Instant::now();
+                    data.borrow_mut().stream(app);
+                    frame(window, pixels);
+                    times.push(update.elapsed());
+                }
+                times.sort();
+                let median = times[times.len() / 2];
+                let p95 = times[(times.len() * 95 / 100).min(times.len() - 1)];
+                println!(
+                    "{points:>10}  {label:<22}  {view:<6}  {:>7}  {:>10.1?}  {:>10.1?}  {:>10.0}",
+                    times.len(),
+                    median,
+                    p95,
+                    1.0 / p95.as_secs_f64()
+                );
+            }
+        }
+    }
+    app.set_view_start(0.0);
+    app.set_view_end(1.0);
     Ok(())
 }
 

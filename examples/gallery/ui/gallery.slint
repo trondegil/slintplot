@@ -454,6 +454,13 @@ export component Gallery inherits Window {
                         y-title: "Temperature";
                         zoom-enabled: true;
                     }
+                    if root.sample == "live": TimeSeriesChart {
+                        title: "Live sensor data, last minute";
+                        datasets <=> root.datasets;
+                        time-origin: { year: 2026, month: 10, day: 27, hour: 12 };
+                        y-title: "Reading";
+                        animated: false;
+                    }
                     if root.sample == "time-week": TimeSeriesChart {
                         title: "Electricity use, one week";
                         datasets <=> root.datasets;

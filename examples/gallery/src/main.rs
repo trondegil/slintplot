@@ -7,13 +7,14 @@
 mod dock_icon;
 #[cfg(not(target_arch = "wasm32"))]
 mod snapshot;
+mod stream_model;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-#[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
+use stream_model::StreamModel;
 
 slint::include_modules!();
 
@@ -52,6 +53,48 @@ const DATA_ACTIONS: &[&str] = &[
     "Remove dataset",
     "Remove data",
 ];
+
+/// The live data sample's buttons: pause, and the update rates.
+const LIVE_ACTIONS: &[&str] = &[
+    "Pause / resume",
+    "10 updates/s",
+    "30 updates/s",
+    "60 updates/s",
+];
+
+/// Seconds the live data sample keeps.
+const LIVE_SECONDS: u32 = 60;
+
+/// Seconds since an arbitrary start, to measure update rates. The browser
+/// has no `Instant`.
+fn now() -> f64 {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+        START
+            .get_or_init(std::time::Instant::now)
+            .elapsed()
+            .as_secs_f64()
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now() / 1000.0
+    }
+}
+
+/// The live data sample: three sensors whose values stream into ring buffers.
+struct Live {
+    /// Updates per second.
+    rate: u32,
+    paused: bool,
+    /// Seconds after the time origin of the newest values.
+    time: f32,
+    last: [f32; 3],
+    models: Vec<Rc<StreamModel<ChartXY>>>,
+    /// Updates since `since`, for the measured rate.
+    updates: u32,
+    since: f64,
+}
 
 /// How a sample's data looks.
 #[derive(Clone, Copy, PartialEq)]
@@ -92,6 +135,8 @@ enum Shape {
     Dumbbell,
     /// One value on a gauge.
     Gauge,
+    /// Sensors streaming new values.
+    Live,
 }
 
 /// Population in millions (2025 estimates), by continent.
@@ -480,6 +525,14 @@ const SAMPLES: &[Sample] = &[
         &["Randomize"],
     ),
     sample(
+        "live",
+        "Time series",
+        "Live data",
+        "Three sensors stream new values into ring buffers (StreamModel in the gallery's source), keeping the last minute. Hover still works while it streams.",
+        Shape::Live,
+        LIVE_ACTIONS,
+    ),
+    sample(
         "heatmap",
         "Heatmaps",
         "Heatmap",
@@ -625,6 +678,7 @@ struct State {
     steps: Rc<VecModel<ChartWaterfallStep>>,
     /// Whether Randomize was pressed, for samples that start with real data.
     randomized: bool,
+    live: Live,
 }
 
 impl State {
@@ -1143,6 +1197,121 @@ impl State {
         ui.set_legend_position(ChartLegendPosition::Top);
         ui.set_decimate(true);
         ui.set_status("".into());
+        if sample.shape == Shape::Live {
+            self.live.paused = false;
+            self.live_reset();
+            self.show_live_stats(None);
+        }
+    }
+
+    /// A sensor's next value: noise around a slow wave, different per sensor.
+    fn sensor(&mut self, sensor: usize, time: f32) -> f32 {
+        let wave = (time / (8.0 + 5.0 * sensor as f32)).sin() * 12.0;
+        let target = 20.0 + 25.0 * sensor as f32 + wave;
+        let last = self.live.last[sensor];
+        let next = last + (target - last) * 0.1 + (self.rng.next() - 0.5) * 1.5;
+        self.live.last[sensor] = next;
+        next
+    }
+
+    /// Fills the live sample with the last minute of values at its rate.
+    fn live_reset(&mut self) {
+        let rate = self.live.rate;
+        let capacity = (LIVE_SECONDS * rate) as usize;
+        self.live.time = 0.0;
+        self.live.last = [20.0, 45.0, 70.0];
+        let mut models = Vec::new();
+        let mut rows = Vec::new();
+        for sensor in 0..3 {
+            let points: Vec<ChartXY> = (0..capacity)
+                .map(|i| {
+                    let x = i as f32 / rate as f32;
+                    ChartXY {
+                        x,
+                        y: self.sensor(sensor, x),
+                        r: 0.0,
+                    }
+                })
+                .collect();
+            let model = Rc::new(StreamModel::new(capacity, points));
+            rows.push(ChartDataset {
+                label: format!("Sensor {}", ["A", "B", "C"][sensor]).into(),
+                points: model.clone().into(),
+                ..Default::default()
+            });
+            models.push(model);
+        }
+        self.live.time = (capacity.max(1) - 1) as f32 / rate as f32;
+        self.live.models = models;
+        self.live.updates = 0;
+        self.live.since = now();
+        self.datasets.set_vec(rows);
+    }
+
+    /// Appends one value per sensor, and every half second shows the
+    /// measured update rate.
+    fn live_tick(&mut self) {
+        let rate = self.live.rate as f32;
+        self.live.time += 1.0 / rate;
+        let time = self.live.time;
+        for sensor in 0..self.live.models.len() {
+            let y = self.sensor(sensor, time);
+            self.live.models[sensor].push(ChartXY { x: time, y, r: 0.0 });
+        }
+        self.live.updates += 1;
+        let elapsed = now() - self.live.since;
+        if elapsed >= 0.5 {
+            let measured = self.live.updates as f64 / elapsed;
+            self.live.updates = 0;
+            self.live.since = now();
+            self.show_live_stats(Some(measured));
+        }
+    }
+
+    /// The point count, update rate and layout time under the chart.
+    fn show_live_stats(&self, measured: Option<f64>) {
+        let Some(ui) = self.ui.upgrade() else { return };
+        let points = self
+            .live
+            .models
+            .iter()
+            .map(|m| m.row_count())
+            .sum::<usize>();
+        let rate = match measured {
+            _ if self.live.paused => "paused".to_string(),
+            Some(r) => format!("{r:.0} of {} updates/s", self.live.rate),
+            None => format!("{} updates/s", self.live.rate),
+        };
+        // The browser's standard library has no clock, so layouts aren't timed.
+        let layout = if cfg!(target_arch = "wasm32") {
+            String::new()
+        } else {
+            format!(
+                " · layout {:.1} ms",
+                slintplot::profile::last_layout_time().as_secs_f64() * 1000.0
+            )
+        };
+        ui.set_status(
+            format!(
+                "{} points · {rate}{layout}",
+                slintplot::ticks::format_value(points as f64)
+            )
+            .into(),
+        );
+    }
+
+    fn live_action(&mut self, name: &str) {
+        match name {
+            "Pause / resume" => self.live.paused = !self.live.paused,
+            _ => {
+                if let Some(rate) = name.split(' ').next().and_then(|r| r.parse().ok()) {
+                    self.live.rate = rate;
+                    self.live.paused = false;
+                    self.live_reset();
+                }
+            }
+        }
+        self.show_live_stats(None);
     }
 
     /// Applies `f` to every dataset.
@@ -1162,6 +1331,10 @@ impl State {
         };
         let Some(ui) = self.ui.upgrade() else { return };
         ui.set_status("".into());
+        if self.sample.shape == Shape::Live {
+            self.live_action(name);
+            return;
+        }
         let slices = self.sample.shape == Shape::Slices;
         let points = matches!(self.sample.shape, Shape::Points | Shape::Bubbles);
         // The one-week sample: zoom to a span starting on Wednesday, to see
@@ -1332,6 +1505,15 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         sun: Rc::new(VecModel::default()),
         steps: Rc::new(VecModel::default()),
         randomized: false,
+        live: Live {
+            rate: 30,
+            paused: false,
+            time: 0.0,
+            last: [0.0; 3],
+            models: Vec::new(),
+            updates: 0,
+            since: 0.0,
+        },
     }));
     {
         let s = state.borrow();
@@ -1346,17 +1528,56 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     }
     state.borrow_mut().select(&SAMPLES[0]);
 
+    // The live sample's updates, while it is shown and not paused.
+    let timer = Rc::new(slint::Timer::default());
+    let timer_rate = Rc::new(Cell::new(0));
     let s = state.clone();
+    let (t, r) = (timer.clone(), timer_rate.clone());
     ui.on_select(move |id| {
         if let Some(sample) = SAMPLES.iter().find(|x| x.id == id.as_str()) {
             s.borrow_mut().select(sample);
         }
+        run_live_timer(&t, &r, &s);
     });
     let s = state.clone();
-    ui.on_action(move |index| s.borrow_mut().action(index.max(0) as usize));
+    ui.on_action(move |index| {
+        s.borrow_mut().action(index.max(0) as usize);
+        run_live_timer(&timer, &timer_rate, &s);
+    });
     let s = state.clone();
     ui.on_dark_mode_changed(move || s.borrow_mut().recolor_survey());
     Ok((ui, state))
+}
+
+/// Runs `timer` at the live sample's update rate while the sample is shown
+/// and not paused, and stops it otherwise. `running` is the rate it runs at.
+fn run_live_timer(timer: &slint::Timer, running: &Cell<u32>, state: &Rc<RefCell<State>>) {
+    let rate = {
+        let s = state.borrow();
+        if s.sample.shape == Shape::Live && !s.live.paused {
+            s.live.rate
+        } else {
+            0
+        }
+    };
+    if rate == running.get() {
+        return;
+    }
+    running.set(rate);
+    if rate == 0 {
+        timer.stop();
+        return;
+    }
+    let state = Rc::downgrade(state);
+    timer.start(
+        slint::TimerMode::Repeated,
+        Duration::from_secs_f64(1.0 / rate as f64),
+        move || {
+            if let Some(state) = state.upgrade() {
+                state.borrow_mut().live_tick();
+            }
+        },
+    );
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1535,6 +1756,15 @@ fn snapshots(
     snapshot::settle(Duration::from_millis(1100));
     snapshot::save(&window, &dir.join("calendar-github.png"))?;
     ui.set_calendar_colors(0);
+    // The live sample after three seconds of updates, run directly since
+    // the headless snapshots have no timers.
+    let live = SAMPLES.iter().find(|s| s.id == "live").unwrap();
+    state.borrow_mut().select(live);
+    for _ in 0..90 {
+        state.borrow_mut().live_tick();
+    }
+    snapshot::render(&window);
+    snapshot::save(&window, &dir.join("live-streamed.png"))?;
     // Numbers and dates in other languages, by index into the language picker.
     for (language, name) in [(2, "de"), (7, "nb"), (12, "ja")] {
         ui.set_language(language);

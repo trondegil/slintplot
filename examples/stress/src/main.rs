@@ -6,15 +6,18 @@
 //!
 //! `--bench [dir]` renders headlessly with the software renderer and prints
 //! timings, optionally saving every rendered configuration as a PNG in `dir`.
+//! `--bench-stream` runs only its streaming part.
 
 mod bench;
 mod dock_icon;
+mod stream_model;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel};
+use stream_model::StreamModel;
 
 slint::include_modules!();
 
@@ -35,13 +38,16 @@ impl Rng {
 /// Seconds between the points of a time series: one point per minute.
 const MINUTE: f32 = 60.0;
 
+/// Streaming updates per second.
+pub const STREAM_RATE: u32 = 60;
+
 /// Random walks, one per dataset, that can be extended for streaming.
 struct Data {
     rng: Rng,
     /// Line and bar charts: the values of each dataset.
-    series: Vec<Rc<VecModel<f32>>>,
+    series: Vec<Rc<StreamModel<f32>>>,
     /// Time series and scatter charts: the points of each dataset.
-    points: Vec<Rc<VecModel<ChartXY>>>,
+    points: Vec<Rc<StreamModel<ChartXY>>>,
     last: Vec<f32>,
     /// Time series: the time of the newest point.
     last_time: f32,
@@ -100,7 +106,7 @@ impl Data {
                             r: 0.0,
                         })
                         .collect();
-                    let model = Rc::new(VecModel::from(points));
+                    let model = Rc::new(StreamModel::new(count, points));
                     self.points.push(model.clone());
                     row.points = model.into();
                 }
@@ -114,12 +120,12 @@ impl Data {
                             r: 0.0,
                         })
                         .collect();
-                    let model = Rc::new(VecModel::from(points));
+                    let model = Rc::new(StreamModel::new(count, points));
                     self.points.push(model.clone());
                     row.points = model.into();
                 }
                 _ => {
-                    let model = Rc::new(VecModel::from(values));
+                    let model = Rc::new(StreamModel::new(count, values));
                     self.series.push(model.clone());
                     row.values = model.into();
                 }
@@ -186,7 +192,7 @@ impl Data {
         app.set_gauge_value(self.gauge);
     }
 
-    /// Drops the oldest value of every dataset and appends a new one. Time
+    /// Appends a value to every dataset, dropping the oldest one. Time
     /// series move on by a minute; scatter charts replace a point. Waterfalls
     /// move on by a step; funnels and sunbursts change one value, and the
     /// gauge moves.
@@ -223,11 +229,7 @@ impl Data {
         for d in 0..self.series.len() {
             let next = self.step(self.last[d], d);
             self.last[d] = next;
-            let model = &self.series[d];
-            if model.row_count() > 0 {
-                model.remove(0);
-            }
-            model.push(next);
+            self.series[d].push(next);
         }
         self.last_time += MINUTE;
         for d in 0..self.points.len() {
@@ -247,9 +249,6 @@ impl Data {
                     r: 0.0,
                 }
             };
-            if model.row_count() > 0 {
-                model.remove(0);
-            }
             model.push(point);
         }
     }
@@ -311,9 +310,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     match (args.next().as_deref(), args.next()) {
         (Some("--bench"), dir) => return bench::run(dir.map(Into::into)),
+        (Some("--bench-stream"), None) => return bench::run_stream(),
         (Some("--snapshot"), Some(dir)) => return bench::snapshot(dir.as_ref()),
         (None, _) => {}
-        _ => return Err("usage: slintplot-stress [--bench [<dir>] | --snapshot <dir>]".into()),
+        _ => {
+            return Err(
+                "usage: slintplot-stress [--bench [<dir>] | --bench-stream | --snapshot <dir>]"
+                    .into(),
+            );
+        }
     }
 
     let app = Stress::new()?;
@@ -322,13 +327,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Timer::single_shot(Duration::ZERO, dock_icon::set);
 
     // Streaming: a 60 Hz timer. If rendering can't keep up, ticks are delayed,
-    // so the measured tick rate drops below 60.
+    // so the measured update rate drops below 60.
     let ticks = Rc::new(Cell::new(0u32));
     let stream_timer = Timer::default();
     {
         let weak = app.as_weak();
         let ticks = ticks.clone();
-        stream_timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
+        let interval = Duration::from_secs_f64(1.0 / STREAM_RATE as f64);
+        stream_timer.start(TimerMode::Repeated, interval, move || {
             if let Some(app) = weak.upgrade().filter(|app| app.get_streaming()) {
                 data.borrow_mut().stream(&app);
                 ticks.set(ticks.get() + 1);
@@ -357,12 +363,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             since = Instant::now();
             let points = POINT_COUNTS[app.get_point_index().clamp(0, 4) as usize];
             let total = points * app.get_dataset_count().max(1) as usize;
+            let updates = ticks.replace(0) as f32 / elapsed;
+            let streaming = if app.get_streaming() {
+                format!("{updates:>4.0} of {STREAM_RATE} updates/s")
+            } else {
+                "not streaming".into()
+            };
             app.set_stats(
                 format!(
-                    "{total:>9} points   layout {:>7.1} ms   {:>4.0} frames/s   {:>4.0} updates/s",
+                    "{:>9} points   layout {:>7.1} ms   {:>4.0} frames/s   {streaming}",
+                    slintplot::ticks::format_value(total as f64),
                     slintplot::profile::last_layout_time().as_secs_f64() * 1000.0,
                     frames.replace(0) as f32 / elapsed,
-                    ticks.replace(0) as f32 / elapsed,
                 )
                 .into(),
             );
