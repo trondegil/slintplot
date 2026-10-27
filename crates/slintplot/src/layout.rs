@@ -585,9 +585,8 @@ fn visible_positive_extent(req: &AxisRequest) -> Option<(f64, f64)> {
         .datasets
         .iter()
         .filter(|d| !d.hidden && req.side.is_none_or(|right| d.right_axis == right));
-    if visible.clone().next().is_none() {
-        return None;
-    }
+    // Nothing on this axis: skip the scan of every point below.
+    visible.clone().next()?;
     if req.kind.uses_points() {
         let (x0, x1) = scatter_x_window(req.datasets, req.view);
         let edge = (x1 - x0) * 1e-6;
