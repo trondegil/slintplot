@@ -23,6 +23,13 @@ slint::include_modules!();
 
 pub const POINT_COUNTS: [usize; 5] = [100, 1_000, 10_000, 100_000, 1_000_000];
 
+/// The most values per dataset "Keep everything" collects; streaming stops
+/// there. Three datasets of floats take 120 MB.
+const MAX_KEPT: usize = 10_000_000;
+
+/// The latest values the "Show" picker offers; 0 shows all.
+const LATEST: [usize; 6] = [0, 1_000_000, 500_000, 100_000, 10_000, 1_000];
+
 /// Small xorshift generator, so the example needs no extra dependencies.
 struct Rng(u64);
 
@@ -50,6 +57,8 @@ struct Data {
     labels: Rc<StreamModel<SharedString>>,
     /// The number of the next label.
     next_label: usize,
+    /// The most values each dataset keeps: the point count, or `MAX_KEPT`.
+    capacity: usize,
     last: Vec<f32>,
     /// Time series: the time of the newest point.
     last_time: f32,
@@ -71,12 +80,45 @@ impl Data {
         last + (self.rng.next() - 0.5) * 8.0 + (center - last) * 0.002
     }
 
+    /// The values per dataset: the point count, or more when streaming
+    /// keeps everything.
+    fn len(&self) -> usize {
+        match (self.series.first(), self.points.first()) {
+            (Some(s), _) => s.row_count(),
+            (_, Some(p)) => p.row_count(),
+            _ => 0,
+        }
+    }
+
+    /// Zooms to the latest values, as the "Show" picker says. With all
+    /// shown, the view is left alone, to zoom by hand.
+    fn show_latest(&self, app: &Stress) {
+        let latest = LATEST[app.get_latest_index().clamp(0, 5) as usize];
+        let len = self.len();
+        if latest == 0 {
+            return;
+        }
+        let start = if latest < len {
+            1.0 - latest as f32 / len as f32
+        } else {
+            0.0
+        };
+        app.set_view_start(start);
+        app.set_view_end(1.0);
+    }
+
     fn regenerate(&mut self, app: &Stress) {
         let count = POINT_COUNTS[app.get_point_index().clamp(0, 4) as usize];
         let datasets = app.get_dataset_count().clamp(1, 8) as usize;
         let tension = if app.get_smooth() { 0.4 } else { 0.0 };
         let chart_type = app.get_chart_type();
         self.chart_type = chart_type;
+        self.capacity = if app.get_keep_everything() {
+            MAX_KEPT
+        } else {
+            count
+        };
+        let capacity = self.capacity;
         self.series.clear();
         self.points.clear();
         self.last.clear();
@@ -108,7 +150,7 @@ impl Data {
                             r: 0.0,
                         })
                         .collect();
-                    let model = Rc::new(StreamModel::new(count, points));
+                    let model = Rc::new(StreamModel::new(capacity, points));
                     self.points.push(model.clone());
                     row.points = model.into();
                 }
@@ -122,12 +164,12 @@ impl Data {
                             r: 0.0,
                         })
                         .collect();
-                    let model = Rc::new(StreamModel::new(count, points));
+                    let model = Rc::new(StreamModel::new(capacity, points));
                     self.points.push(model.clone());
                     row.points = model.into();
                 }
                 _ => {
-                    let model = Rc::new(StreamModel::new(count, values));
+                    let model = Rc::new(StreamModel::new(capacity, values));
                     self.series.push(model.clone());
                     row.values = model.into();
                 }
@@ -135,7 +177,7 @@ impl Data {
             rows.push(row);
         }
         let labels = (0..count).map(|i| SharedString::from(i.to_string()));
-        self.labels = Rc::new(StreamModel::new(count, labels));
+        self.labels = Rc::new(StreamModel::new(capacity, labels));
         self.next_label = count;
         app.set_labels(self.labels.clone().into());
         // The chart types that don't take datasets.
@@ -292,6 +334,7 @@ fn setup(app: &Stress) -> Rc<RefCell<Data>> {
         last: Vec::new(),
         labels: Rc::new(StreamModel::new(0, [])),
         next_label: 0,
+        capacity: 0,
         last_time: 0.0,
         chart_type: 0,
         steps: Rc::new(VecModel::default()),
@@ -315,6 +358,18 @@ fn setup(app: &Stress) -> Rc<RefCell<Data>> {
             let started = Instant::now();
             d.borrow_mut().regenerate(&app);
             eprintln!("generated data in {:.0?}", started.elapsed());
+            app.set_view_start(0.0);
+            app.set_view_end(1.0);
+            d.borrow().show_latest(&app);
+        }
+    });
+    let weak = app.as_weak();
+    let d = data.clone();
+    app.on_show_latest(move || {
+        if let Some(app) = weak.upgrade() {
+            app.set_view_start(0.0);
+            app.set_view_end(1.0);
+            d.borrow().show_latest(&app);
         }
     });
     let weak = app.as_weak();
@@ -343,40 +398,61 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Stress::new()?;
     let data = setup(&app);
+    let data_for_stats = data.clone();
     // Once the app has finished launching, which would reset it.
     Timer::single_shot(Duration::ZERO, dock_icon::set);
 
     // Streaming: samples arrive at the chosen rate, and a timer adds those
-    // that are due, at most 60 times a second: drawing more often than the
-    // screen refreshes is wasted. When drawing is slow, ticks come later and
-    // carry more samples, so the data rate holds and the frame rate drops.
+    // that are due, as often as the "Updates/s" picker says: drawing more
+    // often than the screen refreshes is wasted. When drawing is slow,
+    // updates come later and carry more samples, so the data rate holds and
+    // the frame rate drops.
     let samples = Rc::new(Cell::new(0usize));
-    let stream_timer = Timer::default();
-    {
+    let stream_timer = Rc::new(Timer::default());
+    let start_stream = {
         let weak = app.as_weak();
         let samples = samples.clone();
-        let mut last = Instant::now();
-        let mut owed = 0.0;
-        stream_timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
-            let now = Instant::now();
-            let elapsed = now.duration_since(last).as_secs_f64();
-            last = now;
-            let Some(app) = weak.upgrade().filter(|app| app.get_streaming()) else {
-                owed = 0.0;
-                return;
-            };
-            owed += app.get_stream_rate() as f64 * elapsed;
-            let due = owed.floor();
-            owed -= due;
-            // More than a whole dataset at once replaces all of it.
-            let count = POINT_COUNTS[app.get_point_index().clamp(0, 4) as usize];
-            let due = (due as usize).min(count);
-            if due > 0 {
-                data.borrow_mut().stream(&app, due);
-                samples.set(samples.get() + due);
-            }
-        });
-    }
+        let timer = stream_timer.clone();
+        move || {
+            let Some(app) = weak.upgrade() else { return };
+            let interval = Duration::from_secs_f64(1.0 / app.get_update_rate().max(1) as f64);
+            let (weak, data, samples) = (app.as_weak(), data.clone(), samples.clone());
+            let mut last = Instant::now();
+            let mut owed = 0.0;
+            timer.start(TimerMode::Repeated, interval, move || {
+                let now = Instant::now();
+                let elapsed = now.duration_since(last).as_secs_f64();
+                last = now;
+                let Some(app) = weak.upgrade().filter(|app| app.get_streaming()) else {
+                    owed = 0.0;
+                    return;
+                };
+                owed += app.get_stream_rate() as f64 * elapsed;
+                let due = owed.floor();
+                owed -= due;
+                let mut data = data.borrow_mut();
+                // More than a whole dataset at once replaces all of it; keeping
+                // everything stops at `MAX_KEPT`.
+                let room = if app.get_keep_everything() {
+                    MAX_KEPT.saturating_sub(data.len())
+                } else {
+                    data.capacity
+                };
+                if room == 0 {
+                    app.set_streaming(false);
+                    return;
+                }
+                let due = (due as usize).min(room);
+                if due > 0 {
+                    data.stream(&app, due);
+                    data.show_latest(&app);
+                    samples.set(samples.get() + due);
+                }
+            });
+        }
+    };
+    start_stream();
+    app.on_update_rate_changed(start_stream);
 
     // Count rendered frames, when the renderer supports notifications.
     let frames = Rc::new(Cell::new(0u32));
@@ -397,10 +473,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let Some(app) = weak.upgrade() else { return };
             let elapsed = since.elapsed().as_secs_f32();
             since = Instant::now();
-            let points = POINT_COUNTS[app.get_point_index().clamp(0, 4) as usize];
-            let total = points * app.get_dataset_count().max(1) as usize;
+            let total = data_for_stats.borrow().len() * app.get_dataset_count().max(1) as usize;
             let rate = samples.replace(0) as f64 / elapsed as f64;
-            let streaming = if app.get_streaming() {
+            let full = app.get_keep_everything() && data_for_stats.borrow().len() >= MAX_KEPT;
+            let streaming = if full {
+                "stopped: 10,000,000 values per dataset kept".into()
+            } else if app.get_streaming() {
                 format!(
                     "{} samples/s per dataset",
                     slintplot::ticks::format_value(rate.round())

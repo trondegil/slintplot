@@ -66,6 +66,138 @@ pub struct DataPoint {
     pub r: f64,
 }
 
+/// The points of a scatter, bubble or time series dataset. `Lazy` reads them
+/// on demand, so that a zoomed-in time series reads only the points it shows.
+#[derive(Clone)]
+pub enum Points {
+    Owned(Vec<DataPoint>),
+    Lazy {
+        len: usize,
+        get: std::rc::Rc<dyn Fn(usize) -> DataPoint>,
+    },
+}
+
+/// A point with no position, for out-of-range reads.
+const NO_POINT: DataPoint = DataPoint {
+    x: f64::NAN,
+    y: f64::NAN,
+    r: 0.0,
+};
+
+impl Points {
+    pub fn len(&self) -> usize {
+        match self {
+            Points::Owned(v) => v.len(),
+            Points::Lazy { len, .. } => *len,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// The point at `index`, or one with NaN coordinates when out of range.
+    pub fn get(&self, index: usize) -> DataPoint {
+        match self {
+            Points::Owned(v) => v.get(index).copied().unwrap_or(NO_POINT),
+            Points::Lazy { len, get } if index < *len => get(index),
+            Points::Lazy { .. } => NO_POINT,
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = DataPoint> + '_ {
+        (0..self.len()).map(|i| self.get(i))
+    }
+
+    /// The indices of the points with `x0 <= x <= x1`, by binary search:
+    /// the points must be in x order, as in a time series.
+    pub fn x_window(&self, x0: f64, x1: f64) -> std::ops::Range<usize> {
+        let first = self.partition(|x| x < x0);
+        let end = self.partition(|x| x <= x1);
+        first..end.max(first)
+    }
+
+    /// The first index whose x doesn't satisfy `before`.
+    fn partition(&self, before: impl Fn(f64) -> bool) -> usize {
+        let (mut lo, mut hi) = (0, self.len());
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            if before(self.get(mid).x) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        lo
+    }
+
+    /// The smallest and largest finite x: from the ends when the points are
+    /// in x order, or else from every point.
+    fn x_extent(&self, ordered: bool) -> Option<(f64, f64)> {
+        if ordered {
+            let (first, last) = (self.get(0).x, self.get(self.len().saturating_sub(1)).x);
+            if first.is_finite() && last.is_finite() {
+                return Some((first.min(last), first.max(last)));
+            }
+        }
+        self.iter()
+            .map(|p| p.x)
+            .filter(|x| x.is_finite())
+            .fold(None, |acc, x| {
+                Some(acc.map_or((x, x), |(lo, hi): (f64, f64)| (lo.min(x), hi.max(x))))
+            })
+    }
+
+    /// The points with x inside `[x0, x1]` (with a tiny margin for rounding),
+    /// with their indices: found by binary search when `ordered`, or else by
+    /// checking every point.
+    pub fn in_window(
+        &self,
+        x0: f64,
+        x1: f64,
+        ordered: bool,
+    ) -> Box<dyn Iterator<Item = (usize, DataPoint)> + '_> {
+        let edge = (x1 - x0).abs() * 1e-6;
+        let (x0, x1) = (x0 - edge, x1 + edge);
+        if ordered {
+            Box::new(self.x_window(x0, x1).map(|i| (i, self.get(i))))
+        } else {
+            Box::new(
+                self.iter()
+                    .enumerate()
+                    .filter(move |(_, p)| p.x >= x0 && p.x <= x1),
+            )
+        }
+    }
+}
+
+impl Default for Points {
+    fn default() -> Self {
+        Points::Owned(Vec::new())
+    }
+}
+
+impl FromIterator<DataPoint> for Points {
+    fn from_iter<I: IntoIterator<Item = DataPoint>>(points: I) -> Self {
+        Points::Owned(points.into_iter().collect())
+    }
+}
+
+impl From<Vec<DataPoint>> for Points {
+    fn from(points: Vec<DataPoint>) -> Self {
+        Points::Owned(points)
+    }
+}
+
+impl std::fmt::Debug for Points {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Points::Owned(v) => v.fmt(f),
+            Points::Lazy { len, .. } => write!(f, "Lazy({len} points)"),
+        }
+    }
+}
+
 /// The values of a dataset. `Lazy` reads them on demand, so that a zoomed-in
 /// view of a huge dataset reads only the values it shows.
 #[derive(Clone)]
@@ -130,8 +262,8 @@ pub struct Dataset {
     /// (mixed charts). `None` follows the chart.
     pub render_as: Option<Kind>,
     pub values: Values,
-    /// Points of scatter and bubble charts.
-    pub points: Vec<DataPoint>,
+    /// Points of scatter, bubble and time series charts.
+    pub points: Points,
     pub color: Rgba,
     pub hidden: bool,
     pub fill: bool,
@@ -353,6 +485,9 @@ pub struct AxisRequest<'a> {
     /// Give a linear axis exactly this many ticks, to line them up with
     /// another axis' ticks; 0 chooses freely.
     pub align_ticks: usize,
+    /// Scatter charts: every dataset's points are in x order (time series),
+    /// so the visible ones are found by binary search.
+    pub ordered: bool,
 }
 
 /// Computes the value axis for the visible datasets. Tick positions are
@@ -391,11 +526,10 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
         // Nothing on this axis: skip the scan of every point below.
         empty
     } else if req.kind.uses_points() {
-        let (x0, x1) = scatter_x_window(req.datasets, req.view);
+        let (x0, x1) = scatter_x_window(req.datasets, req.view, req.ordered);
         visible()
-            .flat_map(|d| &d.points)
-            .filter(|p| p.x >= x0 - (x1 - x0) * 1e-6 && p.x <= x1 + (x1 - x0) * 1e-6)
-            .fold(empty, |acc, p| extent(acc, p.y))
+            .flat_map(|d| d.points.in_window(x0, x1, req.ordered))
+            .fold(empty, |acc, (_, p)| extent(acc, p.y))
     } else {
         let kinds = dataset_kinds(req.datasets, req.kind);
         let count = category_count(req.datasets, req.label_count);
@@ -493,14 +627,14 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
 }
 
 /// The x range shown by a scatter or bubble chart for the zoom window `view`.
-pub fn scatter_x_window(datasets: &[Dataset], view: (f32, f32)) -> (f64, f64) {
+/// With `ordered` points (a time series), only the ends are read.
+pub fn scatter_x_window(datasets: &[Dataset], view: (f32, f32), ordered: bool) -> (f64, f64) {
     let (min, max) = datasets
         .iter()
         .filter(|d| !d.hidden)
-        .flat_map(|d| &d.points)
-        .filter(|p| p.x.is_finite())
-        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
-            (lo.min(p.x), hi.max(p.x))
+        .filter_map(|d| d.points.x_extent(ordered))
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), (a, b)| {
+            (lo.min(a), hi.max(b))
         });
     let (min, max) = if min > max { (0.0, 1.0) } else { (min, max) };
     let (start, end) = clamp_view(view);
@@ -540,7 +674,7 @@ pub fn percentages(datasets: &[Dataset]) -> Vec<Dataset> {
                 })
                 .collect::<Vec<_>>()
                 .into(),
-            points: Vec::new(),
+            points: Points::default(),
             // Shares all go on the one percentage axis.
             right_axis: false,
             ..d.clone()
@@ -588,12 +722,9 @@ fn visible_positive_extent(req: &AxisRequest) -> Option<(f64, f64)> {
     // Nothing on this axis: skip the scan of every point below.
     visible.clone().next()?;
     if req.kind.uses_points() {
-        let (x0, x1) = scatter_x_window(req.datasets, req.view);
-        let edge = (x1 - x0) * 1e-6;
-        for p in visible.flat_map(|d| &d.points) {
-            if p.x >= x0 - edge && p.x <= x1 + edge {
-                add(p.y);
-            }
+        let (x0, x1) = scatter_x_window(req.datasets, req.view, req.ordered);
+        for (_, p) in visible.flat_map(|d| d.points.in_window(x0, x1, req.ordered)) {
+            add(p.y);
         }
     } else {
         let kinds = dataset_kinds(req.datasets, req.kind);
@@ -1045,7 +1176,10 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
     let visible: Vec<usize> = (0..req.datasets.len())
         .filter(|&i| !req.datasets[i].hidden)
         .collect();
-    let (min, max) = scatter_x_window(req.datasets, req.view);
+    // Time series points are in time order: the visible ones are found by
+    // binary search, so a zoomed-in view reads only what it shows.
+    let ordered = req.time.is_some();
+    let (min, max) = scatter_x_window(req.datasets, req.view, ordered);
     // Room for labels like "-1,000.5" between ticks.
     let max_ticks = (req.width / (req.font_size.max(1.0) * 6.0))
         .floor()
@@ -1083,9 +1217,8 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
             }
             let points: Vec<Point> = d
                 .points
-                .iter()
-                .enumerate()
-                .filter(|(_, p)| p.x >= x0 - edge && p.x <= x1 + edge && p.y.is_finite())
+                .in_window(x0, x1, ordered)
+                .filter(|(_, p)| p.y.is_finite())
                 .map(|(index, p)| Point {
                     x: x_of(p.x),
                     y: y_of(p.y),
@@ -1118,7 +1251,16 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
             // Zoomed in, the line continues to the edges of the plot, towards
             // the nearest points outside the window, so a window narrower
             // than the spacing of the points still shows the line.
-            let outside = |before: bool| {
+            let outside = |before: bool| -> Option<DataPoint> {
+                if ordered {
+                    let window = d.points.x_window(x0 - edge, x1 + edge);
+                    let index = if before {
+                        window.start.checked_sub(1)?
+                    } else {
+                        window.end
+                    };
+                    return Some(d.points.get(index)).filter(|p| p.y.is_finite());
+                }
                 d.points
                     .iter()
                     .filter(|p| {
@@ -1151,13 +1293,13 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
             } else {
                 (None, None)
             };
-            let first = points.first().map(|p| &d.points[p.index]).or(after);
+            let first = points.first().map(|p| d.points.get(p.index)).or(after);
             if let (Some(a), Some(b)) = (before, first) {
-                coords.insert(0, at(x0, a, b));
+                coords.insert(0, at(x0, &a, &b));
             }
-            let last = points.last().map(|p| &d.points[p.index]).or(before);
+            let last = points.last().map(|p| d.points.get(p.index)).or(before);
             if let (Some(a), Some(b)) = (last, after) {
-                coords.push(at(x1, a, b));
+                coords.push(at(x1, &a, &b));
             }
             let coords = if d.stepped {
                 path::steps(&coords)
@@ -1406,6 +1548,7 @@ mod tests {
             grace: 0.0,
             side: None,
             align_ticks: 0,
+            ordered: false,
         })
     }
 
@@ -1421,7 +1564,8 @@ mod tests {
         let data = [Dataset {
             points: [(0.0, 0.0), (5.0, 10.0), (10.0, 5.0)]
                 .map(|(x, y)| DataPoint { x, y, r: 0.0 })
-                .to_vec(),
+                .to_vec()
+                .into(),
             ..Default::default()
         }];
         let axis = axis(&data, Kind::Scatter, false, 100.0, false);
@@ -1450,7 +1594,8 @@ mod tests {
                     y: 10.0,
                     r: 2.0,
                 },
-            ],
+            ]
+            .into(),
             ..Default::default()
         }];
         let l = layout(&request(Kind::Bubble, &data, NO_LABELS));
@@ -1544,6 +1689,7 @@ mod tests {
             grace: 0.0,
             side: None,
             align_ticks: 0,
+            ordered: false,
         });
         assert!(a.min >= 400.0 && a.max <= 700.0, "{} to {}", a.min, a.max);
     }
@@ -1595,6 +1741,7 @@ mod tests {
                 grace: 0.0,
                 side: None,
                 align_ticks: 0,
+                ordered: false,
             })
         };
         let fixed = axis_with(Some((0.0, 250.0)), false);
@@ -1637,6 +1784,7 @@ mod tests {
             grace: 0.0,
             side: None,
             align_ticks: 0,
+            ordered: false,
         });
         assert_eq!(a.ticks.last().map(|t| t.label.as_str()), Some("$6,000"));
     }
@@ -1652,7 +1800,7 @@ mod tests {
             })
             .collect();
         let data = [Dataset {
-            points,
+            points: points.into(),
             ..Default::default()
         }];
         let mut req = request(Kind::Scatter, &data, NO_LABELS);
@@ -1683,7 +1831,7 @@ mod tests {
             })
             .collect();
         let data = [Dataset {
-            points,
+            points: points.into(),
             ..Default::default()
         }];
         let mut req = request(Kind::Scatter, &data, NO_LABELS);
@@ -2031,6 +2179,7 @@ mod tests {
             grace: 0.0,
             side: Some(right),
             align_ticks: align,
+            ordered: false,
         })
     }
 
@@ -2108,11 +2257,11 @@ mod tests {
         };
         let data = [
             Dataset {
-                points: point(5.0),
+                points: point(5.0).into(),
                 ..Default::default()
             },
             Dataset {
-                points: point(50.0),
+                points: point(50.0).into(),
                 right_axis: true,
                 ..Default::default()
             },
@@ -2127,5 +2276,59 @@ mod tests {
         assert_eq!(layout(&req).series[1].points[0].y, -400.0);
         // And an axis for all datasets includes both.
         assert!(axis(&data, Kind::Scatter, false, 200.0, true).max >= 50.0);
+    }
+
+    #[test]
+    fn zoomed_time_series_read_only_the_visible_points() {
+        use std::cell::Cell;
+        use std::rc::Rc;
+        let reads = Rc::new(Cell::new(0usize));
+        let counted = reads.clone();
+        let len = 1_000_000;
+        let data = [Dataset {
+            points: Points::Lazy {
+                len,
+                get: Rc::new(move |i| {
+                    counted.set(counted.get() + 1);
+                    DataPoint {
+                        x: i as f64 * 60.0,
+                        y: (i % 100) as f64,
+                        r: 0.0,
+                    }
+                }),
+            },
+            ..Default::default()
+        }];
+        let mut req = request(Kind::Scatter, &data, NO_LABELS);
+        req.time = Some(TimeAxis::default());
+        req.show_lines = true;
+        // The newest 1,000 points.
+        req.view = (0.999, 1.0);
+        let out = layout(&req);
+        let shown = out.series[0].points.len();
+        assert!((999..=1001).contains(&shown), "{shown}");
+        assert!(reads.get() < 10_000, "{} reads", reads.get());
+    }
+
+    #[test]
+    fn ordered_and_unordered_windows_agree() {
+        let points: Points = (0..500)
+            .map(|i| DataPoint {
+                x: i as f64 * 7.0,
+                y: ((i * 37) % 101) as f64,
+                r: 0.0,
+            })
+            .collect();
+        for (x0, x1) in [
+            (0.0, 3500.0),
+            (100.0, 200.0),
+            (-50.0, 3.0),
+            (3490.0, 9000.0),
+            (10.5, 10.6),
+        ] {
+            let fast: Vec<_> = points.in_window(x0, x1, true).map(|(i, _)| i).collect();
+            let slow: Vec<_> = points.in_window(x0, x1, false).map(|(i, _)| i).collect();
+            assert_eq!(fast, slow, "{x0}..{x1}");
+        }
     }
 }

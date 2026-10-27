@@ -39,7 +39,14 @@ export component Stress inherits Window {
     // Streaming: samples per second per dataset, by index into the picker.
     in-out property <int> stream-rate-index: 1;
     out property <int> stream-rate: [10, 60, 1000, 10000, 100000][root.stream-rate-index];
-    // How many of the latest values to show: all, 1,000 or 10,000.
+    // Chart updates per second while streaming, by index into the picker.
+    in-out property <int> update-rate-index: 2;
+    out property <int> update-rate: [10, 30, 60, 120][root.update-rate-index];
+    // Keep every streamed value (up to 10,000,000 per dataset), instead of
+    // the point count's worth.
+    in-out property <bool> keep-everything: false;
+    // How many of the latest values to show, by index into the picker: all,
+    // or the latest 1,000,000 down to 1,000.
     in-out property <int> latest-index: 0;
     in-out property <bool> animated: true;
     in-out property <float> view-start: 0;
@@ -60,13 +67,10 @@ export component Stress inherits Window {
     // Apply the "smooth" setting to the existing datasets.
     callback restyle();
 
-    // Zooms to the latest values, as `latest-index` says.
-    function show-latest() {
-        let count = [100, 1000, 10000, 100000, 1000000][root.point-index];
-        let latest = [0, 1000, 10000][root.latest-index];
-        root.view-start = latest > 0 && latest < count ? 1 - latest / count : 0;
-        root.view-end = 1;
-    }
+    // Zoom to the latest values, as `latest-index` says.
+    callback show-latest();
+    // Restart streaming at the new `update-rate`.
+    callback update-rate-changed();
 
     changed dark-mode => {
         Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
@@ -87,7 +91,6 @@ export component Stress inherits Window {
                 current-index <=> root.chart-type;
                 selected => {
                     root.regenerate();
-                    root.show-latest();
                 }
             }
             Text {
@@ -100,7 +103,6 @@ export component Stress inherits Window {
                 current-index <=> root.point-index;
                 selected => {
                     root.regenerate();
-                    root.show-latest();
                 }
             }
             Text {
@@ -165,24 +167,50 @@ export component Stress inherits Window {
                 current-index <=> root.stream-rate-index;
             }
             Text {
+                text: "Updates/s";
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
+            }
+            ComboBox {
+                width: 80px;
+                model: ["10", "30", "60", "120"];
+                current-index <=> root.update-rate-index;
+                selected => {
+                    root.update-rate-changed();
+                }
+            }
+            Text {
+                text: "Keep";
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
+            }
+            ComboBox {
+                width: 150px;
+                model: ["Point count", "Everything"];
+                current-index: root.keep-everything ? 1 : 0;
+                selected(value) => {
+                    root.keep-everything = value == "Everything";
+                    root.regenerate();
+                }
+            }
+            Text {
                 text: "Show";
                 color: ChartTheme.text-color;
                 vertical-alignment: center;
             }
             ComboBox {
                 width: 150px;
-                model: ["All", "Latest 1,000", "Latest 10,000"];
+                model: ["All", "Latest 1,000,000", "Latest 500,000", "Latest 100,000", "Latest 10,000", "Latest 1,000"];
                 current-index <=> root.latest-index;
                 selected => {
                     root.show-latest();
                 }
             }
-            Text {
-                text: root.stats;
-                color: ChartTheme.text-color;
-                font-family: "Menlo";
-                vertical-alignment: center;
-            }
+        }
+        Text {
+            text: root.stats;
+            color: ChartTheme.text-color;
+            font-family: "Menlo";
         }
 
         if root.chart-type == 0: LineChart {

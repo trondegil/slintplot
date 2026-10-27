@@ -120,6 +120,8 @@ export struct ChartAxisRequest {
     // Give a linear axis exactly this many ticks, to line them up with
     // another axis' ticks; 0 chooses freely.
     align-ticks: int,
+    // Scatter charts: every dataset's points are in x order (time series).
+    ordered: bool,
 }
 
 export struct ChartLayoutRequest {

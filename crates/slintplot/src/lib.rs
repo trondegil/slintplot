@@ -90,20 +90,36 @@ macro_rules! register {
                 }),
             }
         }
+        // Points are read on demand too: a zoomed-in time series reads only
+        // the points it shows, found by binary search.
+        fn lazy_points(model: ::slint::ModelRc<ChartXY>) -> $crate::layout::Points {
+            model.model_tracker().track_row_count_changes();
+            $crate::layout::Points::Lazy {
+                len: model.row_count(),
+                get: ::std::rc::Rc::new(move |row| {
+                    model.model_tracker().track_row_data_changes(row);
+                    model.row_data(row).map_or(
+                        $crate::layout::DataPoint {
+                            x: f64::NAN,
+                            y: f64::NAN,
+                            r: 0.0,
+                        },
+                        |p| $crate::layout::DataPoint {
+                            x: p.x.into(),
+                            y: p.y.into(),
+                            r: p.r.into(),
+                        },
+                    )
+                }),
+            }
+        }
         fn datasets(model: &::slint::ModelRc<ChartDataset>) -> Vec<$crate::layout::Dataset> {
             tracked(model)
                 .into_iter()
                 .map(|d| $crate::layout::Dataset {
                     render_as: series_type(d.series_type),
                     values: lazy_values(d.values),
-                    points: tracked(&d.points)
-                        .into_iter()
-                        .map(|p| $crate::layout::DataPoint {
-                            x: p.x.into(),
-                            y: p.y.into(),
-                            r: p.r.into(),
-                        })
-                        .collect(),
+                    points: lazy_points(d.points),
                     color: rgba(d.color),
                     hidden: d.hidden,
                     fill: d.fill,
@@ -264,6 +280,7 @@ macro_rules! register {
                     _ => None,
                 },
                 align_ticks: usize::try_from(req.align_ticks).unwrap_or(0),
+                ordered: req.ordered,
             });
             let axis = ChartAxis {
                 min: axis.min as f32,

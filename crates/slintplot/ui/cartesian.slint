@@ -179,6 +179,7 @@ export component CartesianChart {
         logarithmic: root.logarithmic,
         format: root.format,
         side: 1,
+        ordered: root.time-axis,
     });
     // The right axis, when a dataset uses it (not in 100% stacked charts).
     private property <bool> has-right-axis: ChartEngine.uses-right-axis(root.datasets) && !root.stacked-percent;
@@ -201,6 +202,7 @@ export component CartesianChart {
         logarithmic: root.y2-logarithmic,
         format: root.format2,
         side: 2,
+        ordered: root.time-axis,
         // The left axis' ticks span it exactly unless it is fixed or
         // logarithmic; then the axes can't line up.
         align-ticks: root.fixed-range || root.logarithmic || root.y2-logarithmic ? 0 : axis.ticks.length,
