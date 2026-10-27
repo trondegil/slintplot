@@ -154,3 +154,41 @@ pub fn run(png_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+
+/// Renders the screenshot for the website, in light and dark mode: three
+/// datasets of 1,000,000 points, decimated and zoomed to 0.1%, as
+/// `zoom.png` and `zoom-dark.png` in `dir`.
+pub fn snapshot(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    std::fs::create_dir_all(dir)?;
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+    window.set_size(PhysicalSize::new(WIDTH, HEIGHT));
+    slint::platform::set_platform(Box::new(Headless(window.clone())))?;
+    let mut pixels = vec![PremultipliedRgbaColor::default(); (WIDTH * HEIGHT) as usize];
+
+    let app = Stress::new()?;
+    app.set_dataset_count(3);
+    app.set_animated(false);
+    let data = setup(&app);
+    app.show()?;
+    app.set_point_index(POINT_COUNTS.len() as i32 - 1);
+    app.set_chart_type(0);
+    data.borrow_mut().regenerate(&app);
+    app.set_show_points(false);
+    app.set_smooth(false);
+    app.invoke_restyle();
+    app.set_decimate(true);
+    app.set_view_start(0.5);
+    app.set_view_end(0.501);
+    for (dark, name) in [(false, "zoom.png"), (true, "zoom-dark.png")] {
+        app.set_dark_mode(dark);
+        // Let the widgets' color transitions finish.
+        let started = Instant::now();
+        while started.elapsed() < Duration::from_millis(800) {
+            frame(&window, &mut pixels);
+            std::thread::sleep(Duration::from_millis(16));
+        }
+        frame(&window, &mut pixels);
+        save(&pixels, &dir.join(name))?;
+    }
+    Ok(())
+}

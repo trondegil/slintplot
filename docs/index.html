@@ -268,6 +268,7 @@
   <a href="#interaction">Interaction</a>
   <a href="#updating-data">Updating data from Rust</a>
   <a href="#large-datasets">Large datasets</a>
+  <a href="#performance">Performance</a>
   <a href="#rust-api">Rust API</a>
   <a href="#engine">ChartEngine</a>
   <h4>More</h4>
@@ -1506,13 +1507,85 @@ come from <code>slint::include_modules!()</code>.</p>
   <li><strong>Keep decimation on</strong> (<code>decimate: true</code>, the default). A line with more than twice as many points as pixels is drawn as one span per pixel column, which looks the same and draws far faster: about 250 ms instead of 24 s for 3 lines of 1,000,000 points in the software renderer.</li>
   <li><strong>Zoom in.</strong> Values are read from the models on demand, so a zoomed-in chart reads only the visible values, and changes outside the view cause no work.</li>
 </ul>
-<p>Measured with the software renderer and three datasets of 1,000,000 points each:</p>
+<p>Measured with the software renderer and three datasets of 1,000,000 points each, decimation on
+(see <a href="#performance">Performance</a> for how):</p>
 <table>
   <tr><th></th><th>Full view</th><th>Zoomed to 0.1%</th></tr>
-  <tr><td>Layout</td><td>170 ms</td><td>1.4 ms</td></tr>
-  <tr><td>Frame</td><td>230 ms</td><td>47 ms</td></tr>
-  <tr><td>Hover</td><td>4 ms</td><td>4 ms</td></tr>
+  <tr><td>Layout</td><td>192 ms</td><td>0.75 ms</td></tr>
+  <tr><td>Frame</td><td>244 ms</td><td>46 ms</td></tr>
+  <tr><td>Hover</td><td>3.9 ms</td><td></td></tr>
 </table>
+
+<h2 id="performance">Performance</h2>
+<p>
+  SlintPlot draws every chart with Slint's own elements: a path per line, a rectangle per bar, a text per label.
+  That keeps charts sharp, themeable and interactive, but every element costs drawing time, and that cost
+  grows with the data. The stress test app, <code>slintplot-stress</code>, was built to find where it starts to
+  matter: it pushes each chart type from 100 to 1,000,000 points, streams new data at 60 Hz, and shows the
+  layout and frame times live. Use it to check what's fast enough for your app before you build it; we use it to
+  catch slowdowns in SlintPlot before a release.
+</p>
+<figure class="shot"><img class="when-light" src="screenshots/zoom.png" alt="The stress test: three datasets of 1,000,000 points, zoomed in" loading="lazy"><img class="when-dark" src="screenshots/zoom-dark.png" alt="The stress test: three datasets of 1,000,000 points, zoomed in" loading="lazy">
+  <figcaption>The stress test: three datasets of 1,000,000 points each, zoomed in to 0.1% of the data. Only the visible values are read.</figcaption></figure>
+
+<h3>How it's measured</h3>
+<p>The numbers below come from <code>slintplot-stress --bench</code>, which renders each configuration without a window:</p>
+<ul>
+  <li><strong>Machine:</strong> Apple M4 (10 cores, 16 GB), macOS 27, a release build of SlintPlot 0.1.2 with Slint 1.18.</li>
+  <li><strong>Renderer:</strong> Slint's software renderer, on one CPU core, into a 1280&times;800 pixel buffer.</li>
+  <li><strong>Data:</strong> three datasets (three groups for the sunburst), random walks.</li>
+  <li><strong>Frame:</strong> the chart's layout plus drawing every pixel, measured once per configuration. Showing it on a screen isn't included.
+    <strong>Hover</strong> is the next frame after the mouse moves over the chart.</li>
+  <li><strong>Runs:</strong> each number is the median of three runs. The runs differed by at most &plusmn;8%, most by &plusmn;1&ndash;3%.</li>
+</ul>
+<p>At 60 frames per second, a frame has 16.7 ms. Frames below that can be animated and streamed smoothly; slower ones are
+fine for charts that change now and then.</p>
+
+<h3>Lines, bars and points</h3>
+<p>Frame time per number of points in each dataset. Decimation draws a line with more points than pixels as one span per pixel column.</p>
+<table>
+  <tr><th>Points</th><th>Line</th><th>Line, decimated</th><th>Time series</th><th>Time series, decimated</th><th>Bars</th><th>Scatter</th></tr>
+  <tr><td>100</td><td>5.0 ms</td><td>4.7 ms</td><td>3.8 ms</td><td>3.6 ms</td><td>3.8 ms</td><td>3.3 ms</td></tr>
+  <tr><td>1,000</td><td>7.9 ms</td><td>6.6 ms</td><td>7.5 ms</td><td>6.9 ms</td><td>6.5 ms</td><td>5.2 ms</td></tr>
+  <tr><td>10,000</td><td>60 ms</td><td>6.1 ms</td><td>67 ms</td><td>5.9 ms</td><td>34 ms</td><td>26 ms</td></tr>
+  <tr><td>100,000</td><td>1.3 s</td><td>26 ms</td><td>1.5 s</td><td>28 ms</td><td>303 ms</td><td>not run</td></tr>
+  <tr><td>1,000,000</td><td>23.8 s</td><td>244 ms</td><td>23.6 s</td><td>259 ms</td><td>not run</td><td>not run</td></tr>
+</table>
+<p>With point markers and smooth lines, a line takes 6.2 ms at 100 points, 14 ms at 1,000 and 136 ms at 10,000: each marker is an element.
+Bars and markers are one element each, so the benchmark doesn't run them past 100,000 bars or 10,000 markers.</p>
+
+<h3>Charts with one shape per item</h3>
+<p>Waterfall, dumbbell, funnel and sunburst charts draw every step, row, stage or item, with no decimation:</p>
+<table>
+  <tr><th>Items</th><th>Waterfall</th><th>Dumbbell</th><th>Funnel</th><th>Sunburst</th></tr>
+  <tr><td>100</td><td>1.6 ms</td><td>1.3 ms</td><td>0.8 ms</td><td>4.2 ms</td></tr>
+  <tr><td>1,000</td><td>8.8 ms</td><td>10 ms</td><td>3.6 ms</td><td>26 ms</td></tr>
+  <tr><td>10,000</td><td>83 ms</td><td>104 ms</td><td>31 ms</td><td>307 ms</td></tr>
+</table>
+<p>A gauge frame takes 2.8 ms.</p>
+
+<h3>What the numbers mean</h3>
+<ul>
+  <li><strong>Up to about 1,000 points per dataset, every chart fits in a 60 fps frame</strong>, except the sunburst (26 ms).</li>
+  <li><strong>Lines of any size stay usable with decimation</strong>, which is on by default: 6 ms at 10,000 points, 26 ms at 100,000 and about 250 ms at 1,000,000 for a full redraw.
+    Hovering stays at about 4 ms at every size, and zooming in to 0.1% of a million points brings a frame to 46 ms.
+    Without decimation, a million-point line takes 24 s to draw.</li>
+  <li><strong>Bars, scatter markers and the one-shape-per-item charts grow with the count.</strong> For animation and streaming, keep them to about 1,000 bars, markers or items; at 10,000 a frame takes 26&ndash;307 ms.</li>
+  <li><strong>Up to 10,000 points, drawing takes most of the time.</strong> Computing the chart takes 1&ndash;6 ms (19 ms for a line with point markers) of frames of 6&ndash;307 ms.
+    With decimated million-point lines it's the other way round: reading and decimating the data takes 192 ms of the 244 ms frame.</li>
+</ul>
+
+<h3>What isn't measured</h3>
+<ul>
+  <li><strong>GPU renderers.</strong> Desktop apps use Slint's FemtoVG or Skia renderer by default, which draw on the graphics card. They haven't been benchmarked; expect different, usually faster, drawing.</li>
+  <li><strong>The browser.</strong> The <a href="demo/">web gallery</a> runs SlintPlot as WebAssembly; it isn't benchmarked, and is likely slower.</li>
+  <li><strong>Other machines.</strong> Everything above is from one fast computer. Older or low-power hardware is slower; embedded devices are untested.</li>
+  <li><strong>Memory use and start-up time.</strong></li>
+</ul>
+<p>To measure your own machine, run the benchmark, or open the app to try the charts with live numbers:</p>
+<pre><code>cargo install slintplot-stress
+slintplot-stress --bench    # the tables above, for your machine
+slintplot-stress            # the interactive stress test</code></pre>
 
 <h2 id="rust-api">Rust API</h2>
 <h3><code>slintplot::library_path() -&gt; PathBuf</code></h3>
@@ -1571,7 +1644,8 @@ development packages first, such as <code>libfontconfig-dev</code> and <code>lib
   <tr><td><code>slintplot-gallery</code></td><td>A sample browser: every chart type, with Randomize, Add dataset, Add data, Remove dataset and Remove data buttons, a theme selector and dark mode</td></tr>
   <tr><td><code>slintplot-stress</code></td><td>Line, bar, time series and scatter charts with up to 8 × 1,000,000 points; waterfall, dumbbell, funnel and sunburst charts with up to 10,000 steps, rows, stages or items, and a gauge; 60 Hz streaming, zoom, decimation, themes and live performance numbers</td></tr>
   <tr><td><code>slintplot-gallery --snapshot &lt;dir&gt;</code></td><td>Renders every gallery sample to PNG without a window</td></tr>
-  <tr><td><code>slintplot-stress --bench</code></td><td>Headless timings for 100 to 1,000,000 points</td></tr>
+  <tr><td><code>slintplot-stress --bench</code></td><td>Headless timings for 100 to 1,000,000 points; see <a href="#performance">Performance</a></td></tr>
+  <tr><td><code>slintplot-stress --snapshot &lt;dir&gt;</code></td><td>Renders the stress test screenshot, in light and dark mode, to PNG</td></tr>
 </table>
 <p>The source of the apps is on GitHub, in <a href="https://github.com/trondegil/slintplot/tree/main/examples/gallery">examples/gallery</a>
 and <a href="https://github.com/trondegil/slintplot/tree/main/examples/stress">examples/stress</a>.

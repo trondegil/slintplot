@@ -309,8 +309,11 @@ fn setup(app: &Stress) -> Rc<RefCell<Data>> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    if args.next().as_deref() == Some("--bench") {
-        return bench::run(args.next().map(Into::into));
+    match (args.next().as_deref(), args.next()) {
+        (Some("--bench"), dir) => return bench::run(dir.map(Into::into)),
+        (Some("--snapshot"), Some(dir)) => return bench::snapshot(dir.as_ref()),
+        (None, _) => {}
+        _ => return Err("usage: slintplot-stress [--bench [<dir>] | --snapshot <dir>]".into()),
     }
 
     let app = Stress::new()?;

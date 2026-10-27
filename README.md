@@ -465,44 +465,45 @@ Values are read from the data models on demand. A chart zoomed into part of
 a large dataset reads only the visible values, and changes outside the view
 cause no work. With `decimate: true` (the default), a line with more than twice as many points as pixels is
 drawn as one span per pixel column; set `decimate: false` to draw every
-segment. Measured with the software renderer and
-3 datasets of 1,000,000 points each:
+segment.
 
-| | Full view | Zoomed to 0.1% |
-|---|---|---|
-| Layout | 194 ms | 0.8 ms |
-| Frame | 248 ms | 47 ms |
-| Hover | 4.3 ms | |
+### Performance
 
-Frame times by size, 3 datasets, 1280×800 (`slintplot-stress --bench`, from `cargo install slintplot-stress`):
+Every chart is drawn with Slint's own elements, so the drawing cost grows with
+the data. The stress test app (`cargo install slintplot-stress`) was built to
+show where that starts to matter: it pushes each chart type from 100 to
+1,000,000 points, streams data at 60 Hz and shows live timings.
+`slintplot-stress --bench` measures your own machine. The full results and what
+they mean are at [slintplot.dev/#performance](https://slintplot.dev/#performance).
 
-| Points per dataset | Line | Line, decimated | Bars | Time series, decimated | Scatter |
+Frame times with Slint's software renderer on one core of an Apple M4,
+1280×800, 3 datasets, median of three runs (they differed by at most ±8%).
+A 60 fps frame has 16.7 ms.
+
+| Points per dataset | Line | Line, decimated | Time series, decimated | Bars | Scatter |
 |---:|---:|---:|---:|---:|---:|
-| 100 | 5.5 ms | 5.3 ms | 4.6 ms | 4.2 ms | 3.7 ms |
-| 1,000 | 8.5 ms | 8.2 ms | 8.0 ms | 7.2 ms | 5.9 ms |
-| 10,000 | 69 ms | 6.6 ms | 37 ms | 6.6 ms | 28 ms |
-| 100,000 | 1.4 s | 27 ms | 317 ms | 31 ms | |
-| 1,000,000 | 24 s | 248 ms | | 269 ms | |
-
-Waterfall, dumbbell, funnel and sunburst charts draw one element per step,
-row, stage or item, so their frame time grows with the count. With 3 datasets
-(3 sunburst groups):
+| 100 | 5.0 ms | 4.7 ms | 3.6 ms | 3.8 ms | 3.3 ms |
+| 1,000 | 7.9 ms | 6.6 ms | 6.9 ms | 6.5 ms | 5.2 ms |
+| 10,000 | 60 ms | 6.1 ms | 5.9 ms | 34 ms | 26 ms |
+| 100,000 | 1.3 s | 26 ms | 28 ms | 303 ms | not run |
+| 1,000,000 | 23.8 s | 244 ms | 259 ms | not run | not run |
 
 | Steps, rows, stages or items | Waterfall | Dumbbell | Funnel | Sunburst |
 |---:|---:|---:|---:|---:|
-| 100 | 1.9 ms | 1.4 ms | 1.7 ms | 4.6 ms |
-| 1,000 | 9.1 ms | 11 ms | 4.0 ms | 27 ms |
-| 10,000 | 95 ms | 106 ms | 34 ms | 323 ms |
+| 100 | 1.6 ms | 1.3 ms | 0.8 ms | 4.2 ms |
+| 1,000 | 8.8 ms | 10 ms | 3.6 ms | 26 ms |
+| 10,000 | 83 ms | 104 ms | 31 ms | 307 ms |
 
-A gauge frame takes 3 ms. Funnels leave out the stage names, values and
-badges when the rows are too short for them, which also keeps them fast.
+Hovering a decimated line takes about 4 ms at every size, and zooming in to
+0.1% of a million points brings a frame to 46 ms. Not measured: Slint's GPU
+renderers (the default in desktop apps), the browser, other machines, memory
+use.
 
-Measured on an Apple M4 with Slint 1.18. Without decimation, the software
-renderer's time grows with the number of line segments and bars; with it, a
-frame stays near the cost of one segment per pixel column. Hovering redraws
-only the tooltip and markers, about 4 ms at every size with decimation on.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/screenshots/zoom-dark.png">
+  <img src="https://slintplot.dev/screenshots/zoom.png" alt="Three datasets of 1,000,000 points, zoomed in">
+</picture>
 
-![Three datasets of 1,000,000 points, zoomed in](https://slintplot.dev/screenshots/zoom.png)
 *The stress test: three datasets of 1,000,000 points each, zoomed in to 0.1% of the data. Only the visible values are read.*
 
 ### Software renderer
@@ -549,6 +550,7 @@ cargo run -p slintplot-gallery                                 # sample browser
 cargo run -p slintplot-gallery -- --snapshot target/snapshots  # headless PNG renders
 cargo run --release -p slintplot-stress                        # stress test, streaming
 cargo run --release -p slintplot-stress -- --bench             # headless timings
+cargo run --release -p slintplot-stress -- --snapshot docs/screenshots  # the stress test screenshots
 ```
 
 ## Limitations
