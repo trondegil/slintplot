@@ -23,8 +23,12 @@ slint::include_modules!();
 
 pub const POINT_COUNTS: [usize; 5] = [100, 1_000, 10_000, 100_000, 1_000_000];
 
-/// The window sizes of the "Window" picker; after them comes unlimited.
-const WINDOWS: [usize; 5] = [1_000, 10_000, 100_000, 500_000, 1_000_000];
+/// The window sizes of the "Window" slider, in 1-2-5 steps; after them
+/// comes unlimited.
+pub const WINDOWS: [usize; 13] = [
+    1_000, 2_000, 5_000, 10_000, 20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000,
+    5_000_000, 10_000_000,
+];
 
 /// The most values per dataset an unlimited window collects; streaming stops
 /// there. Three datasets of floats take 120 MB.
@@ -42,7 +46,7 @@ fn window(app: &Stress) -> (usize, usize) {
     {
         return (count, count);
     }
-    match WINDOWS.get(app.get_window_index().max(0) as usize) {
+    match WINDOWS.get(app.get_window_step().max(0) as usize) {
         Some(&size) => (size, size),
         None => (1_000_000, MAX_KEPT),
     }
@@ -137,6 +141,26 @@ impl Data {
             (_, Some(p)) => p.row_count(),
             _ => 0,
         }
+    }
+
+    /// Applies a new window size to the streaming data, keeping the latest
+    /// values; returns false for charts that must be rebuilt instead.
+    fn resize(&mut self, app: &Stress) -> bool {
+        if !matches!(self.chart_type, 0..=3 | 5) {
+            return false;
+        }
+        let (full, capacity) = window(app);
+        self.capacity = capacity;
+        self.period = (full as f32 / 4.0).max(50.0);
+        self.spike_chance = 10.0 / full as f32;
+        for model in &self.series {
+            model.set_capacity(capacity);
+        }
+        for model in &self.points {
+            model.set_capacity(capacity);
+        }
+        self.labels.set_capacity(capacity);
+        true
     }
 
     fn regenerate(&mut self, app: &Stress) {
@@ -397,6 +421,17 @@ fn setup(app: &Stress) -> Rc<RefCell<Data>> {
             let started = Instant::now();
             d.borrow_mut().regenerate(&app);
             eprintln!("generated data in {:.0?}", started.elapsed());
+        }
+    });
+    let weak = app.as_weak();
+    let d = data.clone();
+    app.on_window_changed(move || {
+        if let Some(app) = weak.upgrade() {
+            app.set_notice("".into());
+            let resized = d.borrow_mut().resize(&app);
+            if !resized {
+                d.borrow_mut().regenerate(&app);
+            }
         }
     });
     let weak = app.as_weak();

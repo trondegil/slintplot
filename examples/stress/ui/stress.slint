@@ -27,10 +27,14 @@ export component Stress inherits Window {
     preferred-height: 800px;
     background: ChartTheme.background;
 
-    // Values per dataset, by index into `windows`: the latest ones are kept
-    // and shown. The last entry, unlimited, starts with 1,000,000 and grows.
-    in-out property <int> window-index: 2;
-    in property <[string]> windows: ["1,000", "10,000", "100,000", "500,000", "1,000,000", "Unlimited"];
+    // Values per dataset: the latest ones are kept and shown. A step of the
+    // slider, from 1,000 to 10,000,000 in 1-2-5 steps, then unlimited, which
+    // grows until 10,000,000 and stops.
+    in-out property <float> window-position: 6;
+    out property <int> window-step: round(root.window-position);
+    private property <[string]> window-labels: ["1,000", "2,000", "5,000", "10,000", "20,000", "50,000", "100,000", "200,000", "500,000", "1,000,000", "2,000,000", "5,000,000", "10,000,000", "Unlimited"];
+    // The step last applied, to resize once per step while dragging.
+    private property <int> applied-window-step: 6;
     // The benchmark sets the value count directly; 0 uses `window-index`.
     in-out property <int> bench-count: 0;
     in-out property <int> dataset-count: 3;
@@ -69,6 +73,8 @@ export component Stress inherits Window {
 
     // Rebuild the data for the chart type, window, datasets and signal.
     callback regenerate();
+    // Apply a new window size, keeping the latest values when streaming.
+    callback window-changed();
     // Apply the drawing options to the existing datasets.
     callback restyle();
 
@@ -118,12 +124,28 @@ export component Stress inherits Window {
                 color: ChartTheme.text-color;
                 vertical-alignment: center;
             }
-            ComboBox {
-                model: root.windows;
-                current-index <=> root.window-index;
-                selected => {
-                    root.rebuild();
+            Slider {
+                width: 220px;
+                minimum: 0;
+                maximum: root.window-labels.length - 1;
+                step: 1;
+                value <=> root.window-position;
+                changed => {
+                    if root.window-step != root.applied-window-step {
+                        root.applied-window-step = root.window-step;
+                        root.window-changed();
+                    }
                 }
+                // Snap the handle to the step.
+                released => {
+                    root.window-position = root.window-step;
+                }
+            }
+            Text {
+                min-width: 90px;
+                text: root.window-labels[root.window-step];
+                color: ChartTheme.text-color;
+                vertical-alignment: center;
             }
             CheckBox {
                 text: "Decimate";
