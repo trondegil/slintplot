@@ -1971,7 +1971,8 @@ Licenses are per developer, per year, and cover any number of your products.</p>
   <div class="plan" data-plan="enterprise">
     <h3>Enterprise</h3>
     <p class="who">Large teams and custom terms</p>
-    <div class="price">From €2,500 <small>per year</small></div>
+    <div class="price"><small>From</small> <span class="was bird-only">€2,500</span><span class="now">€1,250</span> <small>per year</small></div>
+    <span class="bird bird-only">From €2,500 per year after two years</span>
     <ul>
       <li>Every developer in the company</li>
       <li>Custom license terms</li>
@@ -2100,7 +2101,7 @@ A developer is anyone who writes code that uses SlintPlot. Your application also
     document.getElementById("early-bird").remove();
     document.querySelectorAll(".bird-only").forEach((element) => element.remove());
     document.querySelectorAll(".plan .now").forEach((now) => {
-      now.textContent = now.closest(".plan").dataset.plan === "indie" ? "€199" : "€499";
+      now.textContent = { indie: "€199", business: "€499", enterprise: "€2,500" }[now.closest(".plan").dataset.plan];
     });
   }
   if (paddle.token) {

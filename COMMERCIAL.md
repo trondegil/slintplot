@@ -43,8 +43,8 @@ products. Prices exclude VAT.
 | Enterprise | Every developer in the company, custom terms | from €2,500 per year |
 
 **Early bird:** buy by 31 December 2027 and pay half price (€99 Indie, €249
-Business per developer per year) for your first two years: the first year
-and the first renewal.
+Business per developer per year, Enterprise from €1,250 per year) for your
+first two years: the first year and the first renewal.
 Early adopters also help shape SlintPlot: their feature requests and feedback
 come first when we plan what to build next.
 
