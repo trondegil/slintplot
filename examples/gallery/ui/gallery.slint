@@ -114,6 +114,387 @@ component SampleList inherits Rectangle {
     }
 }
 
+// A theme's colors as a row of small squares.
+component Swatches inherits HorizontalLayout {
+    in property <[color]> colors;
+    horizontal-stretch: 0;
+    spacing: 2px;
+    for c in root.colors: VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            background: c;
+        }
+    }
+}
+
+// A built-in palette, for the theme picker.
+struct ThemeOption {
+    name: string,
+    light: [color],
+    dark: [color],
+}
+
+// Picks the chart theme; each option shows the theme's eight colors. The
+// colors are those of `ChartTheme.colors` (crates/slintplot/ui/theme.slint).
+component ThemePicker inherits Rectangle {
+    in-out property <int> current;
+    private property <[ThemeOption]> options: [
+        { name: "Modern", light: [#3b82f6, #10b981, #f97316, #6366f1, #84cc16, #06b6d4, #8b5cf6, #f43f5e], dark: [#60a5fa, #34d399, #fb923c, #818cf8, #a3e635, #22d3ee, #a78bfa, #fb7185] },
+        { name: "Material", light: [#2196f3, #e91e63, #ff9800, #9c27b0, #4caf50, #3f51b5, #ff5722, #00bcd4], dark: [#42a5f5, #ec407a, #ffa726, #ab47bc, #66bb6a, #7986cb, #ff7043, #26c6da] },
+        { name: "Corporate", light: [#4e79a7, #f28e2b, #76b7b2, #e15759, #ff9da7, #59a14f, #2f4b7c, #b07aa1], dark: [#5f8ac0, #f5993d, #7fc4be, #e8696b, #ffadb5, #6cb262, #4a68a0, #bf8ab1] },
+        { name: "Mono", light: [#1e3a8a, #60a5fa, #1d4ed8, #93c5fd, #2563eb, #bfdbfe, #3b82f6, #172554], dark: [#93c5fd, #2563eb, #bfdbfe, #3b82f6, #dbeafe, #1d4ed8, #60a5fa, #1e40af] },
+        { name: "Pastel", light: [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff], dark: [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff] },
+    ];
+    height: 32px;
+    min-width: 200px;
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: Look.border;
+    background: touch.has-hover ? Look.hover : Look.surface;
+    accessible-role: combobox;
+    accessible-label: "Theme";
+    accessible-value: root.options[root.current].name;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+        Swatches {
+            colors: Look.dark ? root.options[root.current].dark : root.options[root.current].light;
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.options[root.current].name;
+            color: Look.text;
+            font-size: 13px;
+            vertical-alignment: center;
+        }
+        // A chevron.
+        Path {
+            width: 10px;
+            height: 6px;
+            y: (parent.height - self.height) / 2;
+            viewbox-width: 10;
+            viewbox-height: 6;
+            commands: "M 1 1 L 5 5 L 9 1";
+            stroke: Look.secondary;
+            stroke-width: 1.5px;
+            fill: transparent;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            popup.show();
+        }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        Rectangle {
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: Look.border;
+            background: Look.surface;
+            drop-shadow-blur: 12px;
+            drop-shadow-offset-y: 4px;
+            drop-shadow-color: #00000026;
+            VerticalLayout {
+                padding: 4px;
+                for option[index] in root.options: Rectangle {
+                    height: 30px;
+                    border-radius: 5px;
+                    background: index == root.current ? Look.accent.with-alpha(Look.dark ? 0.25 : 0.14)
+                        : row-touch.has-hover ? Look.hover : transparent;
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 8px;
+                        Swatches {
+                            colors: Look.dark ? option.dark : option.light;
+                        }
+                        Text {
+                            horizontal-stretch: 1;
+                            text: option.name;
+                            color: index == root.current ? Look.accent : Look.text;
+                            font-size: 13px;
+                            font-weight: index == root.current ? 600 : 400;
+                            vertical-alignment: center;
+                        }
+                    }
+                    row-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.current = index;
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Equal stripes, across or down, for the flags.
+component Stripes inherits Rectangle {
+    in property <[color]> colors;
+    in property <bool> vertical;
+    for c[i] in root.colors: Rectangle {
+        x: root.vertical ? i * root.width / root.colors.length : 0;
+        y: root.vertical ? 0 : i * root.height / root.colors.length;
+        width: root.vertical ? root.width / root.colors.length : root.width;
+        height: root.vertical ? root.height : root.height / root.colors.length;
+        background: c;
+    }
+}
+
+// A Nordic cross flag: the cross, and an inner cross for Norway.
+component NordicCross inherits Rectangle {
+    in property <color> cross;
+    in property <color> inner: transparent;
+    Rectangle {
+        x: 5px;
+        width: 4px;
+        background: root.cross;
+    }
+    Rectangle {
+        y: 4px;
+        height: 4px;
+        background: root.cross;
+    }
+    Rectangle {
+        x: 6px;
+        width: 2px;
+        background: root.inner;
+    }
+    Rectangle {
+        y: 5px;
+        height: 2px;
+        background: root.inner;
+    }
+}
+
+// A small flag for each language of the language picker, in the order of
+// `LANGUAGES` in main.rs.
+component Flag inherits Rectangle {
+    in property <int> language;
+    width: 18px;
+    height: 12px;
+    border-radius: 2px;
+    clip: true;
+    // English: the Union Jack.
+    if root.language == 0: Rectangle {
+        background: #012169;
+        Path {
+            viewbox-width: 18;
+            viewbox-height: 12;
+            commands: "M 0 0 L 18 12 M 18 0 L 0 12";
+            stroke: #ffffff;
+            stroke-width: 2.4px;
+        }
+        Path {
+            viewbox-width: 18;
+            viewbox-height: 12;
+            commands: "M 0 0 L 18 12 M 18 0 L 0 12";
+            stroke: #c8102e;
+            stroke-width: 0.8px;
+        }
+        Rectangle {
+            x: 7px;
+            width: 4px;
+            background: #ffffff;
+        }
+        Rectangle {
+            y: 4px;
+            height: 4px;
+            background: #ffffff;
+        }
+        Rectangle {
+            x: 8px;
+            width: 2px;
+            background: #c8102e;
+        }
+        Rectangle {
+            y: 5px;
+            height: 2px;
+            background: #c8102e;
+        }
+    }
+    if root.language == 1: NordicCross {
+        background: #c8102e;
+        cross: #ffffff;
+    }
+    if root.language == 2: Stripes {
+        colors: [#000000, #dd0000, #ffce00];
+    }
+    if root.language == 3: Stripes {
+        colors: [#aa151b, #f1bf00, #f1bf00, #aa151b];
+    }
+    if root.language == 4: Stripes {
+        vertical: true;
+        colors: [#002654, #ffffff, #ce1126];
+    }
+    if root.language == 5: Stripes {
+        vertical: true;
+        colors: [#009246, #ffffff, #ce2b37];
+    }
+    if root.language == 6: Stripes {
+        colors: [#ae1c28, #ffffff, #21468b];
+    }
+    if root.language == 7: NordicCross {
+        background: #ba0c2f;
+        cross: #ffffff;
+        inner: #00205b;
+    }
+    if root.language == 8: Stripes {
+        colors: [#ffffff, #dc143c];
+    }
+    if root.language == 9: Stripes {
+        vertical: true;
+        colors: [#046a38, #046a38, #da291c, #da291c, #da291c];
+    }
+    if root.language == 10: NordicCross {
+        background: #ffffff;
+        cross: #002f6c;
+    }
+    if root.language == 11: NordicCross {
+        background: #006aa7;
+        cross: #fecc02;
+    }
+    if root.language == 12: Rectangle {
+        background: #ffffff;
+        Rectangle {
+            width: 7px;
+            height: 7px;
+            border-radius: 3.5px;
+            background: #bc002d;
+        }
+    }
+    if root.language == 13: Rectangle {
+        background: #ee1c25;
+        Path {
+            x: 1.5px;
+            y: 1.5px;
+            width: 5px;
+            height: 5px;
+            viewbox-width: 10;
+            viewbox-height: 10;
+            // A five-pointed star.
+            commands: "M 5 0 L 6.18 3.38 L 9.76 3.45 L 6.9 5.62 L 7.94 9.05 L 5 7 L 2.06 9.05 L 3.1 5.62 L 0.24 3.45 L 3.82 3.38 Z";
+            fill: #ffff00;
+        }
+    }
+    // A faint edge, so white flags show on white.
+    Rectangle {
+        border-radius: 2px;
+        border-width: 1px;
+        border-color: #00000026;
+    }
+}
+
+// Picks the chart language, with each language's flag after its name.
+component LanguagePicker inherits Rectangle {
+    in property <[string]> names;
+    in-out property <int> current;
+    height: 32px;
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: Look.border;
+    background: touch.has-hover ? Look.hover : Look.surface;
+    accessible-role: combobox;
+    accessible-label: "Language";
+    accessible-value: root.names[root.current];
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+        Text {
+            horizontal-stretch: 1;
+            text: root.names[root.current];
+            color: Look.text;
+            font-size: 13px;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            Flag {
+                language: root.current;
+            }
+        }
+        Path {
+            width: 10px;
+            height: 6px;
+            y: (parent.height - self.height) / 2;
+            viewbox-width: 10;
+            viewbox-height: 6;
+            commands: "M 1 1 L 5 5 L 9 1";
+            stroke: Look.secondary;
+            stroke-width: 1.5px;
+            fill: transparent;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            popup.show();
+        }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        Rectangle {
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: Look.border;
+            background: Look.surface;
+            drop-shadow-blur: 12px;
+            drop-shadow-offset-y: 4px;
+            drop-shadow-color: #00000026;
+            VerticalLayout {
+                padding: 4px;
+                for name[index] in root.names: Rectangle {
+                    height: 28px;
+                    border-radius: 5px;
+                    background: index == root.current ? Look.accent.with-alpha(Look.dark ? 0.25 : 0.14)
+                        : row-touch.has-hover ? Look.hover : transparent;
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 8px;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: name;
+                            color: index == root.current ? Look.accent : Look.text;
+                            font-size: 13px;
+                            font-weight: index == root.current ? 600 : 400;
+                            vertical-alignment: center;
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            Flag {
+                                language: index;
+                            }
+                        }
+                    }
+                    row-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.current = index;
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // A small, quiet button for a sample's actions.
 component ActionButton inherits Rectangle {
     in property <string> text;
@@ -397,15 +778,14 @@ export component Gallery inherits Window {
                             current-index <=> root.calendar-colors;
                         }
                         // The chart language, for the sample that shows it off.
-                        if root.sample == "languages": ComboBox {
-                            width: 140px;
-                            model: root.language-names;
-                            current-index <=> root.language;
+                        if root.sample == "languages": LanguagePicker {
+                            width: 160px;
+                            names: root.language-names;
+                            current <=> root.language;
                         }
-                        ComboBox {
-                            width: 140px;
-                            model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
-                            current-index <=> root.theme;
+                        ThemePicker {
+                            width: 210px;
+                            current <=> root.theme;
                         }
                     }
                 }
@@ -430,13 +810,14 @@ export component Gallery inherits Window {
             }
             if root.narrow: HorizontalLayout {
                 spacing: 8px;
-                ComboBox {
-                    model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
-                    current-index <=> root.theme;
+                ThemePicker {
+                    horizontal-stretch: 1;
+                    current <=> root.theme;
                 }
-                if root.sample == "languages": ComboBox {
-                    model: root.language-names;
-                    current-index <=> root.language;
+                if root.sample == "languages": LanguagePicker {
+                    horizontal-stretch: 1;
+                    names: root.language-names;
+                    current <=> root.language;
                 }
                 if root.sample == "calendar": ComboBox {
                     model: ["Theme colors", "GitHub green", "Blue", "Orange", "Purple", "Red"];
