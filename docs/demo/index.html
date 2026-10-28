@@ -11,15 +11,16 @@
 <link rel="modulepreload" href="gallery.js">
 <link rel="preload" href="gallery_bg.wasm" as="fetch" type="application/wasm" crossorigin>
 <style>
-  :root { --bg: #ffffff; --text: #1d2433; --muted: #5b6475; --border: #e3e6ec; }
+  /* The gallery's own colors (Look in examples/gallery/ui/gallery.slint). */
+  :root { --bg: #ebebee; --page: #f5f5f7; --text: #1d1d1f; --muted: #6e6e73; --border: rgba(0, 0, 0, 0.1); }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #14161b; --text: #e6e9f0; --muted: #a3abbb; --border: #2a2f3a; }
+    :root { --bg: #1c1c1f; --page: #161618; --text: #f5f5f7; --muted: #a1a1a6; --border: rgba(255, 255, 255, 0.09); }
   }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; background: var(--page); color: var(--text); font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
   body { display: flex; flex-direction: column; }
-  header { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
-  header img { width: 22px; height: 22px; }
-  header a { color: inherit; text-decoration: none; font-weight: 700; }
+  header { display: flex; align-items: center; gap: 10px; padding: 7px 20px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  header img { width: 20px; height: 20px; }
+  header a { color: inherit; text-decoration: none; font-weight: 600; }
   header .brand { display: flex; align-items: center; gap: 10px; }
   header .links { margin-left: auto; display: flex; gap: 16px; }
   header .links a { font-weight: 400; color: var(--muted); }
@@ -31,8 +32,7 @@
 </head>
 <body>
 <header>
-  <a class="brand" href="../"><img src="../assets/slintplot-icon.png" alt="" width="22" height="22">SlintPlot</a>
-  <span style="color: var(--muted)">Gallery</span>
+  <a class="brand" href="../"><img src="../assets/slintplot-icon.png" alt="" width="20" height="20">SlintPlot</a>
   <nav class="links" aria-label="Site">
     <a href="../#getting-started">Documentation</a>
     <a href="https://github.com/trondegil/slintplot">GitHub</a>
