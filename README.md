@@ -195,11 +195,11 @@ Screenshots from the gallery app (`cargo install slintplot-gallery`), in the def
 ```toml
 [dependencies]
 slint = "1.18"
-slintplot = "0.1"
+slintplot = "0.2"
 
 [build-dependencies]
 slint-build = "1.18"
-slintplot = "0.1"
+slintplot = "0.2"
 ```
 
 `build.rs`:
@@ -629,7 +629,7 @@ The source of the apps is in [`examples/gallery`](https://github.com/trondegil/s
 [`examples/stress`](https://github.com/trondegil/slintplot/tree/main/examples/stress).
 
 Ready-built apps for macOS, Windows and Linux are on the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.2).
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.0).
 
 <a href="https://slint.dev"><img src="https://slintplot.dev/assets/MadeWithSlint-logo-whitebg.png" alt="Made with Slint" width="212"></a>
 

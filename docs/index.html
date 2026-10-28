@@ -349,18 +349,18 @@
 <figure class="shot"><img width="1280" height="820" class="when-light" src="screenshots/light.webp" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy"><img width="1280" height="820" class="when-dark" src="screenshots/light-dark.webp" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy">
   <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
   <a href="demo/">Try it in your browser</a>, install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
-  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.2">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
+  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.0">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
 
 <h2 id="getting-started">Getting started</h2>
 <h3>1. Add the dependencies</h3>
 <p>SlintPlot is used both as a regular dependency (the <code>register!</code> macro) and as a build dependency (to find its <code>.slint</code> files).</p>
 <pre><code>[dependencies]
 slint = "1.18"
-slintplot = "0.1"
+slintplot = "0.2"
 
 [build-dependencies]
 slint-build = "1.18"
-slintplot = "0.1"</code></pre>
+slintplot = "0.2"</code></pre>
 
 <h3>2. Make the library importable: <code>build.rs</code></h3>
 <pre><code>fn main() {
@@ -1798,7 +1798,7 @@ and <a href="https://github.com/trondegil/slintplot/tree/main/examples/stress">e
 The gallery's <code>ui/gallery.slint</code> has a working example of every chart.</p>
 <p>The gallery also runs in the browser, built with WebAssembly: <a href="demo/">slintplot.dev/demo</a>.</p>
 <p>Ready-built apps for macOS, Windows and Linux are on the
-<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.1.2">releases page</a>.
+<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.0">releases page</a>.
 Each download includes the licenses of the open-source crates it is built from.</p>
 <p><a href="https://slint.dev"><img src="assets/MadeWithSlint-logo-whitebg.webp" alt="Made with Slint" width="212" height="97"></a></p>
 <figure class="shot"><img width="1280" height="820" class="when-light" src="screenshots/gallery.webp" alt="The gallery sample browser" loading="lazy"><img width="1280" height="820" class="when-dark" src="screenshots/gallery-dark.webp" alt="The gallery sample browser" loading="lazy"></figure>

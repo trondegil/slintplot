@@ -1,6 +1,6 @@
 [package]
 name = "slintplot-gallery"
-version = "0.1.2"
+version = "0.2.0"
 description = "Sample browser for SlintPlot: every chart type, with live data editing, themes and dark mode"
 license.workspace = true
 edition.workspace = true
