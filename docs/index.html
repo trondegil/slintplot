@@ -281,6 +281,7 @@
   <a href="#languages">Languages</a>
   <a href="#interaction">Interaction</a>
   <a href="#updating-data">Updating data from Rust</a>
+  <a href="#streaming">Streaming</a>
   <a href="#large-datasets">Large datasets</a>
   <a href="#rust-api">Rust API</a>
   <a href="#engine">ChartEngine</a>
@@ -1426,7 +1427,7 @@ Leave <code>color</code> unset for the theme's next color.</p>
 <p><code>{ prefix: string, suffix: string, decimals: int }</code>. How a value is written; <code>decimals: -1</code> chooses automatically.
 Charts build it from their <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> properties.</p>
 <h3 id="chart-locale"><code>ChartLocale</code></h3>
-<p>How numbers and dates are written. Empty fields, and name lists of the wrong length, are English.</p>
+<p>How numbers and dates are written, and the charts' few built-in texts. Empty fields, and name lists of the wrong length, are English.</p>
 <table>
   <tr><th>Field</th><th>Type</th><th>Description</th></tr>
   <tr><td><code>decimal</code>, <code>group</code></td><td><code>string</code></td><td>The decimal separator, and the separator between thousands, such as <code>"\u{a0}"</code> (a no-break space). Set only <code>decimal</code> for no grouping.</td></tr>
@@ -1436,6 +1437,13 @@ Charts build it from their <code>value-prefix</code>, <code>value-suffix</code> 
   <tr><td><code>day-month</code>, <code>month-year</code>, <code>date</code></td><td><code>string</code></td><td>Date patterns with <code>{d}</code>, <code>{MMM}</code> and <code>{yyyy}</code>, such as <code>"{d}. {MMM}"</code>, <code>"{MMM} {yyyy}"</code> and <code>"{d}. {MMM} {yyyy}"</code></td></tr>
   <tr><td><code>date-time</code></td><td><code>string</code></td><td>A date with a time: <code>"{date}, {time}"</code></td></tr>
   <tr><td><code>hour12</code>, <code>am</code>, <code>pm</code></td><td><code>bool</code>, <code>string</code></td><td>A 12-hour clock, as in "2:30 PM", instead of 24 hours</td></tr>
+  <tr><td><code>less</code>, <code>more</code></td><td><code>string</code></td><td>The ends of a calendar heatmap's legend: "Less" and "More"</td></tr>
+  <tr><td><code>no-data</code></td><td><code>string</code></td><td>A missing value in heatmap tooltips: "No data"</td></tr>
+  <tr><td><code>increase</code>, <code>decrease</code>, <code>total</code></td><td><code>string</code></td><td>A waterfall chart's default legend, and the center of a sunburst: "Increase", "Decrease", "Total"</td></tr>
+  <tr><td><code>running-total</code></td><td><code>string</code></td><td>Waterfall tooltips: "Running total"</td></tr>
+  <tr><td><code>change</code></td><td><code>string</code></td><td>Dumbbell tooltips: "Change"</td></tr>
+  <tr><td><code>of-first-stage</code>, <code>of-previous-stage</code></td><td><code>string</code></td><td>Funnel tooltips, with <code>{value}</code> for the percentage: "{value} of the first stage", "{value} of the previous stage"</td></tr>
+  <tr><td><code>on-date</code></td><td><code>string</code></td><td>Calendar heatmap tooltips: "{value} on {date}"</td></tr>
 </table>
 <h3>Enums</h3>
 <table>
@@ -1475,7 +1483,8 @@ export component App inherits Window {
 <h3 id="languages">Languages</h3>
 <p><code>ChartTheme.language</code> sets how every chart writes numbers and dates: the decimal and thousands separators, the
 percent sign, and the month and weekday names and date order on time axes, tooltips and calendar heatmaps.
-Prefixes and suffixes stay as you set them, so a currency goes where <code>value-prefix</code> or <code>value-suffix</code> puts it.</p>
+It also translates the charts' few built-in texts, such as "Less" and "More" under a calendar heatmap, a waterfall's
+legend and "No data" in tooltips. Prefixes and suffixes stay as you set them, so a currency goes where <code>value-prefix</code> or <code>value-suffix</code> puts it.</p>
 <pre><code>import { ChartLanguage, ChartTheme } from "@slintplot";
 
 export component App inherits Window {
@@ -1504,6 +1513,15 @@ export component App inherits Window {
 Fields you leave out are English:</p>
 <pre><code>// Swiss numbers, English dates.
 ChartTheme.locale = { decimal: ".", group: "'" };</code></pre>
+<p>The <code>ChartTexts</code> global has the built-in texts in the current language, with English for empty fields, for your
+own labels next to the charts. <code>ChartTexts.percent</code> is the percent sign, with the space some languages put before it,
+for a <code>value-suffix</code>:</p>
+<pre><code>import { ChartTexts, GaugeChart } from "@slintplot";
+
+GaugeChart {
+    value: 72;
+    value-suffix: ChartTexts.percent;  // "72%", or "72 %" in German
+}</code></pre>
 <p>To follow the user's system language, read it in Rust, for example with the
 <a href="https://crates.io/crates/sys-locale"><code>sys-locale</code></a> crate, and set the language. Export
 <code>ChartTheme</code> and <code>ChartLanguage</code> from your root <code>.slint</code> file to reach them from Rust:</p>
@@ -1516,6 +1534,8 @@ ChartTheme.locale = { decimal: ".", group: "'" };</code></pre>
 app.global::&lt;ChartTheme&gt;().set_language(language);</code></pre>
 <p>Japanese and Chinese need a font with their characters. Desktop systems have one; in the browser, Slint
 only has its built-in Inter font, so the web gallery leaves these two languages out.</p>
+<p>The gallery's <em>Languages</em> sample, under Advanced, switches a chart between the 14 languages. The app translates the chart's title
+and dataset names itself; everything else comes from the library.</p>
 <h3><code>ChartTheme</code> properties</h3>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1603,7 +1623,67 @@ fn main() -> Result&lt;(), slint::PlatformError&gt; {
 <p>Here <code>App</code> declares <code>in-out property &lt;[ChartDataset]&gt; datasets;</code> and passes it to a chart with
 <code>datasets &lt;=&gt; root.datasets;</code>. The generated Rust types (<code>ChartDataset</code>, <code>ChartXY</code>, <code>ChartSlice</code>, ...)
 come from <code>slint::include_modules!()</code>.</p>
-<div class="note">For live data, push new values to the dataset's <code>VecModel</code> and remove old ones. The <code>stress</code> example streams at 60 Hz this way.</div>
+
+<h2 id="streaming">Streaming</h2>
+<p>For live data, give a dataset a model that appends new values and drops the oldest. Charts read their models
+on demand and follow the model's change notifications, so an update costs one frame, not a copy of the data.
+<code>VecModel</code> works for small windows, but <code>remove(0)</code> moves every remaining value. For large windows, use a ring
+buffer, like the <code>StreamModel</code> in the example apps
+(<a href="https://github.com/trondegil/slintplot/blob/main/examples/gallery/src/stream_model.rs">stream_model.rs</a>, about 70 lines):</p>
+<pre><code>/// The latest `capacity` values of a stream.
+pub struct StreamModel&lt;T&gt; {
+    values: RefCell&lt;VecDeque&lt;T&gt;&gt;,
+    capacity: usize,
+    notify: ModelNotify,
+}
+
+impl&lt;T: Clone + 'static&gt; StreamModel&lt;T&gt; {
+    /// Appends values, dropping the oldest ones beyond the capacity.
+    pub fn extend(&amp;self, new: impl IntoIterator&lt;Item = T&gt;) {
+        let mut values = self.values.borrow_mut();
+        let before = values.len();
+        values.extend(new);
+        let added = values.len() - before;
+        let dropped = values.len().saturating_sub(self.capacity);
+        values.drain(..dropped);
+        let len = values.len();
+        drop(values);
+        if added == 0 {
+            return;
+        }
+        if dropped &gt;= before {
+            self.notify.reset();
+        } else {
+            self.notify.row_removed(0, dropped);
+            self.notify.row_added(len - added, added);
+        }
+    }
+}
+
+impl&lt;T: Clone + 'static&gt; Model for StreamModel&lt;T&gt; {
+    type Data = T;
+    fn row_count(&amp;self) -&gt; usize { self.values.borrow().len() }
+    fn row_data(&amp;self, row: usize) -&gt; Option&lt;T&gt; { self.values.borrow().get(row).cloned() }
+    fn model_tracker(&amp;self) -&gt; &amp;dyn ModelTracker { &amp;self.notify }
+}
+
+// A time series dataset of the latest 10,000 points:
+let points = Rc::new(StreamModel::new(10_000, Vec::new()));
+datasets.push(ChartDataset { points: points.clone().into(), ..Default::default() });
+// Later, from a timer:
+points.extend(new_points);</code></pre>
+<ul>
+  <li><strong>Batch the samples.</strong> Data can arrive far faster than a screen refreshes. Collect the samples that arrived since the
+    last frame and add them with one <code>extend</code> per frame, from a <code>slint::Timer</code> of about 16 ms; the stress app streams 100,000 samples a second this way.</li>
+  <li><strong>Keep time series in time order.</strong> <code>TimeSeriesChart</code> finds the visible points with a binary search, so each dataset's
+    <code>points</code> must be sorted by <code>x</code>. Appending newer points keeps them sorted. Scatter and bubble charts take points in any order.</li>
+  <li><strong>Let the x axis move.</strong> In line and bar charts, stream the <code>labels</code> along with the values (another <code>StreamModel</code>), so
+    the categories move with the data. Time series axes follow the points' times on their own.</li>
+  <li><strong>Mind the window size.</strong> How many values a chart can show and still update at 60 frames per second depends on the chart and the machine;
+    see <a href="#streaming-limits">streaming limits</a>.</li>
+</ul>
+<p>The gallery's <em>Live data</em> sample streams a time series at 10 to 60 updates a second, and the stress app streams up to 8 datasets at up to
+100,000 samples a second, with windows from 1,000 values to everything it has received.</p>
 
 <h2 id="large-datasets">Large datasets</h2>
 <ul>
@@ -1676,9 +1756,10 @@ development packages first, such as <code>libfontconfig-dev</code> and <code>lib
 <table>
   <tr><th>Command</th><th>What it shows</th></tr>
   <tr><td><code>slintplot-gallery</code></td><td>A sample browser: every chart type, with Randomize, Add dataset, Add data, Remove dataset and Remove data buttons, a theme selector and dark mode</td></tr>
-  <tr><td><code>slintplot-stress</code></td><td>Line, bar, time series and scatter charts with up to 8 × 1,000,000 points; waterfall, dumbbell, funnel and sunburst charts with up to 10,000 steps, rows, stages or items, and a gauge; 60 Hz streaming, zoom, decimation, themes and live performance numbers</td></tr>
+  <tr><td><code>slintplot-stress</code></td><td>Streams line, bar, time series and scatter charts with up to 8 datasets: 10 to 100,000 samples a second, a window from 1,000 to 10,000,000 values or everything received, and random walk, sine, square or noise signals with optional spikes. Also waterfall, dumbbell, funnel and sunburst charts and a gauge; points, smoothing, fill, steps, decimation, zoom, themes, and live frame times. Streaming stops by itself if the chart falls more than 3 seconds behind.</td></tr>
   <tr><td><code>slintplot-gallery --snapshot &lt;dir&gt;</code></td><td>Renders every gallery sample to PNG without a window</td></tr>
-  <tr><td><code>slintplot-stress --bench</code></td><td>Headless timings for 100 to 1,000,000 points; see <a href="#performance">Performance</a></td></tr>
+  <tr><td><code>slintplot-stress --bench</code></td><td>Headless timings for 100 to 1,000,000 points, then the streaming limits; see <a href="#performance">Performance</a></td></tr>
+  <tr><td><code>slintplot-stress --bench-stream</code></td><td>Only the streaming limits, with the machine they were measured on</td></tr>
   <tr><td><code>slintplot-stress --snapshot &lt;dir&gt;</code></td><td>Renders the stress test screenshot, in light and dark mode, to PNG</td></tr>
 </table>
 <p>The source of the apps is on GitHub, in <a href="https://github.com/trondegil/slintplot/tree/main/examples/gallery">examples/gallery</a>
@@ -1739,6 +1820,35 @@ Bars and markers are one element each, so the benchmark doesn't run them past 10
 </table>
 <p>A gauge frame takes 2.8 ms.</p>
 
+<h3 id="streaming-limits">Streaming limits</h3>
+<p>How much data can a chart show while it streams, and still update at 60 or 30 frames per second? <code>slintplot-stress --bench-stream</code>
+measures it: each update appends one value to each of three datasets, drops the oldest, and renders a full frame. It grows the window
+(the values kept per dataset) in 1-2-5 steps from 1,000 to 10,000,000, and times each size: the 95th percentile of up to 100 updates, the median of three runs.
+Same machine and renderer as above: Apple M4, macOS 27, Slint's software renderer on one core, 1280&times;800.</p>
+<p>Two views: <strong>everything</strong>, the whole window on screen, and <strong>the latest 1,000</strong>, zoomed in to the newest values, as a live view
+usually is, with the rest kept for scrolling back.</p>
+<table>
+  <tr><th rowspan="2">Chart</th><th colspan="2">Everything shown</th><th colspan="2">Latest 1,000 shown</th></tr>
+  <tr><th>60 fps</th><th>30 fps</th><th>60 fps</th><th>30 fps</th></tr>
+  <tr><td>Line, decimated</td><td>50,000</td><td>100,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Time series, decimated</td><td>50,000</td><td>100,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Line, not decimated</td><td>2,000</td><td>5,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Time series, not decimated</td><td>2,000</td><td>5,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Bars</td><td>2,000</td><td>5,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Scatter</td><td>2,000</td><td>5,000</td><td>20,000</td><td>50,000</td></tr>
+</table>
+<p>The largest window, in values per dataset, that updates within 16.7 ms (60 fps) or 33.3 ms (30 fps).
+10,000,000+ means the largest size tried still made it.</p>
+<ul>
+  <li><strong>Zoomed in, the data size doesn't matter.</strong> A view of the latest 1,000 values updates in about 7 ms with 1,000 values kept per dataset or with 10,000,000:
+    the chart finds the visible values with a binary search and reads only those.</li>
+  <li><strong>Showing everything, decimation sets the limit.</strong> A decimated line updates at 60 fps with 50,000 values per dataset, and takes 130&ndash;150 ms with 500,000.
+    Below about 2,500 values (twice the plot width in pixels) lines aren't decimated, so up to there all line charts cost the same.</li>
+  <li><strong>Scatter charts read every point</strong>, since their points can be in any order, so even zoomed in they slow down from about 20,000 points per dataset.</li>
+  <li><strong>One value per update.</strong> At higher data rates, the samples that arrive between frames are added in one batch per frame (see <a href="#streaming">Streaming</a>).
+    The benchmark doesn't measure those larger batches; the stress app shows their effect live, at up to 100,000 samples a second.</li>
+</ul>
+
 <h3>What the numbers mean</h3>
 <ul>
   <li><strong>Up to about 1,000 points per dataset, every chart fits in a 60 fps frame</strong>, except the sunburst (26 ms).</li>
@@ -1759,15 +1869,16 @@ Bars and markers are one element each, so the benchmark doesn't run them past 10
 </ul>
 <p>To measure your own machine, run the benchmark, or open the app to try the charts with live numbers:</p>
 <pre><code>cargo install slintplot-stress
-slintplot-stress --bench    # the tables above, for your machine
-slintplot-stress            # the interactive stress test</code></pre>
+slintplot-stress --bench          # the tables above, for your machine
+slintplot-stress --bench-stream   # only the streaming limits, with your machine's specs
+slintplot-stress                  # the interactive stress test</code></pre>
 
 <h2 id="limitations">Limitations</h2>
-<p>What SlintPlot 0.1 doesn't do yet, or does with restrictions:</p>
+<p>What SlintPlot 0.2 doesn't do yet, or does with restrictions:</p>
 <ul>
   <li><strong>Rust only.</strong> The chart geometry is computed in Rust and connected with <code>register!</code>, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.</li>
   <li><strong>Platforms.</strong> Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs <a href="demo/">in the browser</a>. Embedded (MCU) builds are untested. With Slint's software renderer, enable its <code>software-renderer-path</code> feature, or charts aren't drawn.</li>
-  <li><strong>English texts.</strong> Numbers and dates follow <a href="#languages"><code>ChartTheme.language</code></a>, but the few built-in words, such as "no data", "Running total" and "Less" and "More" under a calendar heatmap, are English. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.</li>
+  <li><strong>14 built-in languages.</strong> <a href="#languages"><code>ChartTheme.language</code></a> covers 14 languages; for others, set the <a href="#chart-locale"><code>ChartLocale</code></a> fields yourself. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.</li>
   <li><strong>Time zones.</strong> Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.</li>
   <li><strong>Two value axes at most</strong>, and only in line, bar, scatter, bubble and time series charts: horizontal bar charts have one value axis.</li>
   <li><strong>Zoom, pan and decimation</strong> work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.</li>

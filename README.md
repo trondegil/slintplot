@@ -499,7 +499,9 @@ drawn with a translucent fill and a solid outline. `ChartTheme.fill-opacity`
 
 `ChartTheme.language` sets how numbers and dates are written: separators, the
 percent sign, and month and weekday names and date order on time axes,
-tooltips and calendar heatmaps. Prefixes and suffixes stay as you set them.
+tooltips and calendar heatmaps. It also translates the charts' few built-in
+texts, such as "Less" and "More" under a calendar heatmap and a waterfall's
+legend. Prefixes and suffixes stay as you set them.
 
 ```slint
 import { ChartLanguage, ChartTheme } from "@slintplot";
@@ -520,10 +522,23 @@ Spanish and Swedish. For other conventions, assign a `ChartLocale` to
 ChartTheme.locale = { decimal: ".", group: "'" }; // Swiss numbers, English dates
 ```
 
+`ChartTexts` has the built-in texts in the current language, and
+`ChartTexts.percent` the percent sign, for a `value-suffix` such as a gauge's.
+
 Japanese and Chinese need a font with their characters, which desktop systems
 have; in the browser, Slint only has its built-in Inter font. See
 [Languages](https://slintplot.dev/#languages) for following the system
 language from Rust.
+
+### Streaming
+
+For live data, give a dataset a model that appends new values and drops the
+oldest, and add the samples that arrived since the last frame in one batch per
+frame. The example apps use a ring buffer, `StreamModel`
+([stream_model.rs](https://github.com/trondegil/slintplot/blob/main/examples/gallery/src/stream_model.rs),
+about 70 lines), because `VecModel::remove(0)` moves every remaining value.
+`TimeSeriesChart` points must be sorted by `x`, which appending newer points
+keeps. See [Streaming](https://slintplot.dev/#streaming).
 
 ### Large datasets
 
@@ -560,6 +575,16 @@ A 60 fps frame has 16.7 ms.
 | 1,000 | 8.8 ms | 10 ms | 3.6 ms | 26 ms |
 | 10,000 | 83 ms | 104 ms | 31 ms | 307 ms |
 
+Streaming limits: the largest window (values per dataset) that still
+updates at 60 fps when each update appends a value to 3 datasets and renders a
+frame (`slintplot-stress --bench-stream`, same machine):
+
+| Chart | Everything shown | Latest 1,000 shown |
+|---|---:|---:|
+| Line or time series, decimated | 50,000 | 10,000,000+ |
+| Line, time series or bars, not decimated | 2,000 | 10,000,000+ |
+| Scatter | 2,000 | 20,000 |
+
 Hovering a decimated line takes about 4 ms at every size, and zooming in to
 0.1% of a million points brings a frame to 46 ms. Not measured: Slint's GPU
 renderers (the default in desktop apps), the browser, other machines, memory
@@ -593,7 +618,7 @@ changes, and the components just render the result.
 
 ```sh
 cargo install slintplot-gallery   # sample browser: every chart type, themes and dark mode
-cargo install slintplot-stress    # stress test: up to 8 × 1,000,000 points, 60 Hz streaming
+cargo install slintplot-stress    # stress test: streaming up to 8 datasets, up to 100,000 samples/s
 ```
 
 Run them as `slintplot-gallery` and `slintplot-stress`. `slintplot-gallery --snapshot <dir>` renders every
@@ -621,11 +646,11 @@ cargo run --release -p slintplot-stress -- --snapshot docs/screenshots  # the st
 
 ## Limitations
 
-What SlintPlot 0.1 doesn't do yet, or does with restrictions:
+What SlintPlot 0.2 doesn't do yet, or does with restrictions:
 
 - **Rust only.** The chart geometry is computed in Rust and connected with `register!`, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.
 - **Platforms.** Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs [in the browser](https://slintplot.dev/demo/). Embedded (MCU) builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.
-- **English texts.** Numbers and dates follow `ChartTheme.language`, but the few built-in words, such as "no data", "Running total" and "Less" and "More" under a calendar heatmap, are English. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.
+- **14 built-in languages.** `ChartTheme.language` covers 14 languages; for others, set the `ChartLocale` fields yourself. Grouping is always in thousands (no Indian lakh grouping, and four-digit numbers are grouped in every language), digits are Western, and right-to-left layout isn't supported.
 - **Time zones.** Time axes are in UTC, with an optional fixed offset. Named time zones and daylight saving time changes aren't supported.
 - **Two value axes at most**, and only in line, bar, scatter, bubble and time series charts: horizontal bar charts have one value axis.
 - **Zoom, pan and decimation** work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.
