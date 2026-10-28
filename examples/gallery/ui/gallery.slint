@@ -1,4 +1,4 @@
-import { Button, CheckBox, ComboBox, Palette, ScrollView } from "std-widgets.slint";
+import { Button, ComboBox, Palette, ScrollView } from "std-widgets.slint";
 import {
     BarChart,
     BubbleChart,
@@ -120,6 +120,41 @@ component MenuButton inherits Rectangle {
         mouse-cursor: pointer;
         clicked => {
             root.clicked();
+        }
+    }
+}
+
+// Switches dark mode: a moon in light mode, a sun in dark mode.
+component DarkModeButton inherits Rectangle {
+    in-out property <bool> dark;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: touch.has-hover || touch.pressed ? (root.dark ? #ffffff14 : #0000000d) : transparent;
+    accessible-role: checkbox;
+    accessible-label: "Dark mode";
+    accessible-checked: root.dark;
+    accessible-action-default => {
+        root.dark = !root.dark;
+    }
+    Path {
+        width: 20px;
+        height: 20px;
+        viewbox-width: 20;
+        viewbox-height: 20;
+        commands: root.dark
+            // A sun: a circle and eight rays.
+            ? "M 13.5 10 A 3.5 3.5 0 1 1 6.5 10 A 3.5 3.5 0 1 1 13.5 10 Z M 10 1.5 L 10 3.5 M 10 16.5 L 10 18.5 M 1.5 10 L 3.5 10 M 16.5 10 L 18.5 10 M 4 4 L 5.4 5.4 M 14.6 14.6 L 16 16 M 4 16 L 5.4 14.6 M 14.6 5.4 L 16 4"
+            // A crescent moon.
+            : "M 16.5 12.5 A 7 7 0 1 1 7.5 3.5 A 5.5 5.5 0 0 0 16.5 12.5 Z";
+        stroke: Palette.foreground;
+        stroke-width: 1.5px;
+        fill: transparent;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.dark = !root.dark;
         }
     }
 }
@@ -322,9 +357,9 @@ export component Gallery inherits Window {
                     model: root.language-names;
                     current-index <=> root.language;
                 }
-                CheckBox {
-                    text: root.narrow ? "Dark" : "Dark mode";
-                    checked <=> root.dark-mode;
+                DarkModeButton {
+                    y: (parent.height - self.height) / 2;
+                    dark <=> root.dark-mode;
                 }
                 // Room for the drawn window buttons.
                 if WindowFrame.drawn: Rectangle {
