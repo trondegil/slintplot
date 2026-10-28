@@ -2,9 +2,9 @@
 # browser into docs/demo.
 name: Website
 
+# Deployed by hand (Actions > Website > Run workflow) when crates are
+# released, so the site documents the published version, not main.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
