@@ -70,10 +70,33 @@ component SampleList inherits Rectangle {
         y: 0;
         height: root.top-inset;
     }
+    // The logo above the list, with the app's name.
+    property <length> logo-height: 34px;
+    HorizontalLayout {
+        x: 20px;
+        y: root.top-inset + 12px;
+        height: root.logo-height;
+        spacing: 8px;
+        Image {
+            // The logo is 720 by 218 pixels.
+            width: root.logo-height * 720 / 218;
+            source: Look.dark ? @image-url("../logo-dark.png") : @image-url("../logo.png");
+            image-fit: contain;
+            accessible-role: image;
+            accessible-label: "SlintPlot";
+        }
+        Text {
+            text: "Gallery";
+            color: Look.secondary;
+            font-size: 13px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
+    }
     // Kept clear of the top and bottom edges, so that scrolled rows are cut
     // off before they reach the window's edges.
     ScrollView {
-        y: root.top-inset + 10px;
+        y: root.top-inset + 12px + root.logo-height + 8px;
         height: parent.height - self.y - 10px;
         VerticalLayout {
             padding-bottom: 8px;
@@ -137,7 +160,8 @@ struct ThemeOption {
     dark: [color],
 }
 
-// Picks the chart theme; each option shows the theme's eight colors. The
+// Picks the chart theme; each option in the list shows the theme's eight
+// colors. The
 // colors are those of `ChartTheme.colors` (crates/slintplot/ui/theme.slint).
 component ThemePicker inherits Rectangle {
     in-out property <int> current;
@@ -149,7 +173,6 @@ component ThemePicker inherits Rectangle {
         { name: "Pastel", light: [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff], dark: [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff] },
     ];
     height: 32px;
-    min-width: 200px;
     border-radius: 7px;
     border-width: 1px;
     border-color: Look.border;
@@ -162,9 +185,6 @@ component ThemePicker inherits Rectangle {
         padding-left: 10px;
         padding-right: 10px;
         spacing: 8px;
-        Swatches {
-            colors: Look.dark ? root.options[root.current].dark : root.options[root.current].light;
-        }
         Text {
             horizontal-stretch: 1;
             text: root.options[root.current].name;
@@ -191,10 +211,11 @@ component ThemePicker inherits Rectangle {
             popup.show();
         }
     }
+    // Wide enough for the colors, and right-aligned with the picker.
     popup := PopupWindow {
-        x: 0;
+        width: max(root.width, 220px);
+        x: root.width - self.width;
         y: root.height + 4px;
-        width: root.width;
         Rectangle {
             border-radius: 8px;
             border-width: 1px;
@@ -396,7 +417,8 @@ component Flag inherits Rectangle {
     }
 }
 
-// Picks the chart language, with each language's flag after its name.
+// Picks the chart language; each option in the list has the language's flag
+// after its name.
 component LanguagePicker inherits Rectangle {
     in property <[string]> names;
     in-out property <int> current;
@@ -419,12 +441,6 @@ component LanguagePicker inherits Rectangle {
             color: Look.text;
             font-size: 13px;
             vertical-alignment: center;
-        }
-        VerticalLayout {
-            alignment: center;
-            Flag {
-                language: root.current;
-            }
         }
         Path {
             width: 10px;
@@ -779,12 +795,12 @@ export component Gallery inherits Window {
                         }
                         // The chart language, for the sample that shows it off.
                         if root.sample == "languages": LanguagePicker {
-                            width: 160px;
+                            width: 150px;
                             names: root.language-names;
                             current <=> root.language;
                         }
                         ThemePicker {
-                            width: 210px;
+                            width: 140px;
                             current <=> root.theme;
                         }
                     }

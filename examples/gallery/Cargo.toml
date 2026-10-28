@@ -10,7 +10,7 @@ homepage = "https://slintplot.dev"
 keywords = ["slint", "chart", "plot", "gui", "demo"]
 categories = ["gui", "visualization"]
 readme = "README.md"
-include = ["src/**", "ui/**", "build.rs", "icon.png", "README.md", "LICENSE.md", "LICENSE-GPL-3.0.txt", "LICENSE-POLYFORM-NC.md", "COMMERCIAL.md"]
+include = ["src/**", "ui/**", "build.rs", "icon.png", "logo.png", "logo-dark.png", "README.md", "LICENSE.md", "LICENSE-GPL-3.0.txt", "LICENSE-POLYFORM-NC.md", "COMMERCIAL.md"]
 
 [dependencies]
 slintplot.workspace = true
