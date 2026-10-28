@@ -1701,6 +1701,8 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     ui.on_dark_mode_changed(move || s.borrow_mut().recolor_survey());
     let s = state.clone();
     ui.on_language_changed(move || s.borrow_mut().relabel());
+    #[cfg(not(target_arch = "wasm32"))]
+    ui.on_open_url(|url| open_in_browser(&url));
     Ok((ui, state))
 }
 
@@ -1772,6 +1774,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
+/// Opens `url` in the default browser.
+#[cfg(not(target_arch = "wasm32"))]
+fn open_in_browser(url: &str) {
+    use std::process::Command;
+    let result = if cfg!(target_os = "macos") {
+        Command::new("open").arg(url).spawn()
+    } else if cfg!(windows) {
+        Command::new("cmd").args(["/C", "start", "", url]).spawn()
+    } else {
+        Command::new("xdg-open").arg(url).spawn()
+    };
+    if let Err(error) = result {
+        eprintln!("couldn't open {url}: {error}");
+    }
+}
+
 /// Whether the app draws the window frame: on Windows and Linux, and on
 /// macOS with `SLINTPLOT_DRAWN_FRAME` set, to try it there.
 #[cfg(not(target_arch = "wasm32"))]
@@ -1835,6 +1853,12 @@ fn main() {
     let (ui, _state) = gallery().expect("the gallery window");
     // The browser has no fonts for Japanese and Chinese.
     ui.set_cjk_fonts(false);
+    ui.on_open_url(|url| {
+        let global = js_sys::global();
+        if let Ok(location) = js_sys::Reflect::get(&global, &"location".into()) {
+            let _ = js_sys::Reflect::set(&location, &"href".into(), &url.as_str().into());
+        }
+    });
     ui.run().expect("the event loop");
 }
 

@@ -1,6 +1,7 @@
 //! Headless rendering of the gallery to PNG files, for visual checks and docs:
 //! `cargo run -p slintplot-gallery -- --snapshot <dir>`.
 
+use std::cell::Cell;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::Duration;
@@ -13,6 +14,17 @@ use slint::{LogicalPosition, PhysicalSize};
 
 pub const WIDTH: u32 = 1280;
 pub const HEIGHT: u32 = 820;
+
+thread_local! {
+    /// The window's size in pixels, changed by `resize`.
+    static SIZE: Cell<(u32, u32)> = const { Cell::new((WIDTH, HEIGHT)) };
+}
+
+/// Changes the window's size for the following renders.
+pub fn resize(window: &MinimalSoftwareWindow, width: u32, height: u32) {
+    SIZE.set((width, height));
+    window.set_size(PhysicalSize::new(width, height));
+}
 
 struct Headless(Rc<MinimalSoftwareWindow>);
 
@@ -81,24 +93,26 @@ pub fn scroll(window: &MinimalSoftwareWindow, x: f32, y: f32, delta: f32) {
 /// Renders a frame without saving it. Elements created by `if` and `for`
 /// only exist after a frame, so this starts their entry animations.
 pub fn render(window: &MinimalSoftwareWindow) -> Vec<PremultipliedRgbaColor> {
+    let (width, height) = SIZE.get();
     window.request_redraw();
-    let mut pixels = vec![PremultipliedRgbaColor::default(); (WIDTH * HEIGHT) as usize];
+    let mut pixels = vec![PremultipliedRgbaColor::default(); (width * height) as usize];
     window.draw_if_needed(|renderer| {
-        renderer.render(&mut pixels, WIDTH as usize);
+        renderer.render(&mut pixels, width as usize);
     });
     pixels
 }
 
 pub fn save(window: &MinimalSoftwareWindow, path: &Path) -> std::io::Result<()> {
     let pixels = render(window);
+    let (width, height) = SIZE.get();
     let bytes: Vec<u8> = pixels
         .iter()
         .flat_map(|p| [p.red, p.green, p.blue])
         .collect();
     let mut encoder = png::Encoder::new(
         std::io::BufWriter::new(std::fs::File::create(path)?),
-        WIDTH,
-        HEIGHT,
+        width,
+        height,
     );
     encoder.set_color(png::ColorType::Rgb);
     encoder.set_depth(png::BitDepth::Eight);
