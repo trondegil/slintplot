@@ -672,8 +672,9 @@ SlintPlot is available under your choice of three licenses:
   free for personal, hobby, research, education and other noncommercial use,
   with or without sharing your source code.
 - **A commercial license**: for commercial use without the GPLv3's
-  conditions, such as in closed-source software you sell or ship. Email
-  [license@slintplot.dev](mailto:license@slintplot.dev).
+  conditions, such as in closed-source software you sell or ship. Per
+  developer, per year, from €199; bought by 31 December 2026, half price
+  through 2027: see [Pricing](https://slintplot.dev/#pricing).
 
 See [LICENSE.md](LICENSE.md) and [COMMERCIAL.md](COMMERCIAL.md) for the
 details. Your application also needs a suitable

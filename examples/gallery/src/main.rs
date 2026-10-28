@@ -1740,10 +1740,16 @@ fn run_live_timer(timer: &slint::Timer, running: &Cell<u32>, state: &Rc<RefCell<
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
+    // `--docs`: the website's screenshots, rather than every snapshot.
+    let mut docs_dir = None;
     let snapshot_dir = match (args.next().as_deref(), args.next()) {
         (Some("--snapshot"), Some(dir)) => Some(std::path::PathBuf::from(dir)),
+        (Some("--docs"), Some(dir)) => {
+            docs_dir = Some(std::path::PathBuf::from(dir));
+            docs_dir.clone()
+        }
         (None, _) => None,
-        _ => return Err("usage: gallery [--snapshot <dir>]".into()),
+        _ => return Err("usage: gallery [--snapshot <dir> | --docs <dir>]".into()),
     };
     let headless = snapshot_dir.as_ref().map(|_| snapshot::install());
     // macOS: keep the system frame, so the window has the system's buttons
@@ -1764,6 +1770,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (ui, state) = gallery()?;
     match (headless, snapshot_dir) {
+        (Some(window), Some(dir)) if docs_dir.is_some() => docs(&ui, &state, &window, &dir),
         (Some(window), Some(dir)) => snapshots(&ui, &state, &window, &dir),
         _ => {
             init_window_frame(&ui);
@@ -1861,6 +1868,78 @@ fn main() {
     });
     ui.run().expect("the event loop");
 }
+
+/// Renders the website's screenshots into `dir` (docs/screenshots): the
+/// chart of each sample alone, 1012 by 660 pixels, in `charts/`, a few
+/// interactions, and the whole gallery for the page's larger pictures. Dark
+/// mode pictures are made for the charts that have one in `dir` already.
+#[cfg(not(target_arch = "wasm32"))]
+fn docs(
+    ui: &Gallery,
+    state: &Rc<RefCell<State>>,
+    window: &Rc<slint::platform::software_renderer::MinimalSoftwareWindow>,
+    dir: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let charts = dir.join("charts");
+    std::fs::create_dir_all(&charts)?;
+    ui.show()?;
+    let shot = |sample: &str, name: &str, dark: bool, prepare: &dyn Fn()| -> std::io::Result<()> {
+        ui.set_dark_mode(dark);
+        // The same data every time.
+        state.borrow_mut().rng = Rng(SEED);
+        let sample = SAMPLES.iter().find(|s| s.id == sample).unwrap();
+        state.borrow_mut().select(sample);
+        snapshot::render(window);
+        snapshot::settle(Duration::from_millis(1100));
+        prepare();
+        snapshot::render(window);
+        snapshot::settle(Duration::from_millis(400));
+        snapshot::save(window, &charts.join(format!("{name}.png")))
+    };
+
+    // The charts alone.
+    ui.set_chart_only(true);
+    snapshot::resize(window, 1012, 660);
+    for sample in SAMPLES.iter().filter(|s| !matches!(s.id, "live" | "languages")) {
+        shot(sample.id, sample.id, false, &|| ())?;
+        if charts.join(format!("{}-dark.png", sample.id)).exists() {
+            shot(sample.id, &format!("{}-dark", sample.id), true, &|| ())?;
+        }
+    }
+    shot("calendar", "calendar-github", false, &|| ui.set_calendar_colors(1))?;
+    ui.set_calendar_colors(0);
+    shot("time-week", "time-week-1h", false, &|| state.borrow_mut().action(3))?;
+    shot("treemap", "treemap-hidden", false, &|| snapshot::click(window, TREEMAP_ASIA.0, TREEMAP_ASIA.1))?;
+    shot("sunburst", "sunburst-zoomed", false, &|| snapshot::click(window, SUNBURST_ASIA.0, SUNBURST_ASIA.1))?;
+    ui.set_language(2);
+    shot("languages", "languages-de", false, &|| ())?;
+    shot("languages", "languages-de-dark", true, &|| ())?;
+    ui.set_language(0);
+
+    // The whole gallery.
+    ui.set_chart_only(false);
+    snapshot::resize(window, snapshot::WIDTH, snapshot::HEIGHT);
+    for (sample, name, dark) in [
+        ("axes-format", "light", false),
+        ("axes-format", "light-dark", true),
+        ("bar-vertical", "gallery", false),
+        ("bar-vertical", "gallery-dark", true),
+        ("time-hourly", "dark", true),
+    ] {
+        ui.set_dark_mode(dark);
+        state.borrow_mut().rng = Rng(SEED);
+        state.borrow_mut().select(SAMPLES.iter().find(|s| s.id == sample).unwrap());
+        snapshot::render(window);
+        snapshot::settle(Duration::from_millis(1100));
+        snapshot::save(window, &dir.join(format!("{name}.png")))?;
+    }
+    Ok(())
+}
+
+/// Where the docs' chart-only treemap and sunburst show Asia: its legend
+/// entry, and its ring.
+const TREEMAP_ASIA: (f32, f32) = (370.0, 52.0);
+const SUNBURST_ASIA: (f32, f32) = (600.0, 420.0);
 
 /// Renders every sample, and a few interactions, to PNG files in `dir`.
 #[cfg(not(target_arch = "wasm32"))]

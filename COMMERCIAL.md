@@ -24,9 +24,26 @@ purpose and don't distribute your software under the GPLv3, for example:
   through paid upgrades, subscriptions or ads
 - in closed-source software you deliver to a client
 
+## Prices
+
+Commercial licenses are per developer, per year, and cover any number of your
+products. Prices exclude VAT.
+
+| Plan | For | Price |
+|---|---|---|
+| Indie | Companies with under €250,000 in annual revenue | €199 per developer per year |
+| Business | Every other company | €499 per developer per year |
+| Enterprise | Every developer in the company, custom terms | from €2,500 per year |
+
+**Early bird:** buy by 31 December 2026 and pay half price (€99 Indie, €249
+Business per developer per year) until the end of 2027, renewals included.
+
+A developer is anyone who writes code that uses SlintPlot.
+
 ## How to get one
 
-Commercial licenses are available from the copyright holder. To ask for one,
+Licenses will be sold on [slintplot.dev](https://slintplot.dev/#pricing),
+with Paddle as the seller of record. Until then, or for the Enterprise plan,
 email <license@slintplot.dev> and say briefly how you plan to use the
 library.
 

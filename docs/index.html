@@ -172,6 +172,33 @@
   .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-soft); }
   .card h2 { margin: 0 0 4px; padding: 0; border: 0; font-size: 15px; }
   .card p { margin: 0; font-size: 13px; color: var(--text-muted); }
+  /* The hero's second button, and the pricing plans. */
+  .hero .buy-license { display: inline-block; margin: 6px 0 0 8px; padding: 8px 17px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-weight: 600; }
+  .hero .buy-license:hover { border-color: var(--accent); text-decoration: none; }
+  .early-bird { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 16px 0; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--accent-2); background: var(--note-bg); }
+  .early-bird p { flex: 1 1 320px; margin: 0; }
+  .early-bird strong { color: var(--text); }
+  .countdown { display: flex; gap: 6px; margin: 0; }
+  .countdown div { min-width: 54px; padding: 4px 6px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); text-align: center; }
+  .countdown span { display: block; font-size: 20px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .countdown small { display: block; font-size: 11px; color: var(--text-muted); }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 16px 0 10px; }
+  .plan { display: flex; flex-direction: column; padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft); }
+  .plan.featured { border-color: var(--accent); }
+  .plan h3 { margin: 0; font-size: 17px; }
+  .plan .who { margin: 2px 0 12px; font-size: 13px; color: var(--text-muted); }
+  .plan .price { font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .plan .price small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+  .plan .was { font-size: 14px; color: var(--text-muted); text-decoration: line-through; margin-right: 6px; }
+  .plan .bird { display: block; font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .plan ul { margin: 12px 0 16px; padding-left: 18px; font-size: 14px; flex: 1; }
+  .plan li { margin: 3px 0; }
+  .plan label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--text-muted); }
+  .plan input { width: 72px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  .plan .buy { display: block; padding: 9px 14px; border-radius: 8px; border: 0; background: #2563c9; color: #ffffff; font: inherit; font-weight: 600; text-align: center; cursor: pointer; }
+  .plan .buy:hover { background: #1d4fa6; text-decoration: none; }
+  .plan .buy.soon { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .plan .buy.soon:hover { border-color: var(--accent); }
   .topbar, .backdrop { display: none; }
   @media (max-width: 820px) {
     .layout { display: block; }
@@ -289,6 +316,7 @@
   <a href="#examples">Example apps</a>
   <a href="#performance">Performance</a>
   <a href="#limitations">Limitations</a>
+  <a href="#pricing">Pricing</a>
   <a href="#license">License</a>
 </nav>
 
@@ -301,6 +329,7 @@
   </picture>
   <p>Native, interactive charts for Slint.</p>
   <a class="try" href="demo/">Try the gallery in your browser</a>
+  <a class="buy-license" href="#pricing">Buy a commercial license</a>
 </div>
 
 <h1 id="overview">SlintPlot: native charts for Slint in Rust</h1>
@@ -1892,13 +1921,71 @@ slintplot-stress                  # the interactive stress test</code></pre>
   <li><strong>Requirements.</strong> Slint 1.18 or later and Rust 1.88 or later.</li>
 </ul>
 
+<h2 id="pricing">Pricing</h2>
+<p>SlintPlot is free for open-source software under the GPLv3 and for noncommercial use (see <a href="#license">License</a>).
+A commercial license lets you use it in closed-source software you sell, ship or deliver to clients.
+Licenses are per developer, per year, and cover any number of your products.</p>
+<div class="early-bird" id="early-bird">
+  <p><strong>Early bird: 50% off through 2027.</strong> Buy by 31 December 2026, and you pay the
+  early-bird price until the end of 2027, renewals included.</p>
+  <div class="countdown" role="timer" aria-label="Time left of the early-bird offer">
+    <div><span data-unit="days">–</span><small>days</small></div>
+    <div><span data-unit="hours">–</span><small>hours</small></div>
+    <div><span data-unit="minutes">–</span><small>min</small></div>
+    <div><span data-unit="seconds">–</span><small>sec</small></div>
+  </div>
+</div>
+<div class="plans">
+  <div class="plan" data-plan="indie">
+    <h3>Indie</h3>
+    <p class="who">Companies with under €250,000 in annual revenue</p>
+    <div class="price"><span class="was bird-only">€199</span><span class="now">€99</span> <small>per developer / year</small></div>
+    <span class="bird bird-only">€199 per developer / year from 2028</span>
+    <ul>
+      <li>Closed-source apps and devices</li>
+      <li>Any number of products</li>
+      <li>All updates while licensed</li>
+      <li>Email support</li>
+    </ul>
+    <label>Developers <input type="number" min="1" max="50" value="1"></label>
+    <a class="buy soon" href="mailto:license@slintplot.dev?subject=SlintPlot%20Indie%20license">Coming soon · Get notified</a>
+  </div>
+  <div class="plan featured" data-plan="business">
+    <h3>Business</h3>
+    <p class="who">For every other company</p>
+    <div class="price"><span class="was bird-only">€499</span><span class="now">€249</span> <small>per developer / year</small></div>
+    <span class="bird bird-only">€499 per developer / year from 2028</span>
+    <ul>
+      <li>Everything in Indie</li>
+      <li>Priority email support</li>
+      <li>Invoice and purchase order on request</li>
+    </ul>
+    <label>Developers <input type="number" min="1" max="200" value="1"></label>
+    <a class="buy soon" href="mailto:license@slintplot.dev?subject=SlintPlot%20Business%20license">Coming soon · Get notified</a>
+  </div>
+  <div class="plan" data-plan="enterprise">
+    <h3>Enterprise</h3>
+    <p class="who">Large teams and custom terms</p>
+    <div class="price">From €2,500 <small>per year</small></div>
+    <ul>
+      <li>Every developer in the company</li>
+      <li>Custom license terms</li>
+      <li>Support with a response time</li>
+    </ul>
+    <a class="buy soon" href="mailto:license@slintplot.dev?subject=SlintPlot%20Enterprise%20license">Contact us</a>
+  </div>
+</div>
+<p class="muted">Prices exclude VAT. Payments are handled by Paddle, which is the seller of record and sends the invoice.
+A developer is anyone who writes code that uses SlintPlot. Your application also needs a suitable
+<a href="https://slint.dev/pricing">Slint license</a>. Questions: <a href="mailto:license@slintplot.dev">license@slintplot.dev</a>.</p>
+
 <h2 id="license">License</h2>
 <p>SlintPlot is available under your choice of three licenses:</p>
 <ul>
   <li><strong>GPLv3:</strong> free for anyone, for any purpose, under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">GNU GPL, version 3</a>. Software that includes SlintPlot and is distributed to others must be distributed under the GPLv3, with its source code.</li>
   <li><strong>PolyForm Noncommercial:</strong> free for personal, hobby, research, education and other noncommercial use, with or without sharing your source code, under the <a href="https://polyformproject.org/licenses/noncommercial/1.0.0">PolyForm Noncommercial License 1.0.0</a>.</li>
-  <li><strong>Commercial:</strong> for commercial use without the GPLv3's conditions, such as in closed-source software you sell or ship. Email
-  <a href="mailto:license@slintplot.dev">license@slintplot.dev</a> and say briefly how you plan to use the library.</li>
+  <li><strong>Commercial:</strong> for commercial use without the GPLv3's conditions, such as in closed-source software you sell or ship.
+  See <a href="#pricing">Pricing</a>.</li>
 </ul>
 <p>
   <a href="https://github.com/trondegil/slintplot/blob/main/LICENSE.md">LICENSE.md</a> and
@@ -1977,6 +2064,63 @@ slintplot-stress                  # the interactive stress test</code></pre>
       });
     });
   });
+  // Pricing. Fill in the Paddle client token and price IDs to start
+  // selling; until then the buttons ask to be notified by email.
+  const paddle = {
+    environment: "production", // "sandbox" for test purchases
+    token: "",
+    prices: { indie: "", business: "" },
+    // The early-bird discount code, applied until the end of the offer.
+    earlyBirdCode: "EARLYBIRD",
+  };
+  // The offer ends at midnight UTC after 31 December 2026; the discount
+  // code in Paddle should expire at the same time.
+  const earlyBirdEnd = new Date("2027-01-01T00:00:00Z");
+  const earlyBird = new Date() < earlyBirdEnd;
+  if (earlyBird) {
+    const units = Object.fromEntries([...document.querySelectorAll(".countdown [data-unit]")].map((e) => [e.dataset.unit, e]));
+    const tick = () => {
+      const left = Math.max(0, earlyBirdEnd - new Date());
+      const seconds = Math.floor(left / 1000);
+      units.days.textContent = Math.floor(seconds / 86400);
+      units.hours.textContent = String(Math.floor(seconds / 3600) % 24).padStart(2, "0");
+      units.minutes.textContent = String(Math.floor(seconds / 60) % 60).padStart(2, "0");
+      units.seconds.textContent = String(seconds % 60).padStart(2, "0");
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+  if (!earlyBird) {
+    document.getElementById("early-bird").remove();
+    document.querySelectorAll(".bird-only").forEach((element) => element.remove());
+    document.querySelectorAll(".plan .now").forEach((now) => {
+      now.textContent = now.closest(".plan").dataset.plan === "indie" ? "€199" : "€499";
+    });
+  }
+  if (paddle.token) {
+    const script = document.createElement("script");
+    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
+    script.onload = () => {
+      if (paddle.environment === "sandbox") Paddle.Environment.set("sandbox");
+      Paddle.Initialize({ token: paddle.token });
+      document.querySelectorAll(".plan").forEach((plan) => {
+        const price = paddle.prices[plan.dataset.plan];
+        const buy = plan.querySelector(".buy");
+        if (!price || !buy) return;
+        buy.textContent = "Buy now";
+        buy.classList.remove("soon");
+        buy.addEventListener("click", (event) => {
+          event.preventDefault();
+          const quantity = Math.max(1, parseInt(plan.querySelector("input").value, 10) || 1);
+          Paddle.Checkout.open({
+            items: [{ priceId: price, quantity }],
+            ...(earlyBird && paddle.earlyBirdCode ? { discountCode: paddle.earlyBirdCode } : {}),
+          });
+        });
+      });
+    };
+    document.head.appendChild(script);
+  }
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && root.classList.contains("menu-open")) {
       setOpen(false);
