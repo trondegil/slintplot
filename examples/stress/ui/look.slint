@@ -1,0 +1,174 @@
+// The look shared with the gallery app (examples/gallery/ui/gallery.slint):
+// colors, the theme picker and the dark mode button.
+
+// The app's own colors, apart from the charts': a light gray page with
+// white cards, as in macOS and iOS settings, and their dark mode variants.
+export global Look {
+    in-out property <bool> dark;
+    out property <color> page: root.dark ? #161618 : #f5f5f7;
+    out property <color> surface: root.dark ? #232326 : #ffffff;
+    out property <color> sidebar: root.dark ? #1c1c1f : #ebebee;
+    out property <color> border: root.dark ? #ffffff17 : #0000001a;
+    out property <color> text: root.dark ? #f5f5f7 : #1d1d1f;
+    out property <color> secondary: root.dark ? #a1a1a6 : #6e6e73;
+    out property <color> accent: root.dark ? #0a84ff : #007aff;
+    out property <color> hover: root.dark ? #ffffff12 : #0000000b;
+}
+
+// A theme's colors as a row of small squares.
+component Swatches inherits HorizontalLayout {
+    in property <[color]> colors;
+    horizontal-stretch: 0;
+    spacing: 2px;
+    for c in root.colors: VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            background: c;
+        }
+    }
+}
+
+// A built-in palette, for the theme picker.
+struct ThemeOption {
+    name: string,
+    light: [color],
+    dark: [color],
+}
+
+// Picks the chart theme; each option in the list shows the theme's eight
+// colors. The
+// colors are those of `ChartTheme.colors` (crates/slintplot/ui/theme.slint).
+export component ThemePicker inherits Rectangle {
+    in-out property <int> current;
+    private property <[ThemeOption]> options: [
+        { name: "Modern", light: [#3b82f6, #10b981, #f97316, #6366f1, #84cc16, #06b6d4, #8b5cf6, #f43f5e], dark: [#60a5fa, #34d399, #fb923c, #818cf8, #a3e635, #22d3ee, #a78bfa, #fb7185] },
+        { name: "Material", light: [#2196f3, #e91e63, #ff9800, #9c27b0, #4caf50, #3f51b5, #ff5722, #00bcd4], dark: [#42a5f5, #ec407a, #ffa726, #ab47bc, #66bb6a, #7986cb, #ff7043, #26c6da] },
+        { name: "Corporate", light: [#4e79a7, #f28e2b, #76b7b2, #e15759, #ff9da7, #59a14f, #2f4b7c, #b07aa1], dark: [#5f8ac0, #f5993d, #7fc4be, #e8696b, #ffadb5, #6cb262, #4a68a0, #bf8ab1] },
+        { name: "Mono", light: [#1e3a8a, #60a5fa, #1d4ed8, #93c5fd, #2563eb, #bfdbfe, #3b82f6, #172554], dark: [#93c5fd, #2563eb, #bfdbfe, #3b82f6, #dbeafe, #1d4ed8, #60a5fa, #1e40af] },
+        { name: "Pastel", light: [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff], dark: [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff] },
+    ];
+    height: 32px;
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: Look.border;
+    background: touch.has-hover ? Look.hover : Look.surface;
+    accessible-role: combobox;
+    accessible-label: "Theme";
+    accessible-value: root.options[root.current].name;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+        Text {
+            horizontal-stretch: 1;
+            text: root.options[root.current].name;
+            color: Look.text;
+            font-size: 13px;
+            vertical-alignment: center;
+        }
+        // A chevron.
+        Path {
+            width: 10px;
+            height: 6px;
+            y: (parent.height - self.height) / 2;
+            viewbox-width: 10;
+            viewbox-height: 6;
+            commands: "M 1 1 L 5 5 L 9 1";
+            stroke: Look.secondary;
+            stroke-width: 1.5px;
+            fill: transparent;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            popup.show();
+        }
+    }
+    // Wide enough for the colors, and right-aligned with the picker.
+    popup := PopupWindow {
+        width: max(root.width, 220px);
+        x: root.width - self.width;
+        y: root.height + 4px;
+        Rectangle {
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: Look.border;
+            background: Look.surface;
+            drop-shadow-blur: 12px;
+            drop-shadow-offset-y: 4px;
+            drop-shadow-color: #00000026;
+            VerticalLayout {
+                padding: 4px;
+                for option[index] in root.options: Rectangle {
+                    height: 30px;
+                    border-radius: 5px;
+                    background: index == root.current ? Look.accent.with-alpha(Look.dark ? 0.25 : 0.14)
+                        : row-touch.has-hover ? Look.hover : transparent;
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 8px;
+                        Swatches {
+                            colors: Look.dark ? option.dark : option.light;
+                        }
+                        Text {
+                            horizontal-stretch: 1;
+                            text: option.name;
+                            color: index == root.current ? Look.accent : Look.text;
+                            font-size: 13px;
+                            font-weight: index == root.current ? 600 : 400;
+                            vertical-alignment: center;
+                        }
+                    }
+                    row-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.current = index;
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Switches dark mode: a moon in light mode, a sun in dark mode.
+export component DarkModeButton inherits Rectangle {
+    in-out property <bool> dark;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: touch.has-hover || touch.pressed ? Look.hover : transparent;
+    accessible-role: checkbox;
+    accessible-label: "Dark mode";
+    accessible-checked: root.dark;
+    accessible-action-default => {
+        root.dark = !root.dark;
+    }
+    Path {
+        width: 20px;
+        height: 20px;
+        viewbox-width: 20;
+        viewbox-height: 20;
+        commands: root.dark
+            // A sun: a circle and eight rays.
+            ? "M 13.5 10 A 3.5 3.5 0 1 1 6.5 10 A 3.5 3.5 0 1 1 13.5 10 Z M 10 1.5 L 10 3.5 M 10 16.5 L 10 18.5 M 1.5 10 L 3.5 10 M 16.5 10 L 18.5 10 M 4 4 L 5.4 5.4 M 14.6 14.6 L 16 16 M 4 16 L 5.4 14.6 M 14.6 5.4 L 16 4"
+            // A crescent moon.
+            : "M 16.5 12.5 A 7 7 0 1 1 7.5 3.5 A 5.5 5.5 0 0 0 16.5 12.5 Z";
+        stroke: Look.text;
+        stroke-width: 1.5px;
+        fill: transparent;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.dark = !root.dark;
+        }
+    }
+}

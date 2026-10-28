@@ -462,7 +462,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // macOS: keep the system frame, so the window has the system's buttons
+    // and resizing, but make the title bar see-through, so the content
+    // reaches the top edge.
+    #[cfg(target_os = "macos")]
+    if !drawn_frame() {
+        use slint::winit_030::winit::platform::macos::WindowAttributesExtMacOS;
+        slint::BackendSelector::new()
+            .with_winit_window_attributes_hook(|attributes| {
+                attributes
+                    .with_titlebar_transparent(true)
+                    .with_fullsize_content_view(true)
+                    .with_title_hidden(true)
+            })
+            .select()?;
+    }
+
     let app = Stress::new()?;
+    init_window_frame(&app);
     let data = setup(&app);
     let data_for_stats = data.clone();
     // Once the app has finished launching, which would reset it.
@@ -567,4 +584,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app.run()?;
     Ok(())
+}
+
+/// Whether the app draws the window frame: on Windows and Linux, and on
+/// macOS with `SLINTPLOT_DRAWN_FRAME` set, to try it there.
+fn drawn_frame() -> bool {
+    !cfg!(target_os = "macos") || std::env::var_os("SLINTPLOT_DRAWN_FRAME").is_some()
+}
+
+/// Connects the window frame (see ui/window_frame.slint) to the window.
+fn init_window_frame(ui: &Stress) {
+    use slint::winit_030::{WinitWindowAccessor, winit::window::ResizeDirection};
+    let frame = ui.global::<WindowFrame>();
+    frame.set_drawn(drawn_frame());
+    frame.set_mac_titlebar(!drawn_frame());
+    let with_ui = |f: fn(&Stress)| {
+        let weak = ui.as_weak();
+        move || {
+            if let Some(ui) = weak.upgrade() {
+                f(&ui)
+            }
+        }
+    };
+    frame.on_drag(with_ui(|ui| {
+        ui.window().with_winit_window(|w| {
+            let _ = w.drag_window();
+        });
+    }));
+    frame.on_close(with_ui(|ui| {
+        let _ = ui.window().hide();
+    }));
+    frame.on_minimize(with_ui(|ui| ui.window().set_minimized(true)));
+    frame.on_toggle_maximize(with_ui(|ui| {
+        let maximized = !ui.window().is_maximized();
+        ui.window().set_maximized(maximized);
+        ui.global::<WindowFrame>().set_maximized(maximized);
+    }));
+    let weak = ui.as_weak();
+    frame.on_resize(move |direction| {
+        let direction = match direction {
+            0 => ResizeDirection::East,
+            1 => ResizeDirection::North,
+            2 => ResizeDirection::NorthEast,
+            3 => ResizeDirection::NorthWest,
+            4 => ResizeDirection::South,
+            5 => ResizeDirection::SouthEast,
+            6 => ResizeDirection::SouthWest,
+            _ => ResizeDirection::West,
+        };
+        if let Some(ui) = weak.upgrade() {
+            ui.window().with_winit_window(|w| {
+                let _ = w.drag_resize_window(direction);
+            });
+        }
+    });
 }

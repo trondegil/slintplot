@@ -1,4 +1,4 @@
-import { Button, CheckBox, ComboBox, HorizontalBox, Palette, Slider, SpinBox, VerticalBox } from "std-widgets.slint";
+import { Button, CheckBox, ComboBox, Palette, Slider, SpinBox } from "std-widgets.slint";
 import {
     BarChart,
     ChartDataset,
@@ -17,7 +17,9 @@ import {
     TimeSeriesChart,
     WaterfallChart,
 } from "@slintplot";
-export { ChartEngine }
+import { DarkModeButton, Look, ThemePicker } from "look.slint";
+import { DragArea, ResizeHandles, WindowFrame, WindowsControls } from "window_frame.slint";
+export { ChartEngine, WindowFrame }
 
 export component Stress inherits Window {
     title: "SlintPlot stress test";
@@ -25,7 +27,14 @@ export component Stress inherits Window {
     icon: @image-url("../icon.png");
     preferred-width: 1280px;
     preferred-height: 800px;
-    background: ChartTheme.background;
+    // Windows and Linux: the app draws the frame, with rounded corners over
+    // a transparent window. macOS: the window buttons sit in a title bar
+    // strip above the header.
+    no-frame: WindowFrame.drawn;
+    background: WindowFrame.drawn ? transparent : Look.page;
+    private property <length> corner-radius: WindowFrame.drawn && !WindowFrame.maximized ? 8px : 0px;
+    private property <length> title-strip: WindowFrame.mac-titlebar ? 28px : 0px;
+    private property <length> controls-width: WindowFrame.drawn ? 3 * 46px : 0px;
 
     // Values per dataset: the latest ones are kept and shown. A step of the
     // slider, from 1,000 to 10,000,000 in 1-2-5 steps, then unlimited, which
@@ -84,6 +93,16 @@ export component Stress inherits Window {
 
     changed dark-mode => {
         Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
+        root.apply-look();
+    }
+    // The chart sits on a card, so its backdrop (slice borders, label
+    // backgrounds) is the card's color.
+    function apply-look() {
+        Look.dark = self.dark-mode;
+        ChartTheme.background = Look.surface;
+    }
+    init => {
+        self.apply-look();
     }
     changed theme => {
         ChartTheme.palette = self.theme == 0 ? ChartPalette.modern
@@ -100,269 +119,412 @@ export component Stress inherits Window {
         root.regenerate();
     }
 
-    VerticalBox {
-        HorizontalBox {
-            padding: 0;
-            ComboBox {
-                model: ["Line", "Bars", "Time series", "Scatter", "Waterfall", "Dumbbell", "Funnel", "Sunburst", "Gauge"];
-                current-index <=> root.chart-type;
-                selected => {
-                    root.rebuild();
+    Rectangle {
+    border-radius: root.corner-radius;
+    clip: WindowFrame.drawn;
+    background: Look.page;
+
+    // The empty parts of the top of the window move it.
+    if WindowFrame.drawn || WindowFrame.mac-titlebar: DragArea {
+        y: 0;
+        height: root.title-strip + 72px;
+    }
+
+    VerticalLayout {
+        padding: 24px;
+        padding-top: root.title-strip + 18px;
+        spacing: 16px;
+
+        // The header: the logo, what the app is, and its look.
+        HorizontalLayout {
+            spacing: 16px;
+            Image {
+                y: 2px;
+                height: 34px;
+                // The logo is 720 by 218 pixels.
+                width: 34px * 720 / 218;
+                source: Look.dark ? @image-url("../logo-dark.png") : @image-url("../logo.png");
+                image-fit: contain;
+                accessible-role: image;
+                accessible-label: "SlintPlot";
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 2px;
+                alignment: start;
+                Text {
+                    text: "Stress test";
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: Look.text;
+                }
+                Text {
+                    text: "Stream data into a chart and watch the frame rate. Scroll on the chart to zoom, drag to pan, double-click to reset. Bars and scatter markers are one element each: keep them to 100,000 values. Waterfall, dumbbell, funnel and sunburst charts draw one element per value: keep them to 10,000.";
+                    font-size: 13px;
+                    color: Look.secondary;
+                    wrap: word-wrap;
                 }
             }
-            Text {
-                text: "Datasets";
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
-            }
-            SpinBox {
-                minimum: 1;
-                maximum: 8;
-                value <=> root.dataset-count;
-                edited => {
-                    root.rebuild();
+            VerticalLayout {
+                alignment: start;
+                ThemePicker {
+                    width: 140px;
+                    current <=> root.theme;
                 }
             }
-            Text {
-                text: "Window";
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
+            VerticalLayout {
+                alignment: start;
+                DarkModeButton {
+                    dark <=> root.dark-mode;
+                }
             }
-            Slider {
-                width: 220px;
-                minimum: 0;
-                maximum: root.window-labels.length - 1;
-                step: 1;
-                value <=> root.window-position;
-                changed => {
-                    if root.window-step != root.applied-window-step {
-                        root.applied-window-step = root.window-step;
-                        root.window-changed();
+            // Room for the drawn window buttons.
+            if WindowFrame.drawn: Rectangle {
+                width: root.controls-width - 24px;
+            }
+        }
+
+        // The controls, on a card of their own, in three labeled rows.
+        Rectangle {
+            border-radius: 12px;
+            background: Look.surface;
+            border-width: 1px;
+            border-color: Look.border;
+            drop-shadow-blur: 16px;
+            drop-shadow-offset-y: 2px;
+            drop-shadow-color: Look.dark ? #00000040 : #0000000f;
+
+            VerticalLayout {
+                padding: 12px;
+                padding-left: 16px;
+                padding-right: 16px;
+                spacing: 10px;
+
+                // What is shown.
+                HorizontalLayout {
+                    spacing: 10px;
+                    alignment: start;
+                    Text {
+                        width: 70px;
+                        text: "Data";
+                        color: Look.secondary;
+                        font-size: 12px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                    ComboBox {
+                        width: 140px;
+                        model: ["Line", "Bars", "Time series", "Scatter", "Waterfall", "Dumbbell", "Funnel", "Sunburst", "Gauge"];
+                        current-index <=> root.chart-type;
+                        selected => {
+                            root.rebuild();
+                        }
+                    }
+                    Text {
+                        text: "Datasets";
+                        color: Look.text;
+                        vertical-alignment: center;
+                    }
+                    SpinBox {
+                        width: 90px;
+                        minimum: 1;
+                        maximum: 8;
+                        value <=> root.dataset-count;
+                        edited => {
+                            root.rebuild();
+                        }
+                    }
+                    Text {
+                        text: "Window";
+                        color: Look.text;
+                        vertical-alignment: center;
+                    }
+                    Slider {
+                        width: 240px;
+                        minimum: 0;
+                        maximum: root.window-labels.length - 1;
+                        step: 1;
+                        value <=> root.window-position;
+                        changed => {
+                            if root.window-step != root.applied-window-step {
+                                root.applied-window-step = root.window-step;
+                                root.window-changed();
+                            }
+                        }
+                        // Snap the handle to the step.
+                        released => {
+                            root.window-position = root.window-step;
+                        }
+                    }
+                    Text {
+                        min-width: 90px;
+                        text: root.window-labels[root.window-step];
+                        color: Look.text;
+                        font-weight: 600;
+                        vertical-alignment: center;
                     }
                 }
-                // Snap the handle to the step.
-                released => {
-                    root.window-position = root.window-step;
+
+                // How the data arrives.
+                HorizontalLayout {
+                    spacing: 10px;
+                    alignment: start;
+                    Text {
+                        width: 70px;
+                        text: "Stream";
+                        color: Look.secondary;
+                        font-size: 12px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                    Button {
+                        width: 90px;
+                        text: root.streaming ? "Pause" : "Stream";
+                        primary: !root.streaming;
+                        clicked => {
+                            root.notice = "";
+                            root.streaming = !root.streaming;
+                        }
+                    }
+                    // Clears the data, so the window fills again from empty, and
+                    // resets the zoom; the settings stay.
+                    Button {
+                        text: "Reset";
+                        clicked => {
+                            root.rebuild();
+                        }
+                    }
+                    Text {
+                        text: "Samples/s";
+                        color: Look.text;
+                        vertical-alignment: center;
+                    }
+                    ComboBox {
+                        width: 110px;
+                        model: ["10", "100", "1,000", "10,000", "100,000"];
+                        current-index <=> root.sample-rate-index;
+                    }
+                    Text {
+                        text: "Signal";
+                        color: Look.text;
+                        vertical-alignment: center;
+                    }
+                    ComboBox {
+                        width: 140px;
+                        model: ["Random walk", "Sine", "Square", "Noise"];
+                        current-index <=> root.signal;
+                        selected => {
+                            root.rebuild();
+                        }
+                    }
+                    Text {
+                        text: "Noise";
+                        color: Look.text;
+                        vertical-alignment: center;
+                    }
+                    Slider {
+                        width: 140px;
+                        minimum: 0;
+                        maximum: 1;
+                        value <=> root.noise;
+                        released => {
+                            root.rebuild();
+                        }
+                    }
+                    CheckBox {
+                        text: "Spikes";
+                        checked <=> root.spikes;
+                        toggled => {
+                            root.rebuild();
+                        }
+                    }
                 }
-            }
-            Text {
-                min-width: 90px;
-                text: root.window-labels[root.window-step];
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
-            }
-            Rectangle {
-                horizontal-stretch: 1;
-            }
-            ComboBox {
-                model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
-                current-index <=> root.theme;
-            }
-            CheckBox {
-                text: "Dark";
-                checked <=> root.dark-mode;
+
+                // How the chart draws, for the charts that have the options.
+                HorizontalLayout {
+                    spacing: 16px;
+                    alignment: start;
+                    Text {
+                        width: 70px - 6px;
+                        text: "Drawing";
+                        color: Look.secondary;
+                        font-size: 12px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                    CheckBox {
+                        text: "Points";
+                        enabled: root.chart-type == 0 || root.chart-type == 2 || root.chart-type == 8;
+                        checked <=> root.show-points;
+                    }
+                    CheckBox {
+                        text: "Smooth";
+                        enabled: root.line-chart;
+                        checked <=> root.smooth;
+                        toggled => {
+                            root.restyle();
+                        }
+                    }
+                    CheckBox {
+                        text: "Fill";
+                        enabled: root.line-chart;
+                        checked <=> root.fill;
+                        toggled => {
+                            root.restyle();
+                        }
+                    }
+                    CheckBox {
+                        text: "Steps";
+                        enabled: root.line-chart;
+                        checked <=> root.stepped;
+                        toggled => {
+                            root.restyle();
+                        }
+                    }
+                    CheckBox {
+                        text: "Decimate";
+                        enabled: root.line-chart;
+                        checked <=> root.decimate;
+                    }
+                    CheckBox {
+                        text: "Animate";
+                        checked <=> root.animated;
+                    }
+                }
             }
         }
 
-        HorizontalBox {
-            padding: 0;
-            alignment: start;
-            Button {
-                width: 90px;
-                text: root.streaming ? "Pause" : "Stream";
-                primary: !root.streaming;
-                clicked => {
-                    root.notice = "";
-                    root.streaming = !root.streaming;
-                }
-            }
-            // Clears the data, so the window fills again from empty, and
-            // resets the zoom; the settings stay.
-            Button {
-                text: "Reset";
-                clicked => {
-                    root.rebuild();
-                }
-            }
-            Text {
-                text: "Samples/s";
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
-            }
-            ComboBox {
-                width: 110px;
-                model: ["10", "100", "1,000", "10,000", "100,000"];
-                current-index <=> root.sample-rate-index;
-            }
-            Text {
-                text: "Signal";
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
-            }
-            ComboBox {
-                width: 140px;
-                model: ["Random walk", "Sine", "Square", "Noise"];
-                current-index <=> root.signal;
-                selected => {
-                    root.rebuild();
-                }
-            }
-            Text {
-                text: "Noise";
-                color: ChartTheme.text-color;
-                vertical-alignment: center;
-            }
-            Slider {
-                width: 140px;
-                minimum: 0;
-                maximum: 1;
-                value <=> root.noise;
-                released => {
-                    root.rebuild();
-                }
-            }
-            CheckBox {
-                text: "Spikes";
-                checked <=> root.spikes;
-                toggled => {
-                    root.rebuild();
-                }
-            }
-            Rectangle {
-                width: 12px;
-            }
-            // Drawing options, for the charts that have them.
-            CheckBox {
-                text: "Points";
-                enabled: root.chart-type == 0 || root.chart-type == 2 || root.chart-type == 8;
-                checked <=> root.show-points;
-            }
-            CheckBox {
-                text: "Smooth";
-                enabled: root.line-chart;
-                checked <=> root.smooth;
-                toggled => {
-                    root.restyle();
-                }
-            }
-            CheckBox {
-                text: "Fill";
-                enabled: root.line-chart;
-                checked <=> root.fill;
-                toggled => {
-                    root.restyle();
-                }
-            }
-            CheckBox {
-                text: "Steps";
-                enabled: root.line-chart;
-                checked <=> root.stepped;
-                toggled => {
-                    root.restyle();
-                }
-            }
-            CheckBox {
-                text: "Decimate";
-                enabled: root.line-chart;
-                checked <=> root.decimate;
-            }
-            CheckBox {
-                text: "Animate";
-                checked <=> root.animated;
-            }
-        }
+        // The chart, on a card, with the measurements in its footer.
+        Rectangle {
+            vertical-stretch: 1;
+            border-radius: 12px;
+            background: Look.surface;
+            border-width: 1px;
+            border-color: Look.border;
+            drop-shadow-blur: 16px;
+            drop-shadow-offset-y: 2px;
+            drop-shadow-color: Look.dark ? #00000040 : #0000000f;
 
-        Text {
-            text: "Scroll on the chart to zoom, drag to pan, double-click to reset. Bars and scatter markers are one element each: keep them to 100,000 values. Waterfall, dumbbell, funnel and sunburst charts draw one element per value: keep them to 10,000.";
-            color: ChartTheme.text-color;
-            wrap: word-wrap;
-        }
+            VerticalLayout {
+                VerticalLayout {
+                    vertical-stretch: 1;
+                    padding: 16px;
 
-        if root.chart-type == 0: LineChart {
-            vertical-stretch: 1;
-            labels: root.labels;
-            datasets <=> root.datasets;
-            animated: root.animated;
-            begin-at-zero: false;
-            show-points: root.show-points;
-            decimate: root.decimate;
-            zoom-enabled: true;
-            view-start <=> root.view-start;
-            view-end <=> root.view-end;
-        }
-        if root.chart-type == 1: BarChart {
-            vertical-stretch: 1;
-            labels: root.labels;
-            datasets <=> root.datasets;
-            animated: root.animated;
-            zoom-enabled: true;
-            view-start <=> root.view-start;
-            view-end <=> root.view-end;
-        }
-        if root.chart-type == 2: TimeSeriesChart {
-            vertical-stretch: 1;
-            datasets <=> root.datasets;
-            animated: root.animated;
-            // One point per minute from this time.
-            time-origin: { year: 2026, month: 1, day: 1 };
-            show-points: root.show-points;
-            decimate: root.decimate;
-            zoom-enabled: true;
-            view-start <=> root.view-start;
-            view-end <=> root.view-end;
-        }
-        if root.chart-type == 3: ScatterChart {
-            vertical-stretch: 1;
-            datasets <=> root.datasets;
-            animated: root.animated;
-            zoom-enabled: true;
-            view-start <=> root.view-start;
-            view-end <=> root.view-end;
-        }
-        if root.chart-type == 4: WaterfallChart {
-            vertical-stretch: 1;
-            steps: root.steps;
-            animated: root.animated;
-        }
-        if root.chart-type == 5: DumbbellChart {
-            vertical-stretch: 1;
-            labels: root.labels;
-            datasets <=> root.datasets;
-            animated: root.animated;
-        }
-        if root.chart-type == 6: FunnelChart {
-            vertical-stretch: 1;
-            stages <=> root.stages;
-            animated: root.animated;
-        }
-        if root.chart-type == 7: SunburstChart {
-            vertical-stretch: 1;
-            items <=> root.sun;
-            animated: root.animated;
-        }
-        if root.chart-type == 8: GaugeChart {
-            vertical-stretch: 1;
-            value: root.gauge-value;
-            show-needle: root.show-points;
-            animated: root.animated;
-            value-decimals: 1;
-        }
+                    if root.chart-type == 0: LineChart {
+                        vertical-stretch: 1;
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        animated: root.animated;
+                        begin-at-zero: false;
+                        show-points: root.show-points;
+                        decimate: root.decimate;
+                        zoom-enabled: true;
+                        view-start <=> root.view-start;
+                        view-end <=> root.view-end;
+                    }
+                    if root.chart-type == 1: BarChart {
+                        vertical-stretch: 1;
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        animated: root.animated;
+                        zoom-enabled: true;
+                        view-start <=> root.view-start;
+                        view-end <=> root.view-end;
+                    }
+                    if root.chart-type == 2: TimeSeriesChart {
+                        vertical-stretch: 1;
+                        datasets <=> root.datasets;
+                        animated: root.animated;
+                        // One point per minute from this time.
+                        time-origin: { year: 2026, month: 1, day: 1 };
+                        show-points: root.show-points;
+                        decimate: root.decimate;
+                        zoom-enabled: true;
+                        view-start <=> root.view-start;
+                        view-end <=> root.view-end;
+                    }
+                    if root.chart-type == 3: ScatterChart {
+                        vertical-stretch: 1;
+                        datasets <=> root.datasets;
+                        animated: root.animated;
+                        zoom-enabled: true;
+                        view-start <=> root.view-start;
+                        view-end <=> root.view-end;
+                    }
+                    if root.chart-type == 4: WaterfallChart {
+                        vertical-stretch: 1;
+                        steps: root.steps;
+                        animated: root.animated;
+                    }
+                    if root.chart-type == 5: DumbbellChart {
+                        vertical-stretch: 1;
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        animated: root.animated;
+                    }
+                    if root.chart-type == 6: FunnelChart {
+                        vertical-stretch: 1;
+                        stages <=> root.stages;
+                        animated: root.animated;
+                    }
+                    if root.chart-type == 7: SunburstChart {
+                        vertical-stretch: 1;
+                        items <=> root.sun;
+                        animated: root.animated;
+                    }
+                    if root.chart-type == 8: GaugeChart {
+                        vertical-stretch: 1;
+                        value: root.gauge-value;
+                        show-needle: root.show-points;
+                        animated: root.animated;
+                        value-decimals: 1;
+                    }
+                }
 
-        // Status bar: what is shown, how fast it draws, and why streaming stopped.
-        HorizontalBox {
-            padding: 0;
-            Text {
-                text: root.stats;
-                color: ChartTheme.text-color;
-                font-family: "Menlo";
-            }
-            Text {
-                horizontal-stretch: 1;
-                text: root.notice;
-                color: #e5484d;
-                horizontal-alignment: right;
-                overflow: elide;
+                Rectangle {
+                    height: 1px;
+                    background: Look.border;
+                }
+                // What is shown, how fast it draws, and why streaming stopped.
+                HorizontalLayout {
+                    padding: 10px;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    spacing: 12px;
+                    Text {
+                        text: root.stats;
+                        color: Look.secondary;
+                        font-family: "Menlo";
+                        font-size: 12px;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.notice;
+                        color: #e5484d;
+                        font-size: 12px;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                }
             }
         }
     }
+
+    if WindowFrame.drawn: WindowsControls {
+        width: root.controls-width;
+        x: root.width - self.width;
+        y: 0;
+        height: 32px;
+    }
+    }
+
+    if WindowFrame.drawn && !WindowFrame.maximized: Rectangle {
+        border-radius: root.corner-radius;
+        border-width: 1px;
+        border-color: root.dark-mode ? #ffffff26 : #00000026;
+    }
+
+    if WindowFrame.drawn && !WindowFrame.maximized: ResizeHandles { }
 }
