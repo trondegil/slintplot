@@ -56,14 +56,14 @@ component SampleList inherits Rectangle {
         y: 0;
         height: root.top-inset;
     }
+    // Kept clear of the top and bottom edges, so that scrolled rows are cut
+    // off before they reach the window's edges.
     ScrollView {
-        y: root.top-inset;
-        height: parent.height - root.top-inset;
-        // Space above the first and below the last row, inside the scrolled
-        // content so that the rows scroll past the edges.
+        y: root.top-inset + 10px;
+        height: parent.height - self.y - 10px;
         VerticalLayout {
-            padding-top: 6px;
-            padding-bottom: 20px;
+            padding-top: 0px;
+            padding-bottom: 6px;
             alignment: start;
         for entry in root.samples: Rectangle {
             height: (entry.header ? 34px : 28px) + (root.roomy && !entry.header ? 12px : 0px);
@@ -239,7 +239,7 @@ export component Gallery inherits Window {
     HorizontalLayout {
         if !root.narrow && root.show-samples: SampleList {
             width: 230px;
-            top-inset: WindowFrame.mac-titlebar ? 30px : 0px;
+            top-inset: WindowFrame.mac-titlebar ? 44px : 0px;
             background: root.dark-mode ? #ffffff08 : #00000006;
             samples: root.samples;
             sample: root.sample;
@@ -251,14 +251,16 @@ export component Gallery inherits Window {
 
         VerticalLayout {
             padding: root.narrow ? 10px : 20px;
-            padding-top: root.narrow ? 8px : 14px;
+            // On macOS, the header row is centered on the window buttons, which
+            // sit 26px from the top in the unified title bar (see main.rs).
+            padding-top: WindowFrame.mac-titlebar || root.narrow ? 8px : 14px;
             spacing: root.narrow ? 8px : 10px;
 
             HorizontalLayout {
                 spacing: 10px;
                 // Room for the macOS window buttons when the sample list is hidden.
                 if WindowFrame.mac-titlebar && (root.narrow || !root.show-samples): Rectangle {
-                    width: 62px;
+                    width: root.narrow ? 70px : 60px;
                 }
                 MenuButton {
                     y: (parent.height - self.height) / 2;
@@ -722,6 +724,7 @@ export component Gallery inherits Window {
             sample: root.sample;
             dark-mode: root.dark-mode;
             roomy: true;
+            top-inset: WindowFrame.mac-titlebar ? 44px : 0px;
             select(id) => {
                 root.samples-open = false;
                 root.select(id);
