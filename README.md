@@ -677,7 +677,7 @@ SlintPlot is available under your choice of three licenses:
   with or without sharing your source code.
 - **A commercial license**: for commercial use without the GPLv3's
   conditions, such as in closed-source software you sell or ship. Per
-  developer, per year, from €199; bought by 31 December 2027, half price
+  developer, per year, from €99; bought by 31 December 2027, half price
   for the first two years: see [Pricing](https://slintplot.dev/#pricing).
 
 See [LICENSE.md](LICENSE.md) and [COMMERCIAL.md](COMMERCIAL.md) for the
