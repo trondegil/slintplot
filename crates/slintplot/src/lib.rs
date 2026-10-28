@@ -292,7 +292,9 @@ macro_rules! register {
             axis
         });
         engine.on_uses_axis(|data: ::slint::ModelRc<ChartDataset>, right: bool| {
-            tracked(&data).iter().any(|d| !d.hidden && d.right_axis == right)
+            tracked(&data)
+                .iter()
+                .any(|d| !d.hidden && d.right_axis == right)
         });
         engine.on_layout(|req: ChartLayoutRequest| {
             let started = $crate::profile::start();
@@ -473,7 +475,10 @@ macro_rules! register {
             $crate::pie::hit(&pie, x, y).map_or(-1, |i| i as i32)
         });
         engine.on_fill_text(|pattern, value, date| {
-            pattern.replace("{value}", &value).replace("{date}", &date).into()
+            pattern
+                .replace("{value}", &value)
+                .replace("{date}", &date)
+                .into()
         });
         engine.on_widest_label(|labels: ::slint::ModelRc<::slint::SharedString>| {
             $crate::layout::widest_label(&ModelLabels(labels)).into()

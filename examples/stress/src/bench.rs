@@ -211,7 +211,10 @@ fn machine() -> String {
     format!(
         "{}, {cores} cores, {} GB, {}",
         cpu.unwrap_or_else(|| "unknown CPU".into()),
-        memory.map_or("?".into(), |m| format!("{:.0}", m as f64 / (1u64 << 30) as f64)),
+        memory.map_or("?".into(), |m| format!(
+            "{:.0}",
+            m as f64 / (1u64 << 30) as f64
+        )),
         os.unwrap_or_else(|| "unknown OS".into())
     )
 }
@@ -303,8 +306,9 @@ fn stream(
                 };
                 app.set_view_start(start);
                 app.set_view_end(1.0);
-                let mut runs: Vec<Duration> =
-                    (0..3).map(|_| p95_update(app, data, window, pixels)).collect();
+                let mut runs: Vec<Duration> = (0..3)
+                    .map(|_| p95_update(app, data, window, pixels))
+                    .collect();
                 runs.sort();
                 let time = runs[1];
                 println!(
@@ -336,7 +340,10 @@ fn stream(
         Some(size) => size.to_string(),
     };
     println!("\nLargest window (values per dataset) that updates at:\n");
-    println!("{:<24}  {:<6}  {:>12}  {:>12}", "chart", "view", "60 fps", "30 fps");
+    println!(
+        "{:<24}  {:<6}  {:>12}  {:>12}",
+        "chart", "view", "60 fps", "30 fps"
+    );
     for (label, view, at_60, at_30, last) in limits {
         println!(
             "{label:<24}  {view:<6}  {:>12}  {:>12}",

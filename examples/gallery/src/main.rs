@@ -52,18 +52,58 @@ const LANGUAGES: [ChartLanguage; 14] = [
 /// The "languages" sample's own texts in each of `LANGUAGES`: the title, and
 /// the names of the two datasets, which are also the axis titles.
 const LANGUAGE_TEXTS: [(&str, &str, &str); 14] = [
-    ("Visitors and conversion rate", "Visitors", "Conversion rate"),
-    ("Besøgende og konverteringsrate", "Besøgende", "Konverteringsrate"),
-    ("Besucher und Konversionsrate", "Besucher", "Konversionsrate"),
-    ("Visitantes y tasa de conversión", "Visitantes", "Tasa de conversión"),
-    ("Visiteurs et taux de conversion", "Visiteurs", "Taux de conversion"),
-    ("Visitatori e tasso di conversione", "Visitatori", "Tasso di conversione"),
+    (
+        "Visitors and conversion rate",
+        "Visitors",
+        "Conversion rate",
+    ),
+    (
+        "Besøgende og konverteringsrate",
+        "Besøgende",
+        "Konverteringsrate",
+    ),
+    (
+        "Besucher und Konversionsrate",
+        "Besucher",
+        "Konversionsrate",
+    ),
+    (
+        "Visitantes y tasa de conversión",
+        "Visitantes",
+        "Tasa de conversión",
+    ),
+    (
+        "Visiteurs et taux de conversion",
+        "Visiteurs",
+        "Taux de conversion",
+    ),
+    (
+        "Visitatori e tasso di conversione",
+        "Visitatori",
+        "Tasso di conversione",
+    ),
     ("Bezoekers en conversieratio", "Bezoekers", "Conversieratio"),
-    ("Besøkende og konverteringsrate", "Besøkende", "Konverteringsrate"),
-    ("Odwiedzający i współczynnik konwersji", "Odwiedzający", "Współczynnik konwersji"),
-    ("Visitantes e taxa de conversão", "Visitantes", "Taxa de conversão"),
+    (
+        "Besøkende og konverteringsrate",
+        "Besøkende",
+        "Konverteringsrate",
+    ),
+    (
+        "Odwiedzający i współczynnik konwersji",
+        "Odwiedzający",
+        "Współczynnik konwersji",
+    ),
+    (
+        "Visitantes e taxa de conversão",
+        "Visitantes",
+        "Taxa de conversão",
+    ),
     ("Kävijät ja konversioaste", "Kävijät", "Konversioaste"),
-    ("Besökare och konverteringsgrad", "Besökare", "Konverteringsgrad"),
+    (
+        "Besökare och konverteringsgrad",
+        "Besökare",
+        "Konverteringsgrad",
+    ),
     ("訪問者数とコンバージョン率", "訪問者数", "コンバージョン率"),
     ("访客数与转化率", "访客数", "转化率"),
 ];
@@ -1900,15 +1940,22 @@ fn docs(
     // The charts alone.
     ui.set_chart_only(true);
     snapshot::resize(window, 1012, 660);
-    for sample in SAMPLES.iter().filter(|s| !matches!(s.id, "live" | "languages")) {
+    for sample in SAMPLES
+        .iter()
+        .filter(|s| !matches!(s.id, "live" | "languages"))
+    {
         shot(sample.id, sample.id, false, &|| ())?;
         if charts.join(format!("{}-dark.png", sample.id)).exists() {
             shot(sample.id, &format!("{}-dark", sample.id), true, &|| ())?;
         }
     }
-    shot("calendar", "calendar-github", false, &|| ui.set_calendar_colors(1))?;
+    shot("calendar", "calendar-github", false, &|| {
+        ui.set_calendar_colors(1)
+    })?;
     ui.set_calendar_colors(0);
-    shot("time-week", "time-week-1h", false, &|| state.borrow_mut().action(3))?;
+    shot("time-week", "time-week-1h", false, &|| {
+        state.borrow_mut().action(3)
+    })?;
     // A click, then the mouse leaves and the window loses focus, so neither
     // a tooltip nor the focus outline shows.
     let click = |(x, y): (f32, f32)| {
@@ -1917,7 +1964,9 @@ fn docs(
         window.dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
     };
     shot("treemap", "treemap-hidden", false, &|| click(TREEMAP_ASIA))?;
-    shot("sunburst", "sunburst-zoomed", false, &|| click(SUNBURST_ASIA))?;
+    shot("sunburst", "sunburst-zoomed", false, &|| {
+        click(SUNBURST_ASIA)
+    })?;
     ui.set_language(2);
     shot("languages", "languages-de", false, &|| ())?;
     shot("languages", "languages-de-dark", true, &|| ())?;
@@ -1935,7 +1984,9 @@ fn docs(
     ] {
         ui.set_dark_mode(dark);
         state.borrow_mut().rng = Rng(SEED);
-        state.borrow_mut().select(SAMPLES.iter().find(|s| s.id == sample).unwrap());
+        state
+            .borrow_mut()
+            .select(SAMPLES.iter().find(|s| s.id == sample).unwrap());
         snapshot::render(window);
         snapshot::settle(Duration::from_millis(1100));
         snapshot::save(window, &dir.join(format!("{name}.png")))?;
@@ -1956,7 +2007,7 @@ fn snapshots(
     window: &Rc<slint::platform::software_renderer::MinimalSoftwareWindow>,
     dir: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    std::fs::create_dir_all(&dir)?;
+    std::fs::create_dir_all(dir)?;
     ui.show()?;
     for (dark, suffix) in [(false, ""), (true, "-dark")] {
         ui.set_dark_mode(dark);
@@ -1964,9 +2015,9 @@ fn snapshots(
         state.borrow_mut().rng = Rng(SEED);
         for sample in SAMPLES {
             state.borrow_mut().select(sample);
-            snapshot::render(&window);
+            snapshot::render(window);
             snapshot::settle(Duration::from_millis(1100));
-            snapshot::save(&window, &dir.join(format!("{}{suffix}.png", sample.id)))?;
+            snapshot::save(window, &dir.join(format!("{}{suffix}.png", sample.id)))?;
         }
     }
     // A legend at the side, and hover tooltips.
@@ -1974,24 +2025,24 @@ fn snapshots(
     let legend = SAMPLES.iter().find(|s| s.id == "legend-position").unwrap();
     state.borrow_mut().select(legend);
     ui.set_legend_position(ChartLegendPosition::Left);
-    snapshot::render(&window);
+    snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
-    snapshot::save(&window, &dir.join("legend-left.png"))?;
+    snapshot::save(window, &dir.join("legend-left.png"))?;
     state.borrow_mut().select(&SAMPLES[0]);
-    snapshot::render(&window);
+    snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
-    snapshot::hover(&window, 640.0, 400.0);
-    snapshot::save(&window, &dir.join("hover-bar.png"))?;
+    snapshot::hover(window, 640.0, 400.0);
+    snapshot::save(window, &dir.join("hover-bar.png"))?;
     // The one-week time series zoomed to narrower and narrower spans.
     let week = SAMPLES.iter().find(|s| s.id == "time-week").unwrap();
     state.borrow_mut().select(week);
-    snapshot::render(&window);
+    snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
     for (action, name) in [(1, "day"), (2, "6h"), (3, "1h")] {
         state.borrow_mut().action(action);
-        snapshot::render(&window);
+        snapshot::render(window);
         snapshot::settle(Duration::from_millis(300));
-        snapshot::save(&window, &dir.join(format!("time-week-{name}.png")))?;
+        snapshot::save(window, &dir.join(format!("time-week-{name}.png")))?;
     }
     // Keyboard navigation: click a chart to focus it, move the mouse
     // away, then use the arrow keys.
@@ -2037,28 +2088,28 @@ fn snapshots(
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);
-        snapshot::render(&window);
+        snapshot::render(window);
         snapshot::settle(Duration::from_millis(1100));
-        snapshot::click(&window, x, y);
-        snapshot::leave(&window);
+        snapshot::click(window, x, y);
+        snapshot::leave(window);
         for &k in keys {
-            snapshot::key(&window, k);
+            snapshot::key(window, k);
         }
-        snapshot::render(&window);
+        snapshot::render(window);
         snapshot::settle(Duration::from_millis(300));
-        snapshot::save(&window, &dir.join(format!("keys-{id}.png")))?;
+        snapshot::save(window, &dir.join(format!("keys-{id}.png")))?;
     }
     // The treemap: a tooltip, then Asia hidden from the legend.
     let tree = SAMPLES.iter().find(|s| s.id == "treemap").unwrap();
     state.borrow_mut().select(tree);
-    snapshot::render(&window);
+    snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
-    snapshot::hover(&window, 560.0, 300.0);
-    snapshot::save(&window, &dir.join("treemap-hover.png"))?;
-    snapshot::click(&window, 625.0, 126.0);
-    snapshot::render(&window);
+    snapshot::hover(window, 560.0, 300.0);
+    snapshot::save(window, &dir.join("treemap-hover.png"))?;
+    snapshot::click(window, 625.0, 126.0);
+    snapshot::render(window);
     snapshot::settle(Duration::from_millis(300));
-    snapshot::save(&window, &dir.join("treemap-hidden.png"))?;
+    snapshot::save(window, &dir.join("treemap-hidden.png"))?;
     // The sunburst zoomed into Asia, a gauge band and a waterfall step.
     for (id, (x, y), click, name) in [
         ("sunburst", (850.0, 497.0), true, "sunburst-zoomed"),
@@ -2068,30 +2119,30 @@ fn snapshots(
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);
-        snapshot::render(&window);
+        snapshot::render(window);
         snapshot::settle(Duration::from_millis(1100));
         if click {
-            snapshot::click(&window, x, y);
-            snapshot::render(&window);
+            snapshot::click(window, x, y);
+            snapshot::render(window);
             snapshot::settle(Duration::from_millis(300));
         } else {
-            snapshot::hover(&window, x, y);
+            snapshot::hover(window, x, y);
         }
-        snapshot::save(&window, &dir.join(format!("{name}.png")))?;
+        snapshot::save(window, &dir.join(format!("{name}.png")))?;
     }
     let zoom = SAMPLES.iter().find(|s| s.id == "zoom").unwrap();
     state.borrow_mut().select(zoom);
-    snapshot::render(&window);
+    snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
-    snapshot::scroll(&window, 740.0, 400.0, 800.0);
-    snapshot::save(&window, &dir.join("zoomed.png"))?;
+    snapshot::scroll(window, 740.0, 400.0, 800.0);
+    snapshot::save(window, &dir.join("zoomed.png"))?;
     // The calendar in GitHub's green, from its own color picker.
     let calendar = SAMPLES.iter().find(|s| s.id == "calendar").unwrap();
     state.borrow_mut().select(calendar);
     ui.set_calendar_colors(1);
-    snapshot::render(&window);
+    snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
-    snapshot::save(&window, &dir.join("calendar-github.png"))?;
+    snapshot::save(window, &dir.join("calendar-github.png"))?;
     ui.set_calendar_colors(0);
     // The live sample after three seconds of updates, run directly since
     // the headless snapshots have no timers.
@@ -2100,16 +2151,16 @@ fn snapshots(
     for _ in 0..90 {
         state.borrow_mut().live_tick();
     }
-    snapshot::render(&window);
-    snapshot::save(&window, &dir.join("live-streamed.png"))?;
+    snapshot::render(window);
+    snapshot::save(window, &dir.join("live-streamed.png"))?;
     // The "languages" sample in other languages, by index into `LANGUAGES`.
     let languages = SAMPLES.iter().find(|s| s.id == "languages").unwrap();
     for (language, name) in [(2, "de"), (7, "nb"), (12, "ja")] {
         ui.set_language(language);
         state.borrow_mut().select(languages);
-        snapshot::render(&window);
+        snapshot::render(window);
         snapshot::settle(Duration::from_millis(1100));
-        snapshot::save(&window, &dir.join(format!("languages-{name}.png")))?;
+        snapshot::save(window, &dir.join(format!("languages-{name}.png")))?;
     }
     ui.set_language(0);
     Ok(())
