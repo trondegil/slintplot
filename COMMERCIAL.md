@@ -38,7 +38,7 @@ products. Prices exclude VAT.
 
 | Plan | For | Price |
 |---|---|---|
-| Indie | Solo developers, and companies with under €250,000 in annual revenue | €199 per developer per year |
+| Indie | Solo developers and companies with under €250,000 in annual revenue | €199 per developer per year |
 | Business | Every other company | €499 per developer per year |
 | Enterprise | Every developer in the company, custom terms | from €2,500 per year |
 
