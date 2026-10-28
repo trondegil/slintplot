@@ -7,9 +7,19 @@
 <meta name="description" content="Every SlintPlot chart type, running in the browser with WebAssembly.">
 <link rel="canonical" href="https://slintplot.dev/demo/">
 <link rel="icon" href="../assets/slintplot-icon.png">
-<!-- Fetched in parallel with the page instead of one after the other. -->
-<link rel="modulepreload" href="gallery.js">
-<link rel="preload" href="gallery_bg.wasm" as="fetch" type="application/wasm" crossorigin>
+<!-- Fetched in parallel with the page instead of one after the other.
+     The website workflow replaces BUILD with a hash of the build, so that
+     browsers fetch each new build instead of a cached old one. -->
+<link rel="modulepreload" href="gallery.js?v=BUILD">
+<link rel="preload" href="gallery_bg.wasm?v=BUILD" as="fetch" type="application/wasm" crossorigin>
+<!-- Privacy-friendly analytics by Plausible: visit counts without cookies or
+     personal data, plus the site's custom events. Outbound link clicks are
+     switched on in Plausible's site settings. -->
+<script async src="https://plausible.io/js/pa-Uc9vcGHjcu2slhm1AwQAS.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
 <style>
   /* The gallery's own colors (Look in examples/gallery/ui/gallery.slint).
      The gallery fills the page; its sample list has the site's links. */
@@ -35,14 +45,14 @@
   <div id="status" role="status">Loading the gallery…</div>
 </main>
 <script type="module">
-  import init from "./gallery.js";
+  import init from "./gallery.js?v=BUILD";
   const status = document.getElementById("status");
   // Slint draws with WebGL, and can't start without it.
   if (!document.createElement("canvas").getContext("webgl")) {
     status.textContent = "The gallery needs WebGL, which this browser has turned off.";
   } else {
     try {
-      await init();
+      await init({ module_or_path: "gallery_bg.wasm?v=BUILD" });
       status.remove();
     } catch (error) {
       // Slint's event loop runs by throwing out of `main`; the app keeps going.

@@ -34,6 +34,9 @@ jobs:
           cargo build --profile web --locked --target wasm32-unknown-unknown -p slintplot-gallery
           wasm-bindgen --target web --no-typescript --out-dir docs/demo --out-name gallery \
             target/wasm32-unknown-unknown/web/slintplot-gallery.wasm
+          # New file links for each build, so browsers don't keep an old one.
+          build=$(sha256sum docs/demo/gallery_bg.wasm | cut -c1-12)
+          sed -i "s/?v=BUILD/?v=$build/g" docs/demo/index.html
       - name: WebP images
         run: |
           sudo apt-get install -y --no-install-recommends webp

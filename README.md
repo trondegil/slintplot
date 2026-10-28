@@ -558,22 +558,22 @@ show where that starts to matter: it pushes each chart type from 100 to
 they mean are at [slintplot.dev/#performance](https://slintplot.dev/#performance).
 
 Frame times with Slint's software renderer on one core of an Apple M4,
-1280×800, 3 datasets, median of three runs (they differed by at most ±8%).
+1280×800, 3 datasets, median of three runs (most differed by ±3% or less).
 A 60 fps frame has 16.7 ms.
 
 | Points per dataset | Line | Line, decimated | Time series, decimated | Bars | Scatter |
 |---:|---:|---:|---:|---:|---:|
-| 100 | 5.0 ms | 4.7 ms | 3.6 ms | 3.8 ms | 3.3 ms |
-| 1,000 | 7.9 ms | 6.6 ms | 6.9 ms | 6.5 ms | 5.2 ms |
-| 10,000 | 60 ms | 6.1 ms | 5.9 ms | 34 ms | 26 ms |
-| 100,000 | 1.3 s | 26 ms | 28 ms | 303 ms | not run |
-| 1,000,000 | 23.8 s | 244 ms | 259 ms | not run | not run |
+| 100 | 4.1 ms | 4.4 ms | 2.8 ms | 3.2 ms | 2.6 ms |
+| 1,000 | 6.6 ms | 6.4 ms | 5.7 ms | 5.6 ms | 4.6 ms |
+| 10,000 | 57 ms | 5.3 ms | 5.4 ms | 30 ms | 27 ms |
+| 100,000 | 1.1 s | 24 ms | 28 ms | 275 ms | not run |
+| 1,000,000 | 16.0 s | 237 ms | 277 ms | not run | not run |
 
 | Steps, rows, stages or items | Waterfall | Dumbbell | Funnel | Sunburst |
 |---:|---:|---:|---:|---:|
-| 100 | 1.6 ms | 1.3 ms | 0.8 ms | 4.2 ms |
-| 1,000 | 8.8 ms | 10 ms | 3.6 ms | 26 ms |
-| 10,000 | 83 ms | 104 ms | 31 ms | 307 ms |
+| 100 | 1.7 ms | 1.5 ms | 1.0 ms | 3.4 ms |
+| 1,000 | 8.8 ms | 10 ms | 3.7 ms | 21 ms |
+| 10,000 | 83 ms | 102 ms | 32 ms | 265 ms |
 
 Streaming limits: the largest window (values per dataset) that still
 updates at 60 fps when each update appends a value to 3 datasets and renders a
@@ -585,7 +585,7 @@ frame (`slintplot-stress --bench-stream`, same machine):
 | Line, time series or bars, not decimated | 2,000 | 10,000,000+ |
 | Scatter | 2,000 | 20,000 |
 
-Hovering a decimated line takes about 4 ms at every size, and zooming in to
+Hovering a decimated line takes about 3 ms at every size, and zooming in to
 0.1% of a million points brings a frame to 46 ms. Not measured: Slint's GPU
 renderers (the default in desktop apps), the browser, other machines, memory
 use.
@@ -655,7 +655,7 @@ What SlintPlot 0.2 doesn't do yet, or does with restrictions:
 - **Two value axes at most**, and only in line, bar, scatter, bubble and time series charts: horizontal bar charts have one value axis.
 - **Zoom, pan and decimation** work in the cartesian charts only (line, bar, scatter and time series). Zoom is off by default.
 - **Eight colors per theme.** With more than eight datasets the colors repeat. Set your own palette for more.
-- **Large charts of separate shapes are slower.** Sunburst, waterfall, dumbbell and funnel charts draw every item as its own shape: about 320 ms for a sunburst with 10,000 items, and about 100 ms for waterfall and dumbbell charts. With up to 1,000 items, a frame takes under 30 ms. Decimation applies to lines only.
+- **Large charts of separate shapes are slower.** Sunburst, waterfall, dumbbell and funnel charts draw every item as its own shape: about 270 ms for a sunburst with 10,000 items, and about 80–100 ms for waterfall and dumbbell charts. With up to 1,000 items, a frame takes under 30 ms. Decimation applies to lines only.
 - **Label fitting is estimated.** Sunburst and treemap labels are kept or hidden from an estimate of the text width, so very wide or narrow fonts can be clipped or hidden too early.
 - **No image or PDF export.** To save a chart as PNG, render the window with Slint's software renderer, as the gallery's `--snapshot` option does.
 - **Sunburst data order.** A parent item must come before its children in `items`.

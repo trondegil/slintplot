@@ -1893,6 +1893,35 @@ fn init_window_frame(ui: &Gallery) {
     });
 }
 
+/// In the browser: counts the click with Plausible, as for a link that leaves
+/// the site, and opens `url` in a new tab, or in this one if that is blocked.
+#[cfg(target_arch = "wasm32")]
+fn open_page(url: &str) {
+    use js_sys::{Function, Object, Reflect};
+    use wasm_bindgen::{JsCast, JsValue};
+    let global = js_sys::global();
+    let function = |name: &str| {
+        Reflect::get(&global, &name.into())
+            .ok()
+            .and_then(|f| f.dyn_into::<Function>().ok())
+    };
+    if let Some(plausible) = function("plausible") {
+        let props = Object::new();
+        let options = Object::new();
+        let _ = Reflect::set(&props, &"url".into(), &url.into());
+        let _ = Reflect::set(&options, &"props".into(), &props);
+        let _ = plausible.call2(&global, &"Outbound Link: Click".into(), &options);
+    }
+    let opened = function("open")
+        .and_then(|open| open.call2(&global, &url.into(), &"_blank".into()).ok())
+        .is_some_and(|tab| !tab.is_null() && tab != JsValue::UNDEFINED);
+    if !opened {
+        if let Ok(location) = Reflect::get(&global, &"location".into()) {
+            let _ = Reflect::set(&location, &"href".into(), &url.into());
+        }
+    }
+}
+
 /// In the browser: the gallery in the page's `<canvas id="canvas">`.
 #[cfg(target_arch = "wasm32")]
 fn main() {
@@ -1900,12 +1929,7 @@ fn main() {
     let (ui, _state) = gallery().expect("the gallery window");
     // The browser has no fonts for Japanese and Chinese.
     ui.set_cjk_fonts(false);
-    ui.on_open_url(|url| {
-        let global = js_sys::global();
-        if let Ok(location) = js_sys::Reflect::get(&global, &"location".into()) {
-            let _ = js_sys::Reflect::set(&location, &"href".into(), &url.as_str().into());
-        }
-    });
+    ui.on_open_url(|url| open_page(url.as_str()));
     ui.run().expect("the event loop");
 }
 
@@ -1996,7 +2020,9 @@ fn docs(
 
 /// Where the docs' chart-only treemap and sunburst show Asia: its legend
 /// entry, and its ring.
+#[cfg(not(target_arch = "wasm32"))]
 const TREEMAP_ASIA: (f32, f32) = (370.0, 52.0);
+#[cfg(not(target_arch = "wasm32"))]
 const SUNBURST_ASIA: (f32, f32) = (600.0, 420.0);
 
 /// Renders every sample, and a few interactions, to PNG files in `dir`.
