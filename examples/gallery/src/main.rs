@@ -1766,14 +1766,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => {
             init_window_frame(&ui);
             // Once the app has finished launching, which would reset it.
-            let weak = ui.as_weak();
-            slint::Timer::single_shot(Duration::ZERO, move || {
-                dock_icon::set();
-                #[cfg(target_os = "macos")]
-                if !drawn_frame() {
-                    unified_titlebar(weak);
-                }
-            });
+            slint::Timer::single_shot(Duration::ZERO, dock_icon::set);
             Ok(ui.run()?)
         }
     }
@@ -1784,44 +1777,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(not(target_arch = "wasm32"))]
 fn drawn_frame() -> bool {
     !cfg!(target_os = "macos") || std::env::var_os("SLINTPLOT_DRAWN_FRAME").is_some()
-}
-
-/// macOS: an empty toolbar in the unified style makes the title bar as tall
-/// as the gallery's header row, with the window buttons centered in it.
-/// The native window is created after the event loop starts, so this tries
-/// again until it exists.
-#[cfg(target_os = "macos")]
-fn unified_titlebar(weak: slint::Weak<Gallery>) {
-    use objc2::MainThreadMarker;
-    use objc2_app_kit::{NSTitlebarSeparatorStyle, NSToolbar, NSView, NSWindowToolbarStyle};
-    use slint::winit_030::WinitWindowAccessor;
-    use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    let Some(mtm) = MainThreadMarker::new() else {
-        return;
-    };
-    let Some(ui) = weak.upgrade() else {
-        return;
-    };
-    let done = ui.window().with_winit_window(|w| {
-        let Ok(handle) = w.window_handle() else {
-            return;
-        };
-        let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
-            return;
-        };
-        // SAFETY: the handle's view lives as long as the window, and this
-        // runs on the main thread (checked above).
-        let view: &NSView = unsafe { handle.ns_view.cast().as_ref() };
-        if let Some(window) = view.window() {
-            let toolbar = NSToolbar::new(mtm);
-            window.setToolbar(Some(&toolbar));
-            window.setToolbarStyle(NSWindowToolbarStyle::Unified);
-            window.setTitlebarSeparatorStyle(NSTitlebarSeparatorStyle::None);
-        }
-    });
-    if done.is_none() {
-        slint::Timer::single_shot(Duration::from_millis(20), move || unified_titlebar(weak));
-    }
 }
 
 /// Connects the window frame (see ui/window_frame.slint) to the window.
