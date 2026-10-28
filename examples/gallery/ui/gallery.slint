@@ -34,6 +34,20 @@ import {
 import { DragArea, ResizeHandles, WindowFrame, WindowsControls } from "window_frame.slint";
 export { ChartEngine, ChartLanguage, ChartTheme, WindowFrame }
 
+// The gallery's own colors, apart from the charts': a light gray page with
+// white cards, as in macOS and iOS settings, and their dark mode variants.
+global Look {
+    in-out property <bool> dark;
+    out property <color> page: root.dark ? #161618 : #f5f5f7;
+    out property <color> surface: root.dark ? #232326 : #ffffff;
+    out property <color> sidebar: root.dark ? #1c1c1f : #ebebee;
+    out property <color> border: root.dark ? #ffffff17 : #0000001a;
+    out property <color> text: root.dark ? #f5f5f7 : #1d1d1f;
+    out property <color> secondary: root.dark ? #a1a1a6 : #6e6e73;
+    out property <color> accent: root.dark ? #0a84ff : #007aff;
+    out property <color> hover: root.dark ? #ffffff12 : #0000000b;
+}
+
 // A row of the sample list: a category header, or a sample.
 export struct SampleEntry {
     id: string,
@@ -45,13 +59,13 @@ export struct SampleEntry {
 component SampleList inherits Rectangle {
     in property <[SampleEntry]> samples;
     in property <string> sample;
-    in property <bool> dark-mode;
     // Taller rows, for touch screens.
     in property <bool> roomy;
     // Room at the top, for the window buttons on macOS.
     in property <length> top-inset;
     callback select(id: string);
 
+    background: Look.sidebar;
     if root.top-inset > 0: DragArea {
         y: 0;
         height: root.top-inset;
@@ -62,36 +76,71 @@ component SampleList inherits Rectangle {
         y: root.top-inset + 10px;
         height: parent.height - self.y - 10px;
         VerticalLayout {
-            padding-top: 0px;
-            padding-bottom: 6px;
+            padding-bottom: 8px;
             alignment: start;
-        for entry in root.samples: Rectangle {
-            height: (entry.header ? 34px : 28px) + (root.roomy && !entry.header ? 12px : 0px);
-            // The selected and hovered sample, as a rounded highlight.
-            if !entry.header: Rectangle {
-                x: 8px;
-                width: parent.width - 16px;
-                border-radius: 6px;
-                background: entry.id == root.sample ? (root.dark-mode ? #ffffff1a : #0000000f)
-                    : touch.has-hover ? (root.dark-mode ? #ffffff0d : #00000008) : transparent;
-            }
-            Text {
-                x: entry.header ? 14px : 22px;
-                y: entry.header ? parent.height - self.height - 4px : (parent.height - self.height) / 2;
-                text: entry.title;
-                color: entry.header ? ChartTheme.text-color : (entry.id == root.sample ? Palette.foreground : ChartTheme.text-color);
-                font-size: entry.header ? 11px : 13px + (root.roomy ? 2px : 0px);
-                font-weight: entry.header || entry.id == root.sample ? 700 : 400;
-                letter-spacing: entry.header ? 0.6px : 0;
-            }
-            touch := TouchArea {
-                enabled: !entry.header;
-                mouse-cursor: entry.header ? default : pointer;
-                clicked => {
-                    root.select(entry.id);
+            for entry in root.samples: Rectangle {
+                height: (entry.header ? 32px : 30px) + (root.roomy && !entry.header ? 10px : 0px);
+                // The selected sample in the accent color; the hovered one shaded.
+                if !entry.header: Rectangle {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    border-radius: 7px;
+                    background: entry.id == root.sample ? Look.accent.with-alpha(Look.dark ? 0.25 : 0.14)
+                        : touch.has-hover ? Look.hover : transparent;
+                }
+                Text {
+                    x: 20px;
+                    y: entry.header ? parent.height - self.height - 5px : (parent.height - self.height) / 2;
+                    text: entry.title;
+                    color: entry.header ? Look.secondary : entry.id == root.sample ? Look.accent : Look.text;
+                    font-size: entry.header ? 12px : 13px + (root.roomy ? 2px : 0px);
+                    font-weight: entry.header ? 600 : entry.id == root.sample ? 600 : 400;
+                }
+                touch := TouchArea {
+                    enabled: !entry.header;
+                    mouse-cursor: entry.header ? default : pointer;
+                    clicked => {
+                        root.select(entry.id);
+                    }
                 }
             }
         }
+    }
+    // A hairline between the list and the content.
+    Rectangle {
+        x: parent.width - 1px;
+        width: 1px;
+        background: Look.border;
+    }
+}
+
+// A small, quiet button for a sample's actions.
+component ActionButton inherits Rectangle {
+    in property <string> text;
+    callback clicked();
+    height: 28px;
+    min-width: label.preferred-width + 24px;
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: Look.border;
+    background: touch.pressed ? Look.hover.with-alpha(0.12) : touch.has-hover ? Look.hover : Look.surface;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => {
+        root.clicked();
+    }
+    label := Text {
+        text: root.text;
+        color: Look.text;
+        font-size: 13px;
+        font-weight: 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
         }
     }
 }
@@ -102,7 +151,7 @@ component MenuButton inherits Rectangle {
     width: 36px;
     height: 36px;
     border-radius: 8px;
-    background: touch.has-hover || touch.pressed ? (Palette.color-scheme == ColorScheme.dark ? #ffffff14 : #0000000d) : transparent;
+    background: touch.has-hover || touch.pressed ? Look.hover : transparent;
     accessible-role: button;
     accessible-label: "Samples";
     accessible-action-default => {
@@ -114,7 +163,7 @@ component MenuButton inherits Rectangle {
         width: 18px;
         height: 2px;
         border-radius: 1px;
-        background: Palette.foreground;
+        background: Look.text;
     }
     touch := TouchArea {
         mouse-cursor: pointer;
@@ -130,7 +179,7 @@ component DarkModeButton inherits Rectangle {
     width: 36px;
     height: 36px;
     border-radius: 8px;
-    background: touch.has-hover || touch.pressed ? (root.dark ? #ffffff14 : #0000000d) : transparent;
+    background: touch.has-hover || touch.pressed ? Look.hover : transparent;
     accessible-role: checkbox;
     accessible-label: "Dark mode";
     accessible-checked: root.dark;
@@ -147,7 +196,7 @@ component DarkModeButton inherits Rectangle {
             ? "M 13.5 10 A 3.5 3.5 0 1 1 6.5 10 A 3.5 3.5 0 1 1 13.5 10 Z M 10 1.5 L 10 3.5 M 10 16.5 L 10 18.5 M 1.5 10 L 3.5 10 M 16.5 10 L 18.5 10 M 4 4 L 5.4 5.4 M 14.6 14.6 L 16 16 M 4 16 L 5.4 14.6 M 14.6 5.4 L 16 4"
             // A crescent moon.
             : "M 16.5 12.5 A 7 7 0 1 1 7.5 3.5 A 5.5 5.5 0 0 0 16.5 12.5 Z";
-        stroke: Palette.foreground;
+        stroke: Look.text;
         stroke-width: 1.5px;
         fill: transparent;
     }
@@ -170,7 +219,7 @@ export component Gallery inherits Window {
     // Windows and Linux: the app draws the frame, with rounded corners over
     // a transparent window.
     no-frame: WindowFrame.drawn;
-    background: WindowFrame.drawn ? transparent : ChartTheme.background;
+    background: WindowFrame.drawn ? transparent : Look.page;
     // The rounded corners of the drawn frame; square when maximized.
     private property <length> corner-radius: WindowFrame.drawn && !WindowFrame.maximized ? 8px : 0px;
     // The desktop app, with a window frame; the browser has none.
@@ -242,7 +291,14 @@ export component Gallery inherits Window {
 
     changed dark-mode => {
         Palette.color-scheme = self.dark-mode ? ColorScheme.dark : ColorScheme.light;
+        root.apply-look();
         root.dark-mode-changed();
+    }
+    // The charts sit on the cards, so their backdrop (slice borders, label
+    // backgrounds) is the card's color.
+    function apply-look() {
+        Look.dark = self.dark-mode;
+        ChartTheme.background = Look.surface;
     }
     // Slightly smaller chart text on narrow windows, for more room.
     function fit-text() {
@@ -251,6 +307,7 @@ export component Gallery inherits Window {
     }
     init => {
         self.fit-text();
+        self.apply-look();
     }
     changed narrow => {
         self.fit-text();
@@ -269,105 +326,108 @@ export component Gallery inherits Window {
     Rectangle {
     border-radius: root.corner-radius;
     clip: WindowFrame.drawn;
-    background: ChartTheme.background;
+    background: Look.page;
 
     // The empty parts of the top of the window move it.
     if root.desktop: DragArea {
         y: 0;
-        height: root.title-strip + (root.narrow ? 52px : 64px);
+        height: root.title-strip + (root.narrow ? 60px : 76px);
     }
 
     HorizontalLayout {
-        if !root.narrow && root.show-samples: SampleList {
-            width: 230px;
+        if root.sidebar-shown: SampleList {
+            width: 240px;
             top-inset: WindowFrame.mac-titlebar ? 32px : 0px;
-            background: root.dark-mode ? #ffffff08 : #00000006;
             samples: root.samples;
             sample: root.sample;
-            dark-mode: root.dark-mode;
             select(id) => {
                 root.select(id);
             }
         }
 
         VerticalLayout {
-            padding: root.narrow ? 10px : 20px;
-            padding-top: root.title-strip + (root.narrow ? 8px : 14px);
-            spacing: root.narrow ? 8px : 10px;
+            padding: root.narrow ? 12px : 24px;
+            padding-top: root.title-strip + (root.narrow ? 10px : 18px);
+            spacing: root.narrow ? 12px : 16px;
 
+            // The header: the sample's title and description on the left, the
+            // gallery's settings on the right.
             HorizontalLayout {
-                spacing: 10px;
-                MenuButton {
-                    y: (parent.height - self.height) / 2;
-                    clicked => {
-                        if root.narrow {
-                            root.samples-open = !root.samples-open;
-                        } else {
-                            root.show-samples = !root.show-samples;
+                spacing: 12px;
+                VerticalLayout {
+                    alignment: start;
+                    MenuButton {
+                        clicked => {
+                            if root.narrow {
+                                root.samples-open = !root.samples-open;
+                            } else {
+                                root.show-samples = !root.show-samples;
+                            }
                         }
                     }
                 }
-                Text {
-                    text: root.sample-title;
-                    font-size: root.narrow ? 18px : 22px;
-                    font-weight: 700;
-                    color: Palette.foreground;
-                    vertical-alignment: center;
+                VerticalLayout {
                     horizontal-stretch: 1;
-                    overflow: elide;
+                    spacing: 2px;
+                    alignment: start;
+                    Text {
+                        height: 36px;
+                        text: root.sample-title;
+                        font-size: root.narrow ? 18px : 20px;
+                        font-weight: 600;
+                        color: Look.text;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    if !root.narrow: Text {
+                        text: root.description;
+                        font-size: 13px;
+                        color: Look.secondary;
+                        wrap: word-wrap;
+                    }
                 }
-                if !root.narrow: Text {
-                    text: "Theme";
-                    color: ChartTheme.text-color;
-                    vertical-alignment: center;
-                }
-                if !root.narrow: ComboBox {
-                    model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
-                    current-index <=> root.theme;
-                }
-                // The calendar heatmap's color, separate from the theme.
-                if !root.narrow && root.sample == "calendar": Text {
-                    text: "Colors";
-                    color: ChartTheme.text-color;
-                    vertical-alignment: center;
-                }
-                if !root.narrow && root.sample == "calendar": ComboBox {
-                    model: ["Theme", "GitHub green", "Blue", "Orange", "Purple", "Red"];
-                    current-index <=> root.calendar-colors;
-                }
-                // The active palette, in the order datasets use it. The
-                // calendar has its own color picker instead.
-                if !root.narrow && root.sample != "calendar": HorizontalLayout {
-                    spacing: 3px;
-                    alignment: center;
-                    for swatch in ChartTheme.colors: VerticalLayout {
-                        alignment: center;
-                        Rectangle {
-                            width: 14px;
-                            height: 14px;
-                            border-radius: 3px;
-                            background: swatch.with-alpha(ChartTheme.fill-opacity);
-                            border-color: swatch;
-                            border-width: 1px;
+                if !root.narrow: VerticalLayout {
+                    alignment: start;
+                    HorizontalLayout {
+                        spacing: 8px;
+                        // The calendar heatmap's color, separate from the theme.
+                        if root.sample == "calendar": ComboBox {
+                            width: 150px;
+                            model: ["Theme colors", "GitHub green", "Blue", "Orange", "Purple", "Red"];
+                            current-index <=> root.calendar-colors;
+                        }
+                        // The chart language, for the sample that shows it off.
+                        if root.sample == "languages": ComboBox {
+                            width: 140px;
+                            model: root.language-names;
+                            current-index <=> root.language;
+                        }
+                        ComboBox {
+                            width: 140px;
+                            model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
+                            current-index <=> root.theme;
                         }
                     }
                 }
-                // The chart language, for the sample that shows it off.
-                if !root.narrow && root.sample == "languages": ComboBox {
-                    model: root.language-names;
-                    current-index <=> root.language;
-                }
-                DarkModeButton {
-                    y: (parent.height - self.height) / 2;
-                    dark <=> root.dark-mode;
+                VerticalLayout {
+                    alignment: start;
+                    DarkModeButton {
+                        dark <=> root.dark-mode;
+                    }
                 }
                 // Room for the drawn window buttons.
                 if WindowFrame.drawn: Rectangle {
-                    width: root.controls-width - (root.narrow ? 10px : 20px);
+                    width: root.controls-width - (root.narrow ? 12px : 24px);
                 }
             }
 
-            // The pickers on a row of their own on narrow windows.
+            // Narrow windows: the description and pickers under the title.
+            if root.narrow: Text {
+                text: root.description;
+                font-size: 13px;
+                color: Look.secondary;
+                wrap: word-wrap;
+            }
             if root.narrow: HorizontalLayout {
                 spacing: 8px;
                 ComboBox {
@@ -378,35 +438,28 @@ export component Gallery inherits Window {
                     model: root.language-names;
                     current-index <=> root.language;
                 }
-            }
-            if root.narrow && root.sample == "calendar": HorizontalLayout {
-                spacing: 8px;
-                Text {
-                    text: "Colors";
-                    color: ChartTheme.text-color;
-                    vertical-alignment: center;
-                }
-                ComboBox {
-                    model: ["Theme", "GitHub green", "Blue", "Orange", "Purple", "Red"];
+                if root.sample == "calendar": ComboBox {
+                    model: ["Theme colors", "GitHub green", "Blue", "Orange", "Purple", "Red"];
                     current-index <=> root.calendar-colors;
                 }
             }
 
-            Text {
-                text: root.description;
-                color: ChartTheme.text-color;
-                wrap: word-wrap;
-            }
-
-            // The chart of the current sample.
+            // The chart of the current sample, on a card, with the sample's
+            // actions in a footer.
             Rectangle {
                 vertical-stretch: 1;
-                border-radius: 8px;
+                border-radius: 12px;
+                background: Look.surface;
                 border-width: 1px;
-                border-color: ChartTheme.grid-color;
+                border-color: Look.border;
+                drop-shadow-blur: 16px;
+                drop-shadow-offset-y: 2px;
+                drop-shadow-color: Look.dark ? #00000040 : #0000000f;
 
                 VerticalLayout {
-                    padding: root.narrow ? 6px : 12px;
+                    VerticalLayout {
+                        vertical-stretch: 1;
+                        padding: root.narrow ? 8px : 16px;
 
                     if root.sample == "bar-vertical": BarChart {
                         title: "Vertical bar chart";
@@ -713,29 +766,41 @@ export component Gallery inherits Window {
                         zoom-enabled: true;
                         animated: false;
                     }
-                }
-            }
+                    }
 
-            // Three buttons per row on narrow windows.
-            HorizontalLayout {
-                alignment: start;
-                GridLayout {
-                    spacing: 8px;
-                    for name[index] in root.actions: Button {
-                        row: root.narrow ? index / 3 : 0;
-                        col: root.narrow ? mod(index, 3) : index;
-                        text: name;
-                        clicked => {
-                            root.action(index);
+                    // The footer: the sample's actions, and its status.
+                    if root.actions.length > 0 || root.status != "": Rectangle {
+                        height: 1px;
+                        background: Look.border;
+                    }
+                    if root.actions.length > 0 || root.status != "": HorizontalLayout {
+                        padding: root.narrow ? 8px : 12px;
+                        padding-left: root.narrow ? 8px : 16px;
+                        padding-right: root.narrow ? 8px : 16px;
+                        spacing: 12px;
+                        // Three buttons per row on narrow windows.
+                        GridLayout {
+                            spacing: 8px;
+                            for name[index] in root.actions: ActionButton {
+                                row: root.narrow ? index / 3 : 0;
+                                col: root.narrow ? mod(index, 3) : index;
+                                text: name;
+                                clicked => {
+                                    root.action(index);
+                                }
+                            }
+                        }
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.status;
+                            color: Look.secondary;
+                            font-size: 12px;
+                            horizontal-alignment: right;
+                            vertical-alignment: center;
+                            overflow: elide;
                         }
                     }
                 }
-            }
-
-            Text {
-                text: root.status;
-                color: ChartTheme.text-color;
-                font-size: 12px;
             }
         }
     }
@@ -754,10 +819,8 @@ export component Gallery inherits Window {
             y: 0;
             width: min(300px, root.width * 0.85);
             height: root.height;
-            background: ChartTheme.background;
             samples: root.samples;
             sample: root.sample;
-            dark-mode: root.dark-mode;
             roomy: true;
             top-inset: WindowFrame.mac-titlebar ? 32px : 0px;
             select(id) => {

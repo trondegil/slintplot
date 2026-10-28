@@ -1632,7 +1632,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     for category in categories {
         entries.push(SampleEntry {
             id: "".into(),
-            title: category.to_uppercase().into(),
+            title: category.into(),
             header: true,
         });
         for s in SAMPLES.iter().filter(|s| s.category == category) {
