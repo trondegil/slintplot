@@ -31,7 +31,8 @@ import {
     ScatterChart,
     TimeSeriesChart,
 } from "@slintplot";
-export { ChartEngine, ChartLanguage, ChartTheme }
+import { DragArea, ResizeHandles, WindowFrame, WindowsControls } from "window_frame.slint";
+export { ChartEngine, ChartLanguage, ChartTheme, WindowFrame }
 
 // A row of the sample list: a category header, or a sample.
 export struct SampleEntry {
@@ -47,9 +48,17 @@ component SampleList inherits Rectangle {
     in property <bool> dark-mode;
     // Taller rows, for touch screens.
     in property <bool> roomy;
+    // Room at the top, for the window buttons on macOS.
+    in property <length> top-inset;
     callback select(id: string);
 
+    if root.top-inset > 0: DragArea {
+        y: 0;
+        height: root.top-inset;
+    }
     ListView {
+        y: root.top-inset;
+        height: parent.height - root.top-inset;
         for entry in root.samples: Rectangle {
             height: (entry.header ? 34px : 28px) + (root.roomy && !entry.header ? 12px : 0px);
             background: entry.id == root.sample ? (root.dark-mode ? #ffffff1a : #0000000f) : transparent;
@@ -108,7 +117,14 @@ export component Gallery inherits Window {
     icon: @image-url("../icon.png");
     preferred-width: 1280px;
     preferred-height: 820px;
-    background: ChartTheme.background;
+    // Windows and Linux: the app draws the frame, with rounded corners over
+    // a transparent window.
+    no-frame: WindowFrame.drawn;
+    background: WindowFrame.drawn ? transparent : ChartTheme.background;
+    // The rounded corners of the drawn frame; square when maximized.
+    private property <length> corner-radius: WindowFrame.drawn && !WindowFrame.maximized ? 8px : 0px;
+    // The width of the drawn title bar buttons at the top right.
+    private property <length> controls-width: WindowFrame.drawn ? 3 * 46px : 0px;
 
     in property <[SampleEntry]> samples;
     in-out property <string> sample;
@@ -194,9 +210,21 @@ export component Gallery inherits Window {
             : ChartPalette.pastel;
     }
 
+    Rectangle {
+    border-radius: root.corner-radius;
+    clip: WindowFrame.drawn;
+    background: ChartTheme.background;
+
+    // The empty parts of the top of the window move it.
+    if WindowFrame.drawn || WindowFrame.mac-titlebar: DragArea {
+        y: 0;
+        height: root.narrow ? 52px : 64px;
+    }
+
     HorizontalLayout {
         if !root.narrow && root.show-samples: SampleList {
             width: 230px;
+            top-inset: WindowFrame.mac-titlebar ? 30px : 0px;
             background: root.dark-mode ? #ffffff08 : #00000006;
             samples: root.samples;
             sample: root.sample;
@@ -213,6 +241,10 @@ export component Gallery inherits Window {
 
             HorizontalLayout {
                 spacing: 10px;
+                // Room for the macOS window buttons when the sample list is hidden.
+                if WindowFrame.mac-titlebar && (root.narrow || !root.show-samples): Rectangle {
+                    width: 62px;
+                }
                 MenuButton {
                     y: (parent.height - self.height) / 2;
                     clicked => {
@@ -276,6 +308,10 @@ export component Gallery inherits Window {
                 CheckBox {
                     text: root.narrow ? "Dark" : "Dark mode";
                     checked <=> root.dark-mode;
+                }
+                // Room for the drawn window buttons.
+                if WindowFrame.drawn: Rectangle {
+                    width: root.controls-width - (root.narrow ? 10px : 20px);
                 }
             }
 
@@ -677,4 +713,20 @@ export component Gallery inherits Window {
             }
         }
     }
+
+    if WindowFrame.drawn: WindowsControls {
+        width: root.controls-width;
+        x: root.width - self.width;
+        y: 0;
+        height: 32px;
+    }
+    }
+
+    if WindowFrame.drawn && !WindowFrame.maximized: Rectangle {
+        border-radius: root.corner-radius;
+        border-width: 1px;
+        border-color: root.dark-mode ? #ffffff26 : #00000026;
+    }
+
+    if WindowFrame.drawn && !WindowFrame.maximized: ResizeHandles { }
 }

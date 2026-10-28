@@ -1,0 +1,213 @@
+import { Palette } from "std-widgets.slint";
+
+// The window frame. On macOS the system draws it, with a see-through title
+// bar over the content; on Windows and Linux the app draws its own title bar
+// buttons, edges and rounded corners. In the browser there is none.
+export global WindowFrame {
+    // The app draws the frame (Windows and Linux).
+    in property <bool> drawn;
+    // The system's title bar buttons sit over the content (macOS): leave
+    // room for them at the top left.
+    in property <bool> mac-titlebar;
+    in-out property <bool> maximized;
+    callback drag();
+    // 0 = east, 1 = north, 2 = north-east, 3 = north-west, 4 = south, 5 = south-east,
+    // 6 = south-west, 7 = west
+    callback resize(int);
+    callback close();
+    callback minimize();
+    callback toggle-maximize();
+}
+
+// Moves the window when dragged and toggles maximize on double-click. The
+// move starts only after a few pixels so clicks and double-clicks still
+// reach this area.
+export component DragArea inherits TouchArea {
+    moved => {
+        if self.pressed && (abs(self.mouse-x - self.pressed-x) > 3px || abs(self.mouse-y - self.pressed-y) > 3px) {
+            WindowFrame.drag();
+        }
+    }
+    double-clicked => {
+        WindowFrame.toggle-maximize();
+    }
+}
+
+component CaptionButton inherits Rectangle {
+    in property <string> glyph;
+    in property <bool> danger;
+    callback clicked();
+    background: ta.pressed ? (root.danger ? #f1707a : (Palette.color-scheme == ColorScheme.dark ? #ffffff26 : #00000026))
+        : ta.has-hover ? (root.danger ? #e81123 : (Palette.color-scheme == ColorScheme.dark ? #ffffff14 : #0000000d)) : transparent;
+    Path {
+        width: 10px;
+        height: 10px;
+        viewbox-width: 10;
+        viewbox-height: 10;
+        commands: root.glyph;
+        stroke: root.danger && ta.has-hover ? #ffffff : Palette.foreground;
+        stroke-width: 1px;
+        fill: transparent;
+    }
+
+    ta := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// Windows-style minimize, maximize/restore and close buttons.
+export component WindowsControls inherits HorizontalLayout {
+    in property <length> button-width: 46px;
+    CaptionButton {
+        width: root.button-width;
+        glyph: "M 0 5 L 10 5";
+        clicked => {
+            WindowFrame.minimize();
+        }
+    }
+
+    CaptionButton {
+        width: root.button-width;
+        // Two overlapping squares when maximized (restore), one square otherwise
+        glyph: WindowFrame.maximized ? "M 0 2.5 L 7.5 2.5 L 7.5 10 L 0 10 Z M 2.5 2.5 L 2.5 0 L 10 0 L 10 7.5 L 7.5 7.5" : "M 0.5 0.5 L 9.5 0.5 L 9.5 9.5 L 0.5 9.5 Z";
+        clicked => {
+            WindowFrame.toggle-maximize();
+        }
+    }
+
+    CaptionButton {
+        width: root.button-width;
+        danger: true;
+        glyph: "M 0 0 L 10 10 M 10 0 L 0 10";
+        clicked => {
+            WindowFrame.close();
+        }
+    }
+}
+
+component Handle inherits TouchArea {
+    in property <int> direction;
+    pointer-event(event) => {
+        if event.kind == PointerEventKind.down && event.button == PointerEventButton.left {
+            WindowFrame.resize(self.direction);
+        }
+    }
+}
+
+// Invisible handles along the window edges for resizing.
+export component ResizeHandles inherits Rectangle {
+    property <length> edge: 5px;
+    property <length> corner: 12px;
+
+    // Edges
+    Handle {
+        x: root.corner;
+        y: 0px;
+        width: root.width - 2 * root.corner;
+        height: root.edge;
+        direction: 1;
+        mouse-cursor: ns-resize;
+    }
+
+    Handle {
+        x: root.corner;
+        y: root.height - root.edge;
+        width: root.width - 2 * root.corner;
+        height: root.edge;
+        direction: 4;
+        mouse-cursor: ns-resize;
+    }
+
+    Handle {
+        x: 0px;
+        y: root.corner;
+        width: root.edge;
+        height: root.height - 2 * root.corner;
+        direction: 7;
+        mouse-cursor: ew-resize;
+    }
+
+    Handle {
+        x: root.width - root.edge;
+        y: root.corner;
+        width: root.edge;
+        height: root.height - 2 * root.corner;
+        direction: 0;
+        mouse-cursor: ew-resize;
+    }
+
+    // Corners
+    Handle {
+        x: 0px;
+        y: 0px;
+        width: root.corner;
+        height: root.edge;
+        direction: 3;
+        mouse-cursor: nwse-resize;
+    }
+
+    Handle {
+        x: 0px;
+        y: 0px;
+        width: root.edge;
+        height: root.corner;
+        direction: 3;
+        mouse-cursor: nwse-resize;
+    }
+
+    Handle {
+        x: root.width - root.corner;
+        y: 0px;
+        width: root.corner;
+        height: root.edge;
+        direction: 2;
+        mouse-cursor: nesw-resize;
+    }
+
+    Handle {
+        x: root.width - root.edge;
+        y: 0px;
+        width: root.edge;
+        height: root.corner;
+        direction: 2;
+        mouse-cursor: nesw-resize;
+    }
+
+    Handle {
+        x: 0px;
+        y: root.height - root.edge;
+        width: root.corner;
+        height: root.edge;
+        direction: 6;
+        mouse-cursor: nesw-resize;
+    }
+
+    Handle {
+        x: 0px;
+        y: root.height - root.corner;
+        width: root.edge;
+        height: root.corner;
+        direction: 6;
+        mouse-cursor: nesw-resize;
+    }
+
+    Handle {
+        x: root.width - root.corner;
+        y: root.height - root.edge;
+        width: root.corner;
+        height: root.edge;
+        direction: 5;
+        mouse-cursor: nwse-resize;
+    }
+
+    Handle {
+        x: root.width - root.edge;
+        y: root.height - root.corner;
+        width: root.edge;
+        height: root.corner;
+        direction: 5;
+        mouse-cursor: nwse-resize;
+    }
+}

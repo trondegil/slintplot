@@ -16,8 +16,9 @@ include = ["src/**", "ui/**", "build.rs", "icon.png", "README.md", "LICENSE.md",
 slintplot.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# `software-renderer-path` lets the software renderer (used by `--snapshot`) draw paths.
-slint = { workspace = true, features = ["software-renderer-path"] }
+# `software-renderer-path` lets the software renderer (used by `--snapshot`) draw paths;
+# `unstable-winit-030` gives the window frame (see ui/window_frame.slint) its window.
+slint = { workspace = true, features = ["software-renderer-path", "unstable-winit-030"] }
 # Writes the `--snapshot` PNG files.
 png = "0.18"
 
