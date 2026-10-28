@@ -1959,8 +1959,8 @@ Licenses are per developer, per year, and cover any number of your products.</p>
   <div class="plan featured" data-plan="business">
     <h3>Business</h3>
     <p class="who">For every other company</p>
-    <div class="price"><span class="was bird-only">€399</span><span class="now">€199</span> <small>per developer / year</small></div>
-    <span class="bird bird-only">€399 per developer / year after two years</span>
+    <div class="price"><span class="was bird-only">€299</span><span class="now">€149</span> <small>per developer / year</small></div>
+    <span class="bird bird-only">€299 per developer / year after two years</span>
     <ul>
       <li>Everything in Indie</li>
       <li>Priority email support</li>
@@ -2084,7 +2084,7 @@ built with; new products and newer SlintPlot versions need an active license. Yo
   };
   // The offer ends at midnight UTC after 31 December 2027. In Paddle, each
   // plan has its own discount code: a flat amount per developer (€50 off
-  // Indie, €200 off Business), restricted to that plan's price, recurring
+  // Indie, €150 off Business), restricted to that plan's price, recurring
   // for one renewal (two payments in all), and expiring at the same time.
   const earlyBirdEnd = new Date("2028-01-01T00:00:00Z");
   const earlyBird = new Date() < earlyBirdEnd;
@@ -2105,7 +2105,7 @@ built with; new products and newer SlintPlot versions need an active license. Yo
     document.getElementById("early-bird").remove();
     document.querySelectorAll(".bird-only").forEach((element) => element.remove());
     document.querySelectorAll(".plan .now").forEach((now) => {
-      now.textContent = { indie: "€99", business: "€399", enterprise: "€2,500" }[now.closest(".plan").dataset.plan];
+      now.textContent = { indie: "€99", business: "€299", enterprise: "€2,500" }[now.closest(".plan").dataset.plan];
     });
   }
   if (paddle.token) {

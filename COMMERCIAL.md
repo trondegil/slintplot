@@ -39,10 +39,10 @@ products. Prices exclude VAT.
 | Plan | For | Price |
 |---|---|---|
 | Indie | Solo developers and companies with under €250,000 in annual revenue | €99 per developer per year |
-| Business | Every other company | €399 per developer per year |
+| Business | Every other company | €299 per developer per year |
 | Enterprise | Every developer in the company, custom terms | from €2,500 per year |
 
-**Early bird:** buy by 31 December 2027 and pay half price (€49 Indie, €199
+**Early bird:** buy by 31 December 2027 and pay half price (€49 Indie, €149
 Business per developer per year, Enterprise from €1,250 per year) for your
 first two years: the first year and the first renewal.
 
