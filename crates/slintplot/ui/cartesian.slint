@@ -94,6 +94,9 @@ export component CartesianChart {
     private property <float> mouse-category: chart.start + touch.mouse-x / (chart.step * 1px);
     // The category selected with the keyboard.
     private property <int> key-index: -1;
+    // Between a point's coordinates in tooltips: "; " where the decimal is a
+    // comma, as in "(1,5; 2,5)".
+    private property <string> coordinate-separator: ChartTheme.locale.decimal == "," ? "; " : ", ";
 
     // Scatter, bubble and time series charts: the point under the mouse, or
     // selected with the arrow keys; `dataset` is -1 when none.
@@ -677,9 +680,9 @@ export component CartesianChart {
                             Text {
                                 text: root.time-axis
                                     ? dataset.label + ": " + ChartEngine.format-value(point.y, root.format-of(root.hovered-point.dataset))
-                                    : dataset.label + ": (" + ChartEngine.format-value(point.x, { decimals: -1 }) + ", "
+                                    : dataset.label + ": (" + ChartEngine.format-value(point.x, { decimals: -1 }) + root.coordinate-separator
                                         + ChartEngine.format-value(point.y, root.format-of(root.hovered-point.dataset))
-                                        + (root.kind == ChartKind.bubble ? ", " + ChartEngine.format-value(point.r, { decimals: -1 }) : "") + ")";
+                                        + (root.kind == ChartKind.bubble ? root.coordinate-separator + ChartEngine.format-value(point.r, { decimals: -1 }) : "") + ")";
                                 color: ChartTheme.tooltip-text;
                                 font-size: ChartTheme.font-size;
                             }

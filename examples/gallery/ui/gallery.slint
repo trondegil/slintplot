@@ -19,6 +19,7 @@ import {
     ChartLegendPosition,
     ChartPalette,
     ChartSlice,
+    ChartTexts,
     ChartTheme,
     DoughnutChart,
     HeatmapChart,
@@ -30,7 +31,7 @@ import {
     ScatterChart,
     TimeSeriesChart,
 } from "@slintplot";
-export { ChartEngine }
+export { ChartEngine, ChartTheme }
 
 // A row of the sample list: a category header, or a sample.
 export struct SampleEntry {
@@ -157,6 +158,8 @@ export component Gallery inherits Window {
     callback action(index: int);
     // Samples with their own light and dark colors update them.
     callback dark-mode-changed();
+    // Samples with month or weekday labels relabel them.
+    callback language-changed();
     // The zoom window of the one-week time series.
     in-out property <float> view-start: 0;
     in-out property <float> view-end: 1;
@@ -178,6 +181,7 @@ export component Gallery inherits Window {
     }
     changed language => {
         ChartTheme.language = self.languages[self.language];
+        root.language-changed();
     }
     changed theme => {
         ChartTheme.palette = self.theme == 0 ? ChartPalette.modern
@@ -536,7 +540,7 @@ export component Gallery inherits Window {
                             title: "Storage used";
                             value: root.gauge-value;
                             label: "of 2 TB";
-                            value-suffix: "%";
+                            value-suffix: ChartTexts.percent;
                             value-decimals: 0;
                         }
                         GaugeChart {
@@ -546,7 +550,7 @@ export component Gallery inherits Window {
                             value: 100 - root.gauge-value * 0.8;
                             label: "16 GB";
                             sweep: 240;
-                            value-suffix: "%";
+                            value-suffix: ChartTexts.percent;
                             value-decimals: 0;
                             bands: [
                                 { to: 60, label: "Normal", color: ChartTheme.dark ? #34d399 : #10b981 },

@@ -1,5 +1,5 @@
 import { ChartEngine, ChartFormat, ChartLegendItem, ChartSunburstArc, ChartSunburstItem, ChartSunburstLayout } from "engine.slint";
-import { ChartTheme } from "theme.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
 
 // A sunburst chart: a hierarchy drawn as rings, the top level innermost, each
@@ -18,7 +18,7 @@ export component SunburstChart {
     // Size of the center circle, as a share of the radius.
     in property <float> cutout: 0.3;
     // Shown in the center above the total, when not zoomed in.
-    in property <string> center-label: "Total";
+    in property <string> center-label: ChartTexts.total;
     // How values are written: a prefix and suffix, and a fixed number of
     // decimals (-1: automatic).
     in property <string> value-prefix;

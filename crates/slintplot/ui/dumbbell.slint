@@ -1,5 +1,5 @@
 import { ChartAxis, ChartDataset, ChartDumbbellLayout, ChartEngine, ChartFormat, ChartKind, ChartLegendItem } from "engine.slint";
-import { ChartTheme } from "theme.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
 
 // A dumbbell chart: one row per category, with a dot for each dataset's value
@@ -343,7 +343,7 @@ export component DumbbellChart {
                         // With two datasets: the change from the first to the second.
                         if root.datasets.length == 2 && !root.datasets[0].hidden && !root.datasets[1].hidden: Text {
                             property <float> change: root.datasets[1].values[index] - root.datasets[0].values[index];
-                            text: "Change: " + (self.change > 0 ? "+" : "") + ChartEngine.format-value(self.change, root.format);
+                            text: ChartTexts.change + ": " + (self.change > 0 ? "+" : "") + ChartEngine.format-value(self.change, root.format);
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }

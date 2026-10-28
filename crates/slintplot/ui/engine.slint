@@ -555,6 +555,8 @@ export global ChartEngine {
         self.format-date-time(origin, utc-offset, seconds, ChartTheme.locale)
     }
     pure callback widest-label(labels: [string]) -> string;
+    // A text pattern of the locale with "{value}" and "{date}" filled in.
+    pure callback fill-text(pattern: string, value: string, date: string) -> string;
     // The point of a scatter layout closest to (x, y), within `radius` pixels.
     // With `x-only`, the point closest in x at any distance (time series).
     // Keyboard moves in scatter, bubble and time series charts: from the point

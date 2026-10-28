@@ -1,5 +1,5 @@
 import { ChartCalendarLayout, ChartDateTime, ChartEngine, ChartFormat, ChartRange } from "engine.slint";
-import { ChartTheme } from "theme.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
 
 // A matrix of colored cells: rows (`y-labels`) by columns (`x-labels`), with
 // `values` in row order: `values[row * columns + column]`. Missing values
@@ -254,7 +254,7 @@ export component HeatmapChart {
                     Text {
                         property <float> value: root.values[root.hovered-cell];
                         text: root.y-labels[root.hovered-row] + ", " + root.x-labels[root.hovered-column] + ": "
-                            + (self.value == self.value ? ChartEngine.format-value(self.value, root.format) : "no data");
+                            + (self.value == self.value ? ChartEngine.format-value(self.value, root.format) : ChartTexts.no-data);
                         color: ChartTheme.tooltip-text;
                         font-size: ChartTheme.font-size;
                     }
@@ -500,8 +500,9 @@ export component CalendarHeatmap {
                     padding-left: 8px;
                     padding-right: 8px;
                     Text {
-                        text: (value == value ? ChartEngine.format-value(value, root.format) : "No data")
-                            + " on " + ChartEngine.format-time(root.start-date, 0, root.hovered-index * 86400);
+                        text: ChartEngine.fill-text(ChartTexts.on-date,
+                            value == value ? ChartEngine.format-value(value, root.format) : ChartTexts.no-data,
+                            ChartEngine.format-time(root.start-date, 0, root.hovered-index * 86400));
                         color: ChartTheme.tooltip-text;
                         font-size: ChartTheme.font-size;
                     }
@@ -509,13 +510,13 @@ export component CalendarHeatmap {
             }
         }
 
-        // Legend: "Less" to "More", like GitHub.
+        // Legend: "Less" to "More" in the locale, like GitHub.
         if root.show-legend: HorizontalLayout {
             alignment: start;
             padding-left: root.label-width;
             spacing: 4px;
             Text {
-                text: "Less";
+                text: ChartTexts.less;
                 color: ChartTheme.text-color;
                 font-size: ChartTheme.font-size * 0.9;
                 vertical-alignment: center;
@@ -532,7 +533,7 @@ export component CalendarHeatmap {
                 }
             }
             Text {
-                text: "More";
+                text: ChartTexts.more;
                 color: ChartTheme.text-color;
                 font-size: ChartTheme.font-size * 0.9;
                 vertical-alignment: center;

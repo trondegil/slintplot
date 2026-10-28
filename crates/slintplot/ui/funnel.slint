@@ -1,5 +1,5 @@
 import { ChartEngine, ChartFormat, ChartFunnelLayout, ChartFunnelStage, ChartLegendItem, ChartSlice } from "engine.slint";
-import { ChartTheme } from "theme.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
 
 // A funnel chart: the stages as slices of one funnel, each as wide at the top
@@ -315,12 +315,12 @@ export component FunnelChart {
                             }
                         }
                         Text {
-                            text: ChartEngine.format-percent(stage.of-first * 100, 1) + " of the first stage";
+                            text: ChartEngine.fill-text(ChartTexts.of-first-stage, ChartEngine.format-percent(stage.of-first * 100, 1), "");
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }
                         if root.hovered-row > 0: Text {
-                            text: ChartEngine.format-percent(stage.of-previous * 100, 1) + " of the previous stage";
+                            text: ChartEngine.fill-text(ChartTexts.of-previous-stage, ChartEngine.format-percent(stage.of-previous * 100, 1), "");
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }

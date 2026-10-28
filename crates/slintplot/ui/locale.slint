@@ -2,8 +2,8 @@
 // and date patterns. Set `ChartTheme.language`, or assign your own
 // `ChartLocale` to `ChartTheme.locale`.
 
-// Number and date conventions. Empty fields, and name lists of the wrong
-// length, are English. Date patterns use {d} for the day, {MMM} for the short
+// Number and date conventions, and the charts' few built-in texts. Empty
+// fields, and name lists of the wrong length, are English. Date patterns use {d} for the day, {MMM} for the short
 // month name and {yyyy} for the year; `date-time` combines {date} and {time}.
 export struct ChartLocale {
     // Before the decimals: "." or ",".
@@ -30,10 +30,28 @@ export struct ChartLocale {
     hour12: bool,
     am: string,
     pm: string,
+    // Calendar heatmaps: the ends of the legend ("Less", "More").
+    less: string,
+    more: string,
+    // Heatmap tooltips: a missing value ("No data").
+    no-data: string,
+    // Waterfall charts: the default legend ("Increase", "Decrease",
+    // "Total"), and the tooltip's "Running total".
+    increase: string,
+    decrease: string,
+    total: string,
+    running-total: string,
+    // Dumbbell tooltips: "Change".
+    change: string,
+    // Funnel tooltips: "{value} of the first stage", "{value} of the
+    // previous stage".
+    of-first-stage: string,
+    of-previous-stage: string,
+    // Calendar heatmap tooltips: "{value} on {date}".
+    on-date: string,
 }
 
-// The languages with built-in conventions. Numbers and dates only: texts
-// such as "no data" in tooltips are English.
+// The languages with built-in conventions and texts.
 export enum ChartLanguage {
     english,
     chinese,
@@ -59,6 +77,9 @@ export global ChartLocales {
                 months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
                 weekdays: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
                 day-month: "{MMM}{d}日", month-year: "{yyyy}年{MMM}", date: "{yyyy}年{MMM}{d}日", date-time: "{date} {time}",
+                less: "少", more: "多", no-data: "无数据",
+                increase: "增加", decrease: "减少", total: "合计", running-total: "累计", change: "变化",
+                of-first-stage: "占第一阶段的{value}", of-previous-stage: "占上一阶段的{value}", on-date: "{date}：{value}",
             };
         }
         if language == ChartLanguage.danish {
@@ -67,6 +88,9 @@ export global ChartLocales {
                 months: ["jan.", "feb.", "mar.", "apr.", "maj", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "dec."],
                 weekdays: ["man.", "tir.", "ons.", "tor.", "fre.", "lør.", "søn."],
                 day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date} {time}",
+                less: "Mindre", more: "Mere", no-data: "Ingen data",
+                increase: "Stigning", decrease: "Fald", total: "I alt", running-total: "Løbende total", change: "Ændring",
+                of-first-stage: "{value} af første trin", of-previous-stage: "{value} af forrige trin", on-date: "{value} den {date}",
             };
         }
         if language == ChartLanguage.dutch {
@@ -75,6 +99,9 @@ export global ChartLocales {
                 months: ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
                 weekdays: ["ma", "di", "wo", "do", "vr", "za", "zo"],
                 day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date} {time}",
+                less: "Minder", more: "Meer", no-data: "Geen gegevens",
+                increase: "Toename", decrease: "Afname", total: "Totaal", running-total: "Lopend totaal", change: "Verandering",
+                of-first-stage: "{value} van de eerste fase", of-previous-stage: "{value} van de vorige fase", on-date: "{value} op {date}",
             };
         }
         if language == ChartLanguage.finnish {
@@ -83,6 +110,9 @@ export global ChartLocales {
                 months: ["tammik.", "helmik.", "maalisk.", "huhtik.", "toukok.", "kesäk.", "heinäk.", "elok.", "syysk.", "lokak.", "marrask.", "jouluk."],
                 weekdays: ["ma", "ti", "ke", "to", "pe", "la", "su"],
                 day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date} {time}",
+                less: "Vähemmän", more: "Enemmän", no-data: "Ei tietoja",
+                increase: "Lisäys", decrease: "Vähennys", total: "Yhteensä", running-total: "Kertymä", change: "Muutos",
+                of-first-stage: "{value} ensimmäisestä vaiheesta", of-previous-stage: "{value} edellisestä vaiheesta", on-date: "{date}: {value}",
             };
         }
         if language == ChartLanguage.french {
@@ -91,6 +121,9 @@ export global ChartLocales {
                 months: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
                 weekdays: ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."],
                 day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date} {time}",
+                less: "Moins", more: "Plus", no-data: "Aucune donnée",
+                increase: "Hausse", decrease: "Baisse", total: "Total", running-total: "Total cumulé", change: "Variation",
+                of-first-stage: "{value} de la première étape", of-previous-stage: "{value} de l’étape précédente", on-date: "{value} le {date}",
             };
         }
         if language == ChartLanguage.german {
@@ -99,6 +132,9 @@ export global ChartLocales {
                 months: ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."],
                 weekdays: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
                 day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date}, {time}",
+                less: "Weniger", more: "Mehr", no-data: "Keine Daten",
+                increase: "Zunahme", decrease: "Abnahme", total: "Summe", running-total: "Laufende Summe", change: "Änderung",
+                of-first-stage: "{value} der ersten Stufe", of-previous-stage: "{value} der vorherigen Stufe", on-date: "{value} am {date}",
             };
         }
         if language == ChartLanguage.italian {
@@ -107,6 +143,9 @@ export global ChartLocales {
                 months: ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"],
                 weekdays: ["lun", "mar", "mer", "gio", "ven", "sab", "dom"],
                 day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date}, {time}",
+                less: "Meno", more: "Più", no-data: "Nessun dato",
+                increase: "Aumento", decrease: "Diminuzione", total: "Totale", running-total: "Totale progressivo", change: "Variazione",
+                of-first-stage: "{value} della prima fase", of-previous-stage: "{value} della fase precedente", on-date: "{value} il {date}",
             };
         }
         if language == ChartLanguage.japanese {
@@ -114,6 +153,9 @@ export global ChartLocales {
                 months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
                 weekdays: ["月", "火", "水", "木", "金", "土", "日"],
                 day-month: "{MMM}{d}日", month-year: "{yyyy}年{MMM}", date: "{yyyy}年{MMM}{d}日", date-time: "{date} {time}",
+                less: "少ない", more: "多い", no-data: "データなし",
+                increase: "増加", decrease: "減少", total: "合計", running-total: "累計", change: "変化",
+                of-first-stage: "最初の段階の{value}", of-previous-stage: "前の段階の{value}", on-date: "{date}：{value}",
             };
         }
         if language == ChartLanguage.norwegian {
@@ -122,6 +164,9 @@ export global ChartLocales {
                 months: ["jan.", "feb.", "mar.", "apr.", "mai", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "des."],
                 weekdays: ["man.", "tir.", "ons.", "tor.", "fre.", "lør.", "søn."],
                 day-month: "{d}. {MMM}", month-year: "{MMM} {yyyy}", date: "{d}. {MMM} {yyyy}", date-time: "{date}, {time}",
+                less: "Mindre", more: "Mer", no-data: "Ingen data",
+                increase: "Økning", decrease: "Nedgang", total: "Totalt", running-total: "Løpende total", change: "Endring",
+                of-first-stage: "{value} av første trinn", of-previous-stage: "{value} av forrige trinn", on-date: "{value} den {date}",
             };
         }
         if language == ChartLanguage.polish {
@@ -130,6 +175,9 @@ export global ChartLocales {
                 months: ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"],
                 weekdays: ["pon.", "wt.", "śr.", "czw.", "pt.", "sob.", "niedz."],
                 day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date}, {time}",
+                less: "Mniej", more: "Więcej", no-data: "Brak danych",
+                increase: "Wzrost", decrease: "Spadek", total: "Suma", running-total: "Suma narastająco", change: "Zmiana",
+                of-first-stage: "{value} pierwszego etapu", of-previous-stage: "{value} poprzedniego etapu", on-date: "{date}: {value}",
             };
         }
         if language == ChartLanguage.portuguese {
@@ -138,6 +186,9 @@ export global ChartLocales {
                 months: ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."],
                 weekdays: ["seg.", "ter.", "qua.", "qui.", "sex.", "sáb.", "dom."],
                 day-month: "{d} de {MMM}", month-year: "{MMM} de {yyyy}", date: "{d} de {MMM} de {yyyy}", date-time: "{date}, {time}",
+                less: "Menos", more: "Mais", no-data: "Sem dados",
+                increase: "Aumento", decrease: "Diminuição", total: "Total", running-total: "Total acumulado", change: "Variação",
+                of-first-stage: "{value} da primeira etapa", of-previous-stage: "{value} da etapa anterior", on-date: "{value} em {date}",
             };
         }
         if language == ChartLanguage.spanish {
@@ -146,6 +197,9 @@ export global ChartLocales {
                 months: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"],
                 weekdays: ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"],
                 day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date}, {time}",
+                less: "Menos", more: "Más", no-data: "Sin datos",
+                increase: "Aumento", decrease: "Disminución", total: "Total", running-total: "Total acumulado", change: "Cambio",
+                of-first-stage: "{value} de la primera etapa", of-previous-stage: "{value} de la etapa anterior", on-date: "{value} el {date}",
             };
         }
         if language == ChartLanguage.swedish {
@@ -154,6 +208,9 @@ export global ChartLocales {
                 months: ["jan.", "feb.", "mars", "apr.", "maj", "juni", "juli", "aug.", "sep.", "okt.", "nov.", "dec."],
                 weekdays: ["mån", "tis", "ons", "tors", "fre", "lör", "sön"],
                 day-month: "{d} {MMM}", month-year: "{MMM} {yyyy}", date: "{d} {MMM} {yyyy}", date-time: "{date} {time}",
+                less: "Mindre", more: "Mer", no-data: "Inga data",
+                increase: "Ökning", decrease: "Minskning", total: "Totalt", running-total: "Löpande summa", change: "Förändring",
+                of-first-stage: "{value} av första steget", of-previous-stage: "{value} av föregående steg", on-date: "{value} den {date}",
             };
         }
         // English: every field falls back to it.

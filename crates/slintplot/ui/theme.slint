@@ -55,3 +55,21 @@ export global ChartTheme {
     in-out property <length> slice-hover-offset: 8px;
     in-out property <duration> animation-duration: 900ms;
 }
+
+// The built-in texts of `ChartTheme.locale`, English where empty.
+export global ChartTexts {
+    // The percent sign, with the space before it in some languages, for a
+    // `value-suffix` such as a gauge's.
+    out property <string> percent: ChartTheme.locale.percent != "" ? ChartTheme.locale.percent : "%";
+    out property <string> less: ChartTheme.locale.less != "" ? ChartTheme.locale.less : "Less";
+    out property <string> more: ChartTheme.locale.more != "" ? ChartTheme.locale.more : "More";
+    out property <string> no-data: ChartTheme.locale.no-data != "" ? ChartTheme.locale.no-data : "No data";
+    out property <string> increase: ChartTheme.locale.increase != "" ? ChartTheme.locale.increase : "Increase";
+    out property <string> decrease: ChartTheme.locale.decrease != "" ? ChartTheme.locale.decrease : "Decrease";
+    out property <string> total: ChartTheme.locale.total != "" ? ChartTheme.locale.total : "Total";
+    out property <string> running-total: ChartTheme.locale.running-total != "" ? ChartTheme.locale.running-total : "Running total";
+    out property <string> change: ChartTheme.locale.change != "" ? ChartTheme.locale.change : "Change";
+    out property <string> of-first-stage: ChartTheme.locale.of-first-stage != "" ? ChartTheme.locale.of-first-stage : "{value} of the first stage";
+    out property <string> of-previous-stage: ChartTheme.locale.of-previous-stage != "" ? ChartTheme.locale.of-previous-stage : "{value} of the previous stage";
+    out property <string> on-date: ChartTheme.locale.on-date != "" ? ChartTheme.locale.on-date : "{value} on {date}";
+}

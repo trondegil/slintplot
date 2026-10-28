@@ -1,5 +1,5 @@
 import { ChartAxis, ChartChange, ChartEngine, ChartFormat, ChartKind, ChartLegendItem, ChartWaterfallBar, ChartWaterfallLayout, ChartWaterfallStep } from "engine.slint";
-import { ChartTheme } from "theme.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
 
 // A waterfall chart: each step's bar floats from the running total before it
@@ -21,9 +21,9 @@ export component WaterfallChart {
     in property <color> increase-color: ChartTheme.dark ? #34d399 : #10b981;
     in property <color> decrease-color: ChartTheme.dark ? #fb7185 : #f43f5e;
     in property <color> total-color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #3b82f6;
-    in property <string> increase-label: "Increase";
-    in property <string> decrease-label: "Decrease";
-    in property <string> total-label: "Total";
+    in property <string> increase-label: ChartTexts.increase;
+    in property <string> decrease-label: ChartTexts.decrease;
+    in property <string> total-label: ChartTexts.total;
     in property <length> bar-radius: 0;
     in property <length> bar-border-width: 1px;
     // Opacity of the bar fills; the theme's `fill-opacity` by default.
@@ -329,7 +329,7 @@ export component WaterfallChart {
                             }
                         }
                         if !root.steps[bar.index].total: Text {
-                            text: "Running total: " + ChartEngine.format-value(root.totals[bar.index], root.format);
+                            text: ChartTexts.running-total + ": " + ChartEngine.format-value(root.totals[bar.index], root.format);
                             color: ChartTheme.tooltip-text;
                             font-size: ChartTheme.font-size;
                         }

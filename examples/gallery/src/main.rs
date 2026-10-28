@@ -1122,6 +1122,46 @@ impl State {
         }
     }
 
+    /// The 12 month names in the chart language, or English.
+    fn month_names(&self) -> Vec<SharedString> {
+        let months = self
+            .ui
+            .upgrade()
+            .map(|ui| ui.global::<ChartTheme>().get_locale().months);
+        match months {
+            Some(m) if m.row_count() == 12 => m.iter().collect(),
+            _ => MONTHS.iter().map(|&m| m.into()).collect(),
+        }
+    }
+
+    /// The 7 weekday names in the chart language, Monday first, or English.
+    fn weekday_names(&self) -> Vec<SharedString> {
+        let weekdays = self
+            .ui
+            .upgrade()
+            .map(|ui| ui.global::<ChartTheme>().get_locale().weekdays);
+        match weekdays {
+            Some(w) if w.row_count() == 7 => w.iter().collect(),
+            _ => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                .map(SharedString::from)
+                .to_vec(),
+        }
+    }
+
+    /// Puts the month and weekday labels in the chart language.
+    fn relabel(&mut self) {
+        match self.sample.shape {
+            Shape::Months { .. } | Shape::Exponential => {
+                let months = self.month_names();
+                for i in 0..self.labels.row_count() {
+                    self.labels.set_row_data(i, months[i % 12].clone());
+                }
+            }
+            Shape::Matrix => self.row_labels.set_vec(self.weekday_names()),
+            _ => {}
+        }
+    }
+
     /// Builds the data of `sample` and shows it.
     fn select(&mut self, sample: &'static Sample) {
         self.sample = sample;
@@ -1131,9 +1171,7 @@ impl State {
             ui.set_view_end(1.0);
         }
         let row_labels: Vec<SharedString> = match sample.shape {
-            Shape::Matrix => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-                .map(SharedString::from)
-                .to_vec(),
+            Shape::Matrix => self.weekday_names(),
             Shape::Correlation => ["Price", "Size", "Age", "Rooms", "Floor", "Garden"]
                 .map(SharedString::from)
                 .to_vec(),
@@ -1156,7 +1194,7 @@ impl State {
             .map(SharedString::from)
             .to_vec(),
             Shape::Months { .. } | Shape::Exponential => {
-                MONTHS[..7].iter().map(|&m| m.into()).collect()
+                self.month_names().into_iter().take(7).collect()
             }
             Shape::Skills => SKILLS.iter().map(|&s| s.into()).collect(),
             Shape::Dumbbell => LIFE_EXPECTANCY.iter().map(|c| c.0.into()).collect(),
@@ -1425,7 +1463,7 @@ impl State {
             }
             "Add data" => {
                 let next = self.labels.row_count();
-                self.labels.push(MONTHS[next % 12].into());
+                self.labels.push(self.month_names()[next % 12].clone());
                 self.update_datasets(|state, ds| {
                     let mut values: Vec<f32> = ds.values.iter().collect();
                     values.extend(state.values(1));
@@ -1546,6 +1584,8 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     });
     let s = state.clone();
     ui.on_dark_mode_changed(move || s.borrow_mut().recolor_survey());
+    let s = state.clone();
+    ui.on_language_changed(move || s.borrow_mut().relabel());
     Ok((ui, state))
 }
 

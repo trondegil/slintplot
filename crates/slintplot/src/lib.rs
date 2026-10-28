@@ -472,6 +472,9 @@ macro_rules! register {
             };
             $crate::pie::hit(&pie, x, y).map_or(-1, |i| i as i32)
         });
+        engine.on_fill_text(|pattern, value, date| {
+            pattern.replace("{value}", &value).replace("{date}", &date).into()
+        });
         engine.on_widest_label(|labels: ::slint::ModelRc<::slint::SharedString>| {
             $crate::layout::widest_label(&ModelLabels(labels)).into()
         });
