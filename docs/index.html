@@ -1930,8 +1930,8 @@ You need a commercial license when you sell, ship or deliver a closed-source pro
 A commercial license lets you use it in closed-source software you sell, ship or deliver to clients.
 Licenses are per developer, per year, and cover any number of your products.</p>
 <div class="early-bird" id="early-bird">
-  <p><strong>Early bird: half price for your first two years.</strong> Buy by 31 December 2027, and your
-  first year and your first renewal are 50% off. Early adopters also help shape SlintPlot:
+  <p><strong>Early bird: half price for your first two years.</strong> Buy by 31 December 2027: the discount
+  covers your first year and your first renewal. Early adopters also help shape SlintPlot:
   your feature requests and feedback come first when we plan what to build next.</p>
   <div class="countdown" role="timer" aria-label="Time left of the early-bird offer">
     <div><span data-unit="days">–</span><small>days</small></div>
@@ -1950,6 +1950,7 @@ Licenses are per developer, per year, and cover any number of your products.</p>
       <li>Closed-source apps and devices</li>
       <li>Any number of products</li>
       <li>All updates while licensed</li>
+      <li>Keep shipping what you released, after it ends</li>
       <li>Email support</li>
     </ul>
     <label>Developers <input type="number" min="1" max="50" value="1"></label>
@@ -1958,8 +1959,8 @@ Licenses are per developer, per year, and cover any number of your products.</p>
   <div class="plan featured" data-plan="business">
     <h3>Business</h3>
     <p class="who">For every other company</p>
-    <div class="price"><span class="was bird-only">€499</span><span class="now">€249</span> <small>per developer / year</small></div>
-    <span class="bird bird-only">€499 per developer / year after two years</span>
+    <div class="price"><span class="was bird-only">€399</span><span class="now">€199</span> <small>per developer / year</small></div>
+    <span class="bird bird-only">€399 per developer / year after two years</span>
     <ul>
       <li>Everything in Indie</li>
       <li>Priority email support</li>
@@ -1982,7 +1983,9 @@ Licenses are per developer, per year, and cover any number of your products.</p>
   </div>
 </div>
 <p class="muted">Prices exclude VAT. Payments are handled by Paddle, which is the seller of record and sends the invoice.
-A developer is anyone who writes code that uses SlintPlot. Your application also needs a suitable
+A developer is anyone who writes code that uses SlintPlot. <strong>Perpetual fallback:</strong> products you release
+while your license is active may keep being sold and shipped after it ends, with the SlintPlot version they were
+built with; new products and newer SlintPlot versions need an active license. Your application also needs a suitable
 <a href="https://slint.dev/pricing">Slint license</a>. Questions: <a href="mailto:license@slintplot.dev">license@slintplot.dev</a>.</p>
 
 <h2 id="license">License</h2>
@@ -2076,12 +2079,13 @@ A developer is anyone who writes code that uses SlintPlot. Your application also
     environment: "production", // "sandbox" for test purchases
     token: "",
     prices: { indie: "", business: "" },
-    // The early-bird discount code, applied until the end of the offer.
-    earlyBirdCode: "EARLYBIRD",
+    // The early-bird discount codes, applied until the end of the offer.
+    earlyBirdCodes: { indie: "EARLYBIRD-INDIE", business: "EARLYBIRD-BUSINESS" },
   };
-  // The offer ends at midnight UTC after 31 December 2027. In Paddle, the
-  // discount code is 50%, recurring for one renewal (two payments in all),
-  // and expires at the same time.
+  // The offer ends at midnight UTC after 31 December 2027. In Paddle, each
+  // plan has its own discount code: a flat amount per developer (€100 off
+  // Indie, €200 off Business), restricted to that plan's price, recurring
+  // for one renewal (two payments in all), and expiring at the same time.
   const earlyBirdEnd = new Date("2028-01-01T00:00:00Z");
   const earlyBird = new Date() < earlyBirdEnd;
   if (earlyBird) {
@@ -2101,7 +2105,7 @@ A developer is anyone who writes code that uses SlintPlot. Your application also
     document.getElementById("early-bird").remove();
     document.querySelectorAll(".bird-only").forEach((element) => element.remove());
     document.querySelectorAll(".plan .now").forEach((now) => {
-      now.textContent = { indie: "€199", business: "€499", enterprise: "€2,500" }[now.closest(".plan").dataset.plan];
+      now.textContent = { indie: "€199", business: "€399", enterprise: "€2,500" }[now.closest(".plan").dataset.plan];
     });
   }
   if (paddle.token) {
@@ -2121,7 +2125,7 @@ A developer is anyone who writes code that uses SlintPlot. Your application also
           const quantity = Math.max(1, parseInt(plan.querySelector("input").value, 10) || 1);
           Paddle.Checkout.open({
             items: [{ priceId: price, quantity }],
-            ...(earlyBird && paddle.earlyBirdCode ? { discountCode: paddle.earlyBirdCode } : {}),
+            ...(earlyBird && paddle.earlyBirdCodes[plan.dataset.plan] ? { discountCode: paddle.earlyBirdCodes[plan.dataset.plan] } : {}),
           });
         });
       });

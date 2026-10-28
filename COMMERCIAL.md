@@ -39,12 +39,17 @@ products. Prices exclude VAT.
 | Plan | For | Price |
 |---|---|---|
 | Indie | Solo developers and companies with under €250,000 in annual revenue | €199 per developer per year |
-| Business | Every other company | €499 per developer per year |
+| Business | Every other company | €399 per developer per year |
 | Enterprise | Every developer in the company, custom terms | from €2,500 per year |
 
-**Early bird:** buy by 31 December 2027 and pay half price (€99 Indie, €249
+**Early bird:** buy by 31 December 2027 and pay half price (€99 Indie, €199
 Business per developer per year, Enterprise from €1,250 per year) for your
 first two years: the first year and the first renewal.
+
+**Perpetual fallback:** products you release while your license is active may
+keep being sold and shipped after it ends, with the SlintPlot version they
+were built with. New products and newer SlintPlot versions need an active
+license.
 Early adopters also help shape SlintPlot: their feature requests and feedback
 come first when we plan what to build next.
 
