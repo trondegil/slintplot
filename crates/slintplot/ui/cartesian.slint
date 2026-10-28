@@ -1,4 +1,4 @@
-import { ChartAxis, ChartDataset, ChartDateTime, ChartEngine, ChartFormat, ChartHit, ChartKind, ChartLayout, ChartXY } from "engine.slint";
+import { ChartAxis, ChartDataset, ChartDateTime, ChartEngine, ChartFormat, ChartHit, ChartKind, ChartLayout, ChartTick, ChartXY } from "engine.slint";
 import { ChartTheme } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
 import { Tooltip } from "tooltip.slint";
@@ -184,8 +184,15 @@ export component CartesianChart {
         side: 1,
         ordered: root.time-axis,
     });
-    // The right axis, when a dataset uses it (not in 100% stacked charts).
-    private property <bool> has-right-axis: ChartEngine.uses-right-axis(root.datasets) && !root.stacked-percent;
+    // Each value axis shows while a visible dataset uses it, as with
+    // Chart.js' `display: 'auto'`: the right one when a visible dataset has
+    // `right-axis` (not in 100% stacked charts), the left one unless only
+    // right-axis datasets are visible. With every dataset hidden, the left
+    // axis stays as a frame.
+    private property <bool> has-right-axis: !root.stacked-percent && ChartEngine.uses-axis(root.datasets, true);
+    private property <bool> has-left-axis: !root.has-right-axis || ChartEngine.uses-axis(root.datasets, false);
+    // The grid follows the left axis' ticks, or the right one's without it.
+    private property <[ChartTick]> grid-ticks: root.has-left-axis ? axis.ticks : axis2.ticks;
     // Only computed when used: for scatter and time series charts, an axis
     // reads every point.
     private property <ChartAxis> axis2: !root.has-right-axis ? { min: 0, max: 0 } : ChartEngine.value-axis({
@@ -208,7 +215,7 @@ export component CartesianChart {
         ordered: root.time-axis,
         // The left axis' ticks span it exactly unless it is fixed or
         // logarithmic; then the axes can't line up.
-        align-ticks: root.fixed-range || root.logarithmic || root.y2-logarithmic ? 0 : axis.ticks.length,
+        align-ticks: !root.has-left-axis || root.fixed-range || root.logarithmic || root.y2-logarithmic ? 0 : axis.ticks.length,
     });
     private property <ChartLayout> chart: ChartEngine.layout({
         locale: ChartTheme.locale,
@@ -286,7 +293,7 @@ export component CartesianChart {
                 horizontal-stretch: 1;
 
                 // The y titles sit above the axes, so they need no rotated text.
-                property <length> y-title-space: root.y-title != "" || (root.has-right-axis && root.y2-title != "") ? ChartTheme.font-size * 1.6 : 0px;
+                property <length> y-title-space: (root.has-left-axis && root.y-title != "") || (root.has-right-axis && root.y2-title != "") ? ChartTheme.font-size * 1.6 : 0px;
                 property <length> right-labels-width: root.has-right-axis ? axis2.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px : 0px;
                 property <length> x-title-space: root.x-title != "" ? ChartTheme.font-size * 1.8 : 0px;
 
@@ -295,7 +302,7 @@ export component CartesianChart {
                     // depends on the plot height, which depends on the frame's
                     // layout constraints, so that would be a binding loop.
                     // Tick labels are mostly digits, about 0.6em wide each.
-                    x: axis.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px;
+                    x: root.has-left-axis ? axis.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px : 12px;
                     y: frame.y-title-space + ChartTheme.font-size * 0.75;
                     width: max(0px, parent.width - self.x - max(12px, frame.right-labels-width));
                     height: max(0px, parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space);
@@ -303,7 +310,7 @@ export component CartesianChart {
                     clip: root.zoomed;
 
                     // Grid
-                    for tick in axis.ticks: Rectangle {
+                    for tick in root.grid-ticks: Rectangle {
                         y: tick.pos * 1px - 0.5px;
                         height: 1px;
                         background: ChartTheme.grid-color;
@@ -313,7 +320,7 @@ export component CartesianChart {
                         width: 1px;
                         background: ChartTheme.grid-color;
                     }
-                    Rectangle {
+                    if root.has-left-axis: Rectangle {
                         x: 0;
                         width: 1px;
                         background: ChartTheme.axis-color;
@@ -570,7 +577,8 @@ export component CartesianChart {
                     border-color: ChartTheme.axis-color;
                 }
 
-                for tick in axis.ticks: Text {
+                if root.has-left-axis: Rectangle {
+                    for tick in axis.ticks: Text {
                     x: 0;
                     width: plot.x - 8px;
                     y: plot.y + tick.pos * 1px - self.height / 2;
@@ -578,6 +586,7 @@ export component CartesianChart {
                     color: ChartTheme.text-color;
                     font-size: ChartTheme.font-size;
                     horizontal-alignment: right;
+                    }
                 }
 
                 if root.has-right-axis: Rectangle {
@@ -598,7 +607,7 @@ export component CartesianChart {
                     font-size: ChartTheme.font-size;
                 }
 
-                if root.y-title != "": Text {
+                if root.has-left-axis && root.y-title != "": Text {
                     x: 0;
                     y: 0;
                     text: root.y-title;

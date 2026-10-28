@@ -1,4 +1,4 @@
-import { Button, CheckBox, ComboBox, ListView, Palette } from "std-widgets.slint";
+import { Button, CheckBox, ComboBox, Palette, ScrollView } from "std-widgets.slint";
 import {
     BarChart,
     BubbleChart,
@@ -56,12 +56,25 @@ component SampleList inherits Rectangle {
         y: 0;
         height: root.top-inset;
     }
-    ListView {
+    ScrollView {
         y: root.top-inset;
         height: parent.height - root.top-inset;
+        // Space above the first and below the last row, inside the scrolled
+        // content so that the rows scroll past the edges.
+        VerticalLayout {
+            padding-top: 6px;
+            padding-bottom: 20px;
+            alignment: start;
         for entry in root.samples: Rectangle {
             height: (entry.header ? 34px : 28px) + (root.roomy && !entry.header ? 12px : 0px);
-            background: entry.id == root.sample ? (root.dark-mode ? #ffffff1a : #0000000f) : transparent;
+            // The selected and hovered sample, as a rounded highlight.
+            if !entry.header: Rectangle {
+                x: 8px;
+                width: parent.width - 16px;
+                border-radius: 6px;
+                background: entry.id == root.sample ? (root.dark-mode ? #ffffff1a : #0000000f)
+                    : touch.has-hover ? (root.dark-mode ? #ffffff0d : #00000008) : transparent;
+            }
             Text {
                 x: entry.header ? 14px : 22px;
                 y: entry.header ? parent.height - self.height - 4px : (parent.height - self.height) / 2;
@@ -71,12 +84,14 @@ component SampleList inherits Rectangle {
                 font-weight: entry.header || entry.id == root.sample ? 700 : 400;
                 letter-spacing: entry.header ? 0.6px : 0;
             }
-            if !entry.header: TouchArea {
-                mouse-cursor: pointer;
+            touch := TouchArea {
+                enabled: !entry.header;
+                mouse-cursor: entry.header ? default : pointer;
                 clicked => {
                     root.select(entry.id);
                 }
             }
+        }
         }
     }
 }

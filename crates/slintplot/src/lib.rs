@@ -291,8 +291,8 @@ macro_rules! register {
             $crate::profile::record(started.elapsed());
             axis
         });
-        engine.on_uses_right_axis(|data: ::slint::ModelRc<ChartDataset>| {
-            tracked(&data).iter().any(|d| d.right_axis)
+        engine.on_uses_axis(|data: ::slint::ModelRc<ChartDataset>, right: bool| {
+            tracked(&data).iter().any(|d| !d.hidden && d.right_axis == right)
         });
         engine.on_layout(|req: ChartLayoutRequest| {
             let started = $crate::profile::start();

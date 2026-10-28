@@ -1620,21 +1620,28 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     let ui = Gallery::new()?;
     slintplot::register!(ui);
 
-    // The sample list, with a header row per category.
+    // The sample list, with a header row per category, in the order the
+    // categories first appear.
+    let mut categories: Vec<&str> = Vec::new();
+    for s in SAMPLES {
+        if !categories.contains(&s.category) {
+            categories.push(s.category);
+        }
+    }
     let mut entries = Vec::new();
-    for (i, s) in SAMPLES.iter().enumerate() {
-        if i == 0 || SAMPLES[i - 1].category != s.category {
+    for category in categories {
+        entries.push(SampleEntry {
+            id: "".into(),
+            title: category.to_uppercase().into(),
+            header: true,
+        });
+        for s in SAMPLES.iter().filter(|s| s.category == category) {
             entries.push(SampleEntry {
-                id: "".into(),
-                title: s.category.to_uppercase().into(),
-                header: true,
+                id: s.id.into(),
+                title: s.title.into(),
+                header: false,
             });
         }
-        entries.push(SampleEntry {
-            id: s.id.into(),
-            title: s.title.into(),
-            header: false,
-        });
     }
     ui.set_samples(ModelRc::new(VecModel::from(entries)));
 

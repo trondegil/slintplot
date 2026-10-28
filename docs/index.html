@@ -1305,7 +1305,9 @@ GaugeChart {
 
 <h3 id="second-axis">A second value axis</h3>
 <p>Datasets with <code>right-axis: true</code> are plotted against a second value axis on the right, for two measures of different
-size or unit in one chart. The axis appears when a dataset uses it, and has its own settings: <code>y2-title</code>,
+size or unit in one chart. Each axis shows while a visible dataset uses it, as with Chart.js' <code>display: 'auto'</code>:
+hide the right-axis datasets from the legend and the right axis goes, and the plot widens; hide the left ones and the grid follows the
+right axis. The right axis has its own settings: <code>y2-title</code>,
 <code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code>, <code>y2-fixed-range</code> with
 <code>y2-min-value</code> and <code>y2-max-value</code>, <code>y2-logarithmic</code> and <code>y2-begin-at-zero</code>.
 Tooltips and data labels write each value in its own axis' format, and stacked datasets stack on their own axis.</p>

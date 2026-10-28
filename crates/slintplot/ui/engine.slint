@@ -528,8 +528,9 @@ export struct ChartDumbbellRequest {
 
 export global ChartEngine {
     pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
-    // Whether any dataset, visible or not, is on the right value axis.
-    pure callback uses-right-axis(datasets: [ChartDataset]) -> bool;
+    // Whether a visible dataset is on the right value axis (`right`), or on
+    // the left one.
+    pure callback uses-axis(datasets: [ChartDataset], right: bool) -> bool;
     pure callback layout(request: ChartLayoutRequest) -> ChartLayout;
     pure callback format-number(value: float, format: ChartFormat, locale: ChartLocale) -> string;
     // A value in a format, written the way `ChartTheme.locale` says.
