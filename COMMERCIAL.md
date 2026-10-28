@@ -13,6 +13,13 @@ SlintPlot is free under either of two licenses (see [LICENSE.md](LICENSE.md)):
   and use by charitable, public research, public safety, health and
   government organizations, as listed in the license
 
+## Free to try
+
+Download SlintPlot, experiment and build prototypes for free, at home or at
+work: using it within your own organization, without giving the software to
+others, is allowed under the GPLv3. You need a commercial license when you
+sell, ship or deliver a closed-source product that uses it.
+
 ## When you need a commercial license
 
 You need a commercial license when you use SlintPlot for a commercial

@@ -663,6 +663,10 @@ What SlintPlot 0.2 doesn't do yet, or does with restrictions:
 
 ## License
 
+Download SlintPlot, experiment and build prototypes for free, at home or at
+work. You need a commercial license when you sell, ship or deliver a
+closed-source product that uses it.
+
 SlintPlot is available under your choice of three licenses:
 
 - **GPLv3**: free for anyone, for any purpose. Software that includes

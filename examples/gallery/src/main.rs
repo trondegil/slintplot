@@ -1909,8 +1909,15 @@ fn docs(
     shot("calendar", "calendar-github", false, &|| ui.set_calendar_colors(1))?;
     ui.set_calendar_colors(0);
     shot("time-week", "time-week-1h", false, &|| state.borrow_mut().action(3))?;
-    shot("treemap", "treemap-hidden", false, &|| snapshot::click(window, TREEMAP_ASIA.0, TREEMAP_ASIA.1))?;
-    shot("sunburst", "sunburst-zoomed", false, &|| snapshot::click(window, SUNBURST_ASIA.0, SUNBURST_ASIA.1))?;
+    // A click, then the mouse leaves and the window loses focus, so neither
+    // a tooltip nor the focus outline shows.
+    let click = |(x, y): (f32, f32)| {
+        snapshot::click(window, x, y);
+        snapshot::leave(window);
+        window.dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+    };
+    shot("treemap", "treemap-hidden", false, &|| click(TREEMAP_ASIA))?;
+    shot("sunburst", "sunburst-zoomed", false, &|| click(SUNBURST_ASIA))?;
     ui.set_language(2);
     shot("languages", "languages-de", false, &|| ())?;
     shot("languages", "languages-de-dark", true, &|| ())?;
