@@ -173,6 +173,10 @@ export component Gallery inherits Window {
     background: WindowFrame.drawn ? transparent : ChartTheme.background;
     // The rounded corners of the drawn frame; square when maximized.
     private property <length> corner-radius: WindowFrame.drawn && !WindowFrame.maximized ? 8px : 0px;
+    // A toolbar band at the top in the desktop app (see below); the browser
+    // has none.
+    private property <bool> toolbar: WindowFrame.mac-titlebar || WindowFrame.drawn;
+    private property <bool> sidebar-shown: !root.narrow && root.show-samples;
     // The width of the drawn title bar buttons at the top right.
     private property <length> controls-width: WindowFrame.drawn ? 3 * 46px : 0px;
 
@@ -266,9 +270,25 @@ export component Gallery inherits Window {
     background: ChartTheme.background;
 
     // The empty parts of the top of the window move it.
-    if WindowFrame.drawn || WindowFrame.mac-titlebar: DragArea {
+    // The desktop app's toolbar: a band across the top of the content, as
+    // tall as the macOS title bar, that the header row is centered in. The
+    // sample list beside it has the same tint.
+    if root.toolbar: Rectangle {
+        x: root.sidebar-shown ? 230px : 0px;
         y: 0;
-        height: root.narrow ? 52px : 64px;
+        width: parent.width - self.x;
+        height: 52px;
+        background: root.dark-mode ? #ffffff08 : #00000006;
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: root.dark-mode ? #ffffff14 : #00000012;
+        }
+    }
+    // The empty parts of the toolbar move the window.
+    if root.toolbar: DragArea {
+        y: 0;
+        height: 52px;
     }
 
     HorizontalLayout {
@@ -286,9 +306,9 @@ export component Gallery inherits Window {
 
         VerticalLayout {
             padding: root.narrow ? 10px : 20px;
-            // On macOS, the header row is centered on the window buttons, which
-            // sit 26px from the top in the unified title bar (see main.rs).
-            padding-top: WindowFrame.mac-titlebar || root.narrow ? 8px : 14px;
+            // With the toolbar, the header row is centered in its 52px band, as
+            // are the macOS window buttons (see main.rs).
+            padding-top: root.toolbar || root.narrow ? 8px : 14px;
             spacing: root.narrow ? 8px : 10px;
 
             HorizontalLayout {
@@ -365,6 +385,10 @@ export component Gallery inherits Window {
                 if WindowFrame.drawn: Rectangle {
                     width: root.controls-width - (root.narrow ? 10px : 20px);
                 }
+            }
+            // The rest of the toolbar band, so the content starts below it.
+            if root.toolbar: Rectangle {
+                height: 0px;
             }
 
             // The pickers on a row of their own on narrow windows.
