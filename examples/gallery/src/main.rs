@@ -32,6 +32,41 @@ const MONTHS: [&str; 12] = [
     "November",
     "December",
 ];
+/// The languages of the "languages" sample's picker, in its order.
+const LANGUAGES: [ChartLanguage; 14] = [
+    ChartLanguage::English,
+    ChartLanguage::Danish,
+    ChartLanguage::German,
+    ChartLanguage::Spanish,
+    ChartLanguage::French,
+    ChartLanguage::Italian,
+    ChartLanguage::Dutch,
+    ChartLanguage::Norwegian,
+    ChartLanguage::Polish,
+    ChartLanguage::Portuguese,
+    ChartLanguage::Finnish,
+    ChartLanguage::Swedish,
+    ChartLanguage::Japanese,
+    ChartLanguage::Chinese,
+];
+/// The "languages" sample's own texts in each of `LANGUAGES`: the title, and
+/// the names of the two datasets, which are also the axis titles.
+const LANGUAGE_TEXTS: [(&str, &str, &str); 14] = [
+    ("Visitors and conversion rate", "Visitors", "Conversion rate"),
+    ("Besøgende og konverteringsrate", "Besøgende", "Konverteringsrate"),
+    ("Besucher und Konversionsrate", "Besucher", "Konversionsrate"),
+    ("Visitantes y tasa de conversión", "Visitantes", "Tasa de conversión"),
+    ("Visiteurs et taux de conversion", "Visiteurs", "Taux de conversion"),
+    ("Visitatori e tasso di conversione", "Visitatori", "Tasso di conversione"),
+    ("Bezoekers en conversieratio", "Bezoekers", "Conversieratio"),
+    ("Besøkende og konverteringsrate", "Besøkende", "Konverteringsrate"),
+    ("Odwiedzający i współczynnik konwersji", "Odwiedzający", "Współczynnik konwersji"),
+    ("Visitantes e taxa de conversão", "Visitantes", "Taxa de conversão"),
+    ("Kävijät ja konversioaste", "Kävijät", "Konversioaste"),
+    ("Besökare och konverteringsgrad", "Besökare", "Konverteringsgrad"),
+    ("訪問者数とコンバージョン率", "訪問者数", "コンバージョン率"),
+    ("访客数与转化率", "访客数", "转化率"),
+];
 const SKILLS: [&str; 7] = [
     "Eating",
     "Drinking",
@@ -628,6 +663,18 @@ const SAMPLES: &[Sample] = &[
         Shape::Series { count: 100_000 },
         &["Decimation on", "Decimation off", "Randomize"],
     ),
+    sample(
+        "languages",
+        "Advanced",
+        "Languages",
+        "ChartTheme.language: numbers, percentages, month names and the charts' own texts in 14 languages. The chart's title and dataset names are translated by the app.",
+        Shape::Months {
+            datasets: 2,
+            min: 0.0,
+            max: 1.0,
+        },
+        &["Randomize"],
+    ),
 ];
 
 /// The random data's seed, so the samples start the same every time.
@@ -891,6 +938,29 @@ impl State {
                 ds.label = "Line".into();
                 ds.series_type = ChartSeriesType::Line;
             }
+            // Made-up website numbers: visitors as bars, in thousands, and
+            // the conversion rate in percent as a line on the right axis.
+            "languages" => {
+                let months = self.labels.row_count();
+                let values = (0..months)
+                    .map(|_| {
+                        if index == 0 {
+                            self.rng.range(8_000.0, 25_000.0).round()
+                        } else {
+                            self.rng.range(15.0, 45.0) / 10.0
+                        }
+                    })
+                    .collect();
+                ds.values = floats(values);
+                let (_, visitors, rate) = LANGUAGE_TEXTS[self.language()];
+                if index == 0 {
+                    ds.label = visitors.into();
+                } else {
+                    ds.label = rate.into();
+                    ds.series_type = ChartSeriesType::Line;
+                    ds.right_axis = true;
+                }
+            }
             // Made-up monthly weather: temperature as a line on the left
             // axis, rainfall as bars on the right one.
             "axes-two" => {
@@ -1148,8 +1218,43 @@ impl State {
         }
     }
 
-    /// Puts the month and weekday labels in the chart language.
+    /// The index into `LANGUAGES` of the chart language: the picker's for
+    /// the "languages" sample, English for the others.
+    fn language(&self) -> usize {
+        match self.ui.upgrade() {
+            Some(ui) if self.sample.id == "languages" => {
+                (ui.get_language().max(0) as usize).min(LANGUAGES.len() - 1)
+            }
+            _ => 0,
+        }
+    }
+
+    /// Sets the chart language, and the "languages" sample's titles in it.
+    fn set_chart_language(&self) {
+        let language = self.language();
+        if let Some(ui) = self.ui.upgrade() {
+            ui.global::<ChartTheme>().set_language(LANGUAGES[language]);
+            let (title, visitors, rate) = LANGUAGE_TEXTS[language];
+            ui.set_language_title(title.into());
+            ui.set_language_y_title(visitors.into());
+            ui.set_language_y2_title(rate.into());
+        }
+    }
+
+    /// Sets the chart language, and puts the month and weekday labels and
+    /// the "languages" sample's texts in it.
     fn relabel(&mut self) {
+        self.set_chart_language();
+        let language = self.language();
+        if self.sample.id == "languages" {
+            let (_, visitors, rate) = LANGUAGE_TEXTS[language];
+            for (row, label) in [(0, visitors), (1, rate)] {
+                if let Some(mut ds) = self.datasets.row_data(row) {
+                    ds.label = label.into();
+                    self.datasets.set_row_data(row, ds);
+                }
+            }
+        }
         match self.sample.shape {
             Shape::Months { .. } | Shape::Exponential => {
                 let months = self.month_names();
@@ -1166,6 +1271,7 @@ impl State {
     fn select(&mut self, sample: &'static Sample) {
         self.sample = sample;
         self.randomized = false;
+        self.set_chart_language();
         if let Some(ui) = self.ui.upgrade() {
             ui.set_view_start(0.0);
             ui.set_view_end(1.0);
@@ -1193,6 +1299,8 @@ impl State {
             ]
             .map(SharedString::from)
             .to_vec(),
+            // A full year for the "languages" sample, to show every month name.
+            Shape::Months { .. } if sample.id == "languages" => self.month_names(),
             Shape::Months { .. } | Shape::Exponential => {
                 self.month_names().into_iter().take(7).collect()
             }
@@ -1805,23 +1913,14 @@ fn snapshots(
     }
     snapshot::render(&window);
     snapshot::save(&window, &dir.join("live-streamed.png"))?;
-    // Numbers and dates in other languages, by index into the language picker.
+    // The "languages" sample in other languages, by index into `LANGUAGES`.
+    let languages = SAMPLES.iter().find(|s| s.id == "languages").unwrap();
     for (language, name) in [(2, "de"), (7, "nb"), (12, "ja")] {
         ui.set_language(language);
-        for id in [
-            "axes-format",
-            "time-hourly",
-            "calendar",
-            "pie-labels",
-            "survey",
-            "funnel",
-        ] {
-            let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
-            state.borrow_mut().select(sample);
-            snapshot::render(&window);
-            snapshot::settle(Duration::from_millis(1100));
-            snapshot::save(&window, &dir.join(format!("locale-{name}-{id}.png")))?;
-        }
+        state.borrow_mut().select(languages);
+        snapshot::render(&window);
+        snapshot::settle(Duration::from_millis(1100));
+        snapshot::save(&window, &dir.join(format!("languages-{name}.png")))?;
     }
     ui.set_language(0);
     Ok(())

@@ -31,7 +31,7 @@ import {
     ScatterChart,
     TimeSeriesChart,
 } from "@slintplot";
-export { ChartEngine, ChartTheme }
+export { ChartEngine, ChartLanguage, ChartTheme }
 
 // A row of the sample list: a category header, or a sample.
 export struct SampleEntry {
@@ -136,7 +136,8 @@ export component Gallery inherits Window {
     in-out property <int> theme;
     // Index into the calendar heatmap's color picker; 0 follows the theme.
     in-out property <int> calendar-colors;
-    // Index into the language picker, in the order of `languages`.
+    // Index into the language picker of the "languages" sample, in the order
+    // of `LANGUAGES` in main.rs. The other samples are in English.
     in-out property <int> language;
     // Japanese and Chinese need fonts with their characters; in the browser,
     // Slint only has Inter.
@@ -144,7 +145,6 @@ export component Gallery inherits Window {
     private property <[string]> language-names: root.cjk-fonts
         ? ["English", "Dansk", "Deutsch", "Español", "Français", "Italiano", "Nederlands", "Norsk", "Polski", "Português", "Suomi", "Svenska", "日本語", "中文"]
         : ["English", "Dansk", "Deutsch", "Español", "Français", "Italiano", "Nederlands", "Norsk", "Polski", "Português", "Suomi", "Svenska"];
-    private property <[ChartLanguage]> languages: [ChartLanguage.english, ChartLanguage.danish, ChartLanguage.german, ChartLanguage.spanish, ChartLanguage.french, ChartLanguage.italian, ChartLanguage.dutch, ChartLanguage.norwegian, ChartLanguage.polish, ChartLanguage.portuguese, ChartLanguage.finnish, ChartLanguage.swedish, ChartLanguage.japanese, ChartLanguage.chinese];
 
     // Phone-sized windows: the sample list opens over the chart from the
     // menu button, and the header, buttons and gauges wrap.
@@ -158,8 +158,12 @@ export component Gallery inherits Window {
     callback action(index: int);
     // Samples with their own light and dark colors update them.
     callback dark-mode-changed();
-    // Samples with month or weekday labels relabel them.
+    // The "languages" sample sets the chart language and translates its texts.
     callback language-changed();
+    // The "languages" sample's chart title and axis titles.
+    in property <string> language-title;
+    in property <string> language-y-title;
+    in property <string> language-y2-title;
     // The zoom window of the one-week time series.
     in-out property <float> view-start: 0;
     in-out property <float> view-end: 1;
@@ -180,7 +184,6 @@ export component Gallery inherits Window {
         self.fit-text();
     }
     changed language => {
-        ChartTheme.language = self.languages[self.language];
         root.language-changed();
     }
     changed theme => {
@@ -265,8 +268,8 @@ export component Gallery inherits Window {
                         }
                     }
                 }
-                // Numbers and dates in the language's conventions.
-                if !root.narrow: ComboBox {
+                // The chart language, for the sample that shows it off.
+                if !root.narrow && root.sample == "languages": ComboBox {
                     model: root.language-names;
                     current-index <=> root.language;
                 }
@@ -283,7 +286,7 @@ export component Gallery inherits Window {
                     model: ["Modern", "Material", "Corporate", "Mono", "Pastel"];
                     current-index <=> root.theme;
                 }
-                ComboBox {
+                if root.sample == "languages": ComboBox {
                     model: root.language-names;
                     current-index <=> root.language;
                 }
@@ -432,6 +435,15 @@ export component Gallery inherits Window {
                         y2-title: "Rainfall";
                         y2-value-suffix: " mm";
                         show-values: false;
+                    }
+                    if root.sample == "languages": BarChart {
+                        title: root.language-title;
+                        labels: root.labels;
+                        datasets <=> root.datasets;
+                        y-title: root.language-y-title;
+                        y2-title: root.language-y2-title;
+                        y2-value-suffix: ChartTexts.percent;
+                        y2-value-decimals: 1;
                     }
                     if root.sample == "axes-log": LineChart {
                         title: "Users";
