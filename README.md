@@ -1,8 +1,16 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/assets/slintplot-logo-dark.png">
-    <img src="https://slintplot.dev/assets/slintplot-logo.png" alt="SlintPlot" width="420">
-  </picture>
+  <a href="https://slintplot.dev">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/assets/slintplot-logo-dark.png">
+      <img src="https://slintplot.dev/assets/slintplot-logo.png" alt="SlintPlot" width="420">
+    </picture>
+  </a>
+</p>
+
+<p align="center">
+  <b><a href="https://slintplot.dev">Documentation</a></b> ·
+  <b><a href="https://slintplot.dev/demo/">Try the gallery in your browser</a></b> ·
+  <b><a href="https://slintplot.dev/#pricing">Buy a commercial license</a></b>
 </p>
 
 # SlintPlot
@@ -18,7 +26,7 @@ and react to the mouse.
 
 Full API documentation with examples: [slintplot.dev](https://slintplot.dev).
 
-Try the charts in your browser: **[slintplot.dev/demo](https://slintplot.dev/demo/)**, or install the gallery app:
+Try every chart in the [web gallery](https://slintplot.dev/demo/), which runs in your browser, or install the gallery app:
 
 ```sh
 cargo install slintplot-gallery
@@ -59,7 +67,7 @@ slintplot-gallery
 
 ## Gallery
 
-Screenshots from the gallery app (`cargo install slintplot-gallery`), in the default Modern theme: light mode, except for the two dark mode examples marked as such. Every sample in the app is here.
+Screenshots from the gallery app ([try it in your browser](https://slintplot.dev/demo/), or `cargo install slintplot-gallery`), in the default Modern theme: light mode, except for the two dark mode examples marked as such. Every sample in the app is here.
 
 ### Line and area charts
 
@@ -669,19 +677,39 @@ closed-source product that uses it.
 
 SlintPlot is available under your choice of three licenses:
 
-- **GPLv3**: free for anyone, for any purpose. Software that includes
-  SlintPlot and is distributed to others must be distributed under the
-  GPLv3, with its source code.
-- **[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)**:
-  free for personal, hobby, research, education and other noncommercial use,
-  with or without sharing your source code.
-- **A commercial license**: for commercial use without the GPLv3's
-  conditions, such as in closed-source software you sell or ship. Per
-  developer, per year, from €99; bought by 31 December 2027, half price
-  for the first two years: see [Pricing](https://slintplot.dev/#pricing).
+- **[GNU GPL, version 3](https://github.com/trondegil/slintplot/blob/main/LICENSE-GPL-3.0.txt)**:
+  free for anyone, for any purpose, including companies. Software that
+  includes SlintPlot and is distributed to others must be distributed under
+  the GPLv3, with its source code. Using SlintPlot only within your own
+  organization, without distributing it, has no such condition.
+- **[PolyForm Noncommercial 1.0.0](https://github.com/trondegil/slintplot/blob/main/LICENSE-POLYFORM-NC.md)**:
+  free for any noncommercial purpose, such as personal and hobby projects,
+  research, education, and use by charitable and public organizations, with
+  or without sharing your source code.
+- **[A commercial license](https://github.com/trondegil/slintplot/blob/main/COMMERCIAL.md)**:
+  for commercial use without the GPLv3's conditions, such as in
+  closed-source software you sell, ship or deliver to clients.
 
-See [LICENSE.md](LICENSE.md) and [COMMERCIAL.md](COMMERCIAL.md) for the
-details. Your application also needs a suitable
-[Slint license](https://slint.dev/pricing).
+Commercial licenses are per developer, per year, and cover any number of
+your products. Prices exclude VAT.
+
+| Plan | For | Price | Early bird |
+|---|---|---|---|
+| Indie | Solo developers and companies with under €250,000 in annual revenue | €99 per developer per year | €49 |
+| Business | Every other company | €299 per developer per year | €149 |
+| Enterprise | Every developer in the company, custom terms | from €2,500 per year | from €1,250 |
+
+**Early bird:** buy by 31 December 2027 and pay half price for your first
+two years: the first year and the first renewal. **Perpetual fallback:**
+products you release while your license is active may keep being sold and
+shipped after it ends, with the SlintPlot version they were built with.
+
+See [Pricing](https://slintplot.dev/#pricing) to buy a license, or email
+<license@slintplot.dev>. The full terms are in
+[LICENSE.md](https://github.com/trondegil/slintplot/blob/main/LICENSE.md) and
+[COMMERCIAL.md](https://github.com/trondegil/slintplot/blob/main/COMMERCIAL.md).
+Your application also needs a suitable [Slint license](https://slint.dev/pricing).
+
+SPDX: `GPL-3.0-only OR PolyForm-Noncommercial-1.0.0 OR LicenseRef-SlintPlot-Commercial`
 
 SlintPlot is an independent project. It is not affiliated with, endorsed by or sponsored by SixtyFPS GmbH or the Slint project. Slint and the Slint logo are trademarks of SixtyFPS GmbH.
