@@ -233,7 +233,13 @@ cargo run -p slintplot-gallery -- --snapshot target/snapshots  # headless PNG re
 cargo run --release -p slintplot-stress                        # stress test, streaming
 cargo run --release -p slintplot-stress -- --bench             # headless timings
 cargo run --release -p slintplot-stress -- --snapshot docs/screenshots  # the stress test screenshots
+cargo run --release -p slintplot-gallery -- --docs docs/screenshots     # the website's gallery pictures
+cargo run --release -p slintplot-docshots -- docs/screenshots/charts   # the chart pictures, from the page's code
 ```
+
+Each code example on the website with a screenshot is marked `<pre data-shot="name">`
+in `docs/index.html`. `slintplot-docshots` compiles those examples and renders them, so
+a picture always shows its code.
 
 ## Pricing and license
 

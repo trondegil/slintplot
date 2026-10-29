@@ -4100,6 +4100,16 @@ name = "slintplot"
 version = "0.2.1"
 
 [[package]]
+name = "slintplot-docshots"
+version = "0.2.1"
+dependencies = [
+ "png",
+ "slint",
+ "slint-build",
+ "slintplot",
+]
+
+[[package]]
 name = "slintplot-gallery"
 version = "0.2.1"
 dependencies = [

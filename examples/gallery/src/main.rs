@@ -1933,10 +1933,11 @@ fn main() {
     ui.run().expect("the event loop");
 }
 
-/// Renders the website's screenshots into `dir` (docs/screenshots): the
-/// chart of each sample alone, 1012 by 660 pixels, in `charts/`, a few
-/// interactions, and the whole gallery for the page's larger pictures. Dark
-/// mode pictures are made for the charts that have one in `dir` already.
+/// Renders the website's screenshots that show the gallery into `dir`
+/// (docs/screenshots): the whole gallery for the page's larger pictures, and
+/// in `charts/`, the samples the page shows without a code example, 1012 by
+/// 660 pixels. The other chart pictures are rendered from the page's code
+/// examples by `slintplot-docshots`.
 #[cfg(not(target_arch = "wasm32"))]
 fn docs(
     ui: &Gallery,
@@ -1947,7 +1948,7 @@ fn docs(
     let charts = dir.join("charts");
     std::fs::create_dir_all(&charts)?;
     ui.show()?;
-    let shot = |sample: &str, name: &str, dark: bool, prepare: &dyn Fn()| -> std::io::Result<()> {
+    let shot = |sample: &str, name: &str, dark: bool| -> std::io::Result<()> {
         ui.set_dark_mode(dark);
         // The same data every time.
         state.borrow_mut().rng = Rng(SEED);
@@ -1955,7 +1956,6 @@ fn docs(
         state.borrow_mut().select(sample);
         snapshot::render(window);
         snapshot::settle(Duration::from_millis(1100));
-        prepare();
         snapshot::render(window);
         snapshot::settle(Duration::from_millis(400));
         snapshot::save(window, &charts.join(format!("{name}.png")))
@@ -1964,37 +1964,17 @@ fn docs(
     // The charts alone.
     ui.set_chart_only(true);
     snapshot::resize(window, 1012, 660);
-    for sample in SAMPLES
-        .iter()
-        .filter(|s| !matches!(s.id, "live" | "languages"))
-    {
-        shot(sample.id, sample.id, false, &|| ())?;
-        if charts.join(format!("{}-dark.png", sample.id)).exists() {
-            shot(sample.id, &format!("{}-dark", sample.id), true, &|| ())?;
-        }
+    for dark in [false, true] {
+        let suffix = if dark { "-dark" } else { "" };
+        shot(
+            "heatmap-diverging",
+            &format!("heatmap-diverging{suffix}"),
+            dark,
+        )?;
+        ui.set_language(2);
+        shot("languages", &format!("languages-de{suffix}"), dark)?;
+        ui.set_language(0);
     }
-    shot("calendar", "calendar-github", false, &|| {
-        ui.set_calendar_colors(1)
-    })?;
-    ui.set_calendar_colors(0);
-    shot("time-week", "time-week-1h", false, &|| {
-        state.borrow_mut().action(3)
-    })?;
-    // A click, then the mouse leaves and the window loses focus, so neither
-    // a tooltip nor the focus outline shows.
-    let click = |(x, y): (f32, f32)| {
-        snapshot::click(window, x, y);
-        snapshot::leave(window);
-        window.dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
-    };
-    shot("treemap", "treemap-hidden", false, &|| click(TREEMAP_ASIA))?;
-    shot("sunburst", "sunburst-zoomed", false, &|| {
-        click(SUNBURST_ASIA)
-    })?;
-    ui.set_language(2);
-    shot("languages", "languages-de", false, &|| ())?;
-    shot("languages", "languages-de-dark", true, &|| ())?;
-    ui.set_language(0);
 
     // The whole gallery.
     ui.set_chart_only(false);
@@ -2017,13 +1997,6 @@ fn docs(
     }
     Ok(())
 }
-
-/// Where the docs' chart-only treemap and sunburst show Asia: its legend
-/// entry, and its ring.
-#[cfg(not(target_arch = "wasm32"))]
-const TREEMAP_ASIA: (f32, f32) = (370.0, 52.0);
-#[cfg(not(target_arch = "wasm32"))]
-const SUNBURST_ASIA: (f32, f32) = (600.0, 420.0);
 
 /// Renders every sample, and a few interactions, to PNG files in `dir`.
 #[cfg(not(target_arch = "wasm32"))]

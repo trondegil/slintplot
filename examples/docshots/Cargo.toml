@@ -1,0 +1,19 @@
+[package]
+name = "slintplot-docshots"
+version = "0.2.1"
+description = "Renders the website's chart screenshots from the code examples next to them"
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+# `software-renderer-path` lets the software renderer draw paths.
+slint = { workspace = true, features = ["software-renderer-path"] }
+slintplot.workspace = true
+png = "0.18"
+
+[build-dependencies]
+slint-build.workspace = true
+slintplot.workspace = true

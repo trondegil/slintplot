@@ -792,7 +792,9 @@ impl Labels for Vec<String> {
 /// Labels examined to estimate the widest one; more are sampled evenly.
 const MAX_MEASURED_LABELS: usize = 1000;
 
-/// The label with the most characters, sampling large label lists.
+/// The label that is likely widest, sampling large label lists. The caller
+/// measures it exactly, so among labels of the same length it picks the one
+/// with the widest letters: "Wed", not "Fri".
 pub fn widest_label(labels: &dyn Labels) -> String {
     let count = labels.count();
     let every = count.div_ceil(MAX_MEASURED_LABELS).max(1);
@@ -800,8 +802,23 @@ pub fn widest_label(labels: &dyn Labels) -> String {
         .step_by(every)
         .chain(count.checked_sub(1))
         .map(|i| labels.get(i))
-        .max_by_key(|l| l.chars().count())
+        .max_by(|a, b| relative_width(a).total_cmp(&relative_width(b)))
         .unwrap_or_default()
+}
+
+/// A rough width of `text` in units of an average letter, for comparing
+/// labels: narrow letters such as "i" and "l" count less, and wide ones such
+/// as "M" and "W" more.
+fn relative_width(text: &str) -> f32 {
+    text.chars()
+        .map(|c| match c {
+            'i' | 'j' | 'l' | 'I' | '.' | ',' | ':' | ';' | '\'' | '|' | '!' => 0.45,
+            'f' | 't' | 'r' | ' ' | '(' | ')' | '-' => 0.6,
+            'm' | 'w' | 'M' | 'W' => 1.5,
+            c if c.is_uppercase() => 1.2,
+            _ => 1.0,
+        })
+        .sum()
 }
 
 pub struct LayoutRequest<'a> {
@@ -1524,6 +1541,16 @@ mod tests {
 
     const NO_LABELS: &Vec<String> = &Vec::new();
     static PLAIN: std::sync::LazyLock<Format> = std::sync::LazyLock::new(Format::default);
+
+    #[test]
+    fn widest_label_prefers_wide_letters() {
+        let weekdays: Vec<String> = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+            .map(String::from)
+            .to_vec();
+        assert_eq!(widest_label(&weekdays), "Wed");
+        let labels: Vec<String> = ["Jan", "September", "May"].map(String::from).to_vec();
+        assert_eq!(widest_label(&labels), "September");
+    }
 
     fn axis(
         datasets: &[Dataset],

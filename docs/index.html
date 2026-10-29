@@ -379,67 +379,88 @@ slintplot = "0.2"</code></pre>
 }</code></pre>
 
 <h3>3. Use a chart: <code>ui/app.slint</code></h3>
-<pre><code>import { ChartEngine, ChartLegendPosition, ChartSeriesType, LineChart } from "@slintplot";
+<pre><code>import { ChartEngine, ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
 export { ChartEngine } // required, so Rust can connect it
 
 export component App inherits Window {
     preferred-width: 800px;
     preferred-height: 500px;
 
-    // Every property is listed here, most at its default value. Properties at
-    // their default value can be dropped: `LineChart { labels: ...; datasets: ...; }`
-    // is a complete chart.
+    // Every property is listed. The ones at their default value are commented
+    // out: `LineChart { labels: ...; datasets: ...; }` is a complete chart.
     LineChart {
         // Data
+        title: "Revenue";                                 // default ""
         labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
         datasets: [
             {
                 label: "2025",
                 values: [12, 19, 8, 15, 22, 18],
-                points: [],                         // scatter and time series charts only
-                color: transparent,                 // transparent: the theme's next color
-                hidden: false,
-                fill: true,                         // default false
-                tension: 0.4,                       // default 0: straight lines
-                stepped: false,
-                series-type: ChartSeriesType.auto,  // or .line / .bar in mixed charts
+                // points: [],                            // scatter, bubble and time series charts
+                // color: transparent,                    // transparent: the theme's next color
+                // hidden: false,
+                fill: true,                               // default false
+                tension: 0.4,                             // default 0: straight lines
+                // stepped: false,                        // line charts: steps instead of slopes
+                // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+                // right-axis: false,                     // true: the second value axis
             },
             { label: "2026", values: [15, 22, 13, 24, 26, 30], tension: 0.4 },
         ];
-        title: "Revenue";                           // default ""
 
         // Look
-        show-legend: true;
-        legend-position: ChartLegendPosition.top;
-        show-tooltip: true;
-        show-points: true;
-        show-values: false;
-        animated: true;
+        // show-legend: true;
+        // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+        // show-tooltip: true;
+        // show-values: false;                            // a label on each bar or point
+        // show-points: true;                             // markers on lines
+        // show-lines: false;                             // scatter charts: connect the points
+        // animated: true;
+        // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+        // bar-radius: 0;                                 // rounded bar corners
+        // bar-border-width: 1px;
 
         // Value axis
-        begin-at-zero: false;
-        stacked: false;
-        stacked-percent: false;
-        fixed-range: false;
-        min-value: 0;
-        max-value: 100;
-        logarithmic: false;
-        x-title: "";
-        y-title: "";
-        value-prefix: "";
-        value-suffix: "";
-        value-decimals: -1;                         // -1: automatic
+        // begin-at-zero: false;                          // true by default in bar charts
+        // stacked: false;
+        // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+        // fixed-range: false;                            // true: use min-value and max-value
+        // min-value: 0;
+        // max-value: 100;
+        // logarithmic: false;
+        // x-title: "";
+        // y-title: "";
+        // value-prefix: "";
+        // value-suffix: "";
+        // value-decimals: -1;                            // -1: automatic
+
+        // Second value axis, for datasets with right-axis: true
+        // y2-title: "";
+        // y2-begin-at-zero: false;                       // default: begin-at-zero
+        // y2-fixed-range: false;
+        // y2-min-value: 0;
+        // y2-max-value: 100;
+        // y2-logarithmic: false;
+        // y2-value-prefix: "";
+        // y2-value-suffix: "";
+        // y2-value-decimals: -1;
+
+        // Time axis
+        // time-axis: false;                              // true in TimeSeriesChart
+        // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+        // utc-offset: 0;                                 // minutes added to UTC
 
         // Large datasets, zoom and pan
-        decimate: true;
-        zoom-enabled: false;
-        view-start: 0;
-        view-end: 1;
-        min-view: 0.0005;
+        // decimate: true;                                // lines: one span per pixel column
+        // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+        // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+        // view-end: 1;
+        // min-view: 0.0005;                              // the smallest visible part
 
         // Callbacks
-        category-clicked(index) =&gt; { debug("clicked category", index); }
-        legend-toggled(index) =&gt; { debug("toggled dataset", index); }
+        // category-clicked(index) =&gt; { debug("clicked", index); }
+        // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+        // legend-toggled(index) =&gt; { debug("toggled", index); }
     }
 }</code></pre>
 <p>Import only the charts you use, plus <code>ChartEngine</code>, which must always be imported and exported. Charts you don't
@@ -475,141 +496,297 @@ fn main() -> Result&lt;(), slint::PlatformError&gt; {
 <h2 id="line-chart">LineChart</h2>
 <p>Lines through the values of each dataset, one point per label.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/line.webp" alt="LineChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/line-dark.webp" alt="LineChart" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, ChartTheme, LineChart } from "@slintplot";
+<pre data-shot="line"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
 
 LineChart {
+    // Data
     title: "Temperature";
     labels: ["Mon", "Tue", "Wed", "Thu", "Fri"];
     datasets: [
-    { label: "Oslo", values: [4, 6, 5, 8, 7], tension: 0.4 },
-    { label: "Bergen", values: [7, 8, 8, 9, 10], tension: 0.4, fill: true },
+        {
+            label: "Oslo",
+            values: [4, 6, 5, 8, 7],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            tension: 0.4,
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+        { label: "Bergen", values: [7, 8, 8, 9, 10], tension: 0.4, fill: true },
     ];
+
     // Look
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    show-values: false;
-    animated: true;
-    show-points: true;
-    fill-opacity: ChartTheme.fill-opacity;    // fills of `fill: true` datasets
-    begin-at-zero: false;
-    stacked: false;
-    stacked-percent: false;
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
     // Value axis
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    logarithmic: false;
-    x-title: "";
-    y-title: "";
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    decimate: true;
-    // Zoom and pan
-    zoom-enabled: false;
-    view-start: 0;
-    view-end: 1;
-    min-view: 0.0005;
-    category-clicked(index) =&gt; { debug("clicked", index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+    // begin-at-zero: false;                          // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <p>Dataset options that apply to lines: <code>tension</code> (0 for straight segments, about 0.4 for smooth curves),
 <code>fill</code> (fill to the axis, or to the dataset below when stacked) and <code>stepped</code> (steps instead of slopes).
 All properties are listed under <a href="#cartesian-properties">Cartesian properties</a>.</p>
 <h3>Stepped and stacked lines</h3>
-<pre><code>LineChart {
+<pre data-shot="area-stacked"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
+
+LineChart {
+    // Data
     labels: ["Q1", "Q2", "Q3", "Q4"];
-    stacked: true;
     datasets: [
-        { label: "Solar", values: [10, 25, 30, 12], fill: true },
-        { label: "Wind",  values: [20, 15, 18, 26], fill: true },
+        {
+            label: "Solar",
+            values: [10, 25, 30, 12],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            fill: true,
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+        { label: "Wind", values: [20, 15, 18, 26], fill: true },
         { label: "Price", values: [5, 7, 6, 8], stepped: true },
     ];
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
+    // Value axis
+    // begin-at-zero: false;                          // true by default in bar charts
+    stacked: true;                                    // default false
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/area-stacked.webp" alt="A stacked area chart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/area-stacked-dark.webp" alt="A stacked area chart" loading="lazy"></figure>
 
 <h2 id="bar-chart">BarChart</h2>
 <p>Vertical bars, grouped by default and stacked with <code>stacked: true</code>. The value axis begins at zero.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bar-vertical.webp" alt="BarChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bar-vertical-dark.webp" alt="BarChart" loading="lazy"></figure>
-<pre><code>import { BarChart, ChartLegendPosition, ChartTheme } from "@slintplot";
+<pre data-shot="bar-vertical"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
 
 BarChart {
+    // Data
     title: "Visitors";
     labels: ["Jan", "Feb", "Mar"];
     datasets: [
-    { label: "Desktop", values: [1200, 1350, 1100] },
-    { label: "Mobile",  values: [2400, 2650, 2900] },
+        {
+            label: "Desktop",
+            values: [1200, 1350, 1100],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+        { label: "Mobile", values: [2400, 2650, 2900] },
     ];
+
     // Look
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    show-values: false;
-    animated: true;
-    begin-at-zero: true;
-    stacked: false;
-    stacked-percent: false;
-    // Bars
-    bar-radius: 6px;                          // default 0
-    bar-border-width: 2px;                    // default 1px
-    fill-opacity: ChartTheme.fill-opacity;    // 0.5 by default
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    bar-radius: 6px;                                  // default 0
+    bar-border-width: 2px;                            // default 1px
+
     // Value axis
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    logarithmic: false;
-    x-title: "";
-    y-title: "";
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    // Zoom and pan
-    zoom-enabled: false;
-    view-start: 0;
-    view-end: 1;
-    min-view: 0.0005;
-    category-clicked(index) =&gt; { debug("clicked", index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+    // begin-at-zero: true;                           // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <p>When stacked, positive and negative values stack separately.</p>
 
 <h2 id="horizontal-bar-chart">HorizontalBarChart</h2>
 <p>Categories run down the left side and bars grow to the right.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bar-horizontal.webp" alt="HorizontalBarChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bar-horizontal-dark.webp" alt="HorizontalBarChart" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, ChartTheme, HorizontalBarChart } from "@slintplot";
+<pre data-shot="bar-horizontal"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, HorizontalBarChart } from "@slintplot";
 
 HorizontalBarChart {
+    // Data
     title: "Languages used (%)";
     labels: ["JavaScript", "Python", "Rust"];
     datasets: [
-    { label: "2025", values: [62, 51, 12] },
-    { label: "2026", values: [60, 55, 15] },
+        {
+            label: "2025",
+            values: [62, 51, 12],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+        { label: "2026", values: [60, 55, 15] },
     ];
-    show-legend: true;
-    legend-position: ChartLegendPosition.right;  // default top
-    show-tooltip: true;
-    show-values: false;
-    animated: true;
-    begin-at-zero: true;
-    stacked: false;
-    stacked-percent: false;
-    // Bars
-    bar-radius: 0;
-    bar-border-width: 1px;
-    fill-opacity: ChartTheme.fill-opacity;    // 0.5 by default
+
+    // Look
+    // show-legend: true;
+    legend-position: ChartLegendPosition.right;       // default top
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
     // Value axis
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    logarithmic: false;
-    x-title: "";
-    y-title: "";
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    category-clicked(index) =&gt; { debug("clicked", index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+    // begin-at-zero: true;
+    // stacked: false;
+    // stacked-percent: false;                        // every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -628,111 +805,198 @@ HorizontalBarChart {
 <p>Points on numeric x and y axes. Datasets use <code>points</code> instead of <code>values</code>.
 Hovering highlights the nearest point and shows its coordinates.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/scatter.webp" alt="ScatterChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/scatter-dark.webp" alt="ScatterChart" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, ScatterChart } from "@slintplot";
+<pre data-shot="scatter"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, ScatterChart } from "@slintplot";
 
 ScatterChart {
+    // Data
     title: "Height and weight";
-    datasets: [{
-    label: "Group A",
-    points: [{ x: 165, y: 58 }, { x: 172, y: 70 }, { x: 180, y: 82 }],
-    }];
+    datasets: [
+        {
+            label: "Group A",
+            // values: [],                            // line, bar and radar charts
+            points: [{ x: 158, y: 52 }, { x: 162, y: 57 }, { x: 165, y: 58 }, { x: 168, y: 64 }, { x: 170, y: 61 },
+                     { x: 172, y: 70 }, { x: 175, y: 72 }, { x: 177, y: 69 }, { x: 180, y: 82 }, { x: 184, y: 79 }],
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+    ];
+
     // Look
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    show-values: false;
-    animated: true;
-    show-points: true;
-    show-lines: false;                        // connect the points in order
-    begin-at-zero: false;
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
     // Value axis
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    logarithmic: false;
-    x-title: "";
-    y-title: "";
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    time-axis: false;                         // see TimeSeriesChart
-    decimate: true;
-    // Zoom and pan
-    zoom-enabled: true;                       // default false
-    view-start: 0;
-    view-end: 1;
-    min-view: 0.0005;
-    point-clicked(dataset, index) =&gt; {
-            debug("clicked point", index, "of dataset", dataset);
-    }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+    // begin-at-zero: false;                          // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    zoom-enabled: true;                               // default false
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="bubble-chart">BubbleChart</h2>
 <p>A scatter chart whose points have a radius: <code>r</code> is the bubble radius in pixels. Hovering works anywhere inside a bubble.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bubble.webp" alt="BubbleChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bubble-dark.webp" alt="BubbleChart" loading="lazy"></figure>
-<pre><code>import { BubbleChart, ChartLegendPosition } from "@slintplot";
+<pre data-shot="bubble"><code>import { BubbleChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
 
 BubbleChart {
+    // Data
     title: "Markets";
-    datasets: [{
-    label: "Retail",
-    // r: the bubble radius in pixels
-    points: [{ x: 20, y: 30, r: 15 }, { x: 40, y: 10, r: 8 }, { x: 70, y: 45, r: 20 }],
-    }];
+    datasets: [
+        {  // r: the bubble radius in pixels
+            label: "Retail",
+            // values: [],                            // line, bar and radar charts
+            points: [{ x: 20, y: 30, r: 15 }, { x: 35, y: 18, r: 8 }, { x: 48, y: 40, r: 24 },
+                     { x: 60, y: 25, r: 12 }, { x: 72, y: 46, r: 18 }, { x: 85, y: 34, r: 10 }],
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+    ];
+
     // Look
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    show-values: false;
-    animated: true;
-    begin-at-zero: false;
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
     // Value axis
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    logarithmic: false;
-    x-title: "";
-    y-title: "";
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    // Zoom and pan
-    zoom-enabled: false;
-    view-start: 0;
-    view-end: 1;
-    min-view: 0.0005;
-    point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+    // begin-at-zero: false;                          // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="pie-chart">PieChart</h2>
 <p>Slices proportional to their values. The hovered slice moves outwards, and the tooltip shows its value and share.
 Clicking a legend entry hides the slice.</p>
-<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/pie-labels.webp" alt="PieChart with percentages" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/pie-labels-dark.webp" alt="PieChart with percentages" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, PieChart } from "@slintplot";
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/pie-labels.webp" alt="PieChart of browser shares" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/pie-labels-dark.webp" alt="PieChart of browser shares" loading="lazy"></figure>
+<pre data-shot="pie-labels"><code>import { ChartLegendPosition, PieChart } from "@slintplot";
 
 PieChart {
+    // Data
     title: "Browsers";
     slices: [
-    { label: "Chrome", value: 64 },
-    { label: "Safari", value: 19 },
-    { label: "Edge", value: 5 },
-    { label: "Other", value: 12, color: transparent, hidden: false },
+        {
+            label: "Chrome",
+            value: 64,
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+        },
+        { label: "Safari", value: 19 },
+        { label: "Edge", value: 5 },
+        { label: "Other", value: 12, color: transparent, hidden: false },
     ];
-    cutout: 0;
-    polar: false;                                    // the size of the center hole
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    animated: true;
-    show-values: false;
-    show-percentages: false;
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    slice-clicked(index) =&gt; { debug("clicked slice", index); }
-    legend-toggled(index) =&gt; { debug("toggled slice", index); }
+
+    // Look
+    // cutout: 0;                                     // the size of the center hole, 0 to 1
+    // polar: false;                                  // true: equal angles, the radius shows the value
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // animated: true;
+    // show-values: false;                            // the value on each slice
+    // show-percentages: false;                       // the share on each slice
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // slice-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table id="pie-properties">
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -753,81 +1017,119 @@ PieChart {
 <h2 id="doughnut-chart">DoughnutChart</h2>
 <p>A <code>PieChart</code> with <code>cutout: 0.5</code>. It has the same properties.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/doughnut.webp" alt="DoughnutChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/doughnut-dark.webp" alt="DoughnutChart" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, DoughnutChart } from "@slintplot";
+<pre data-shot="doughnut"><code>import { ChartLegendPosition, DoughnutChart } from "@slintplot";
 
 DoughnutChart {
+    // Data
     title: "Traffic sources";
     slices: [
-    { label: "Search", value: 48 },
-    { label: "Direct", value: 22 },
-    { label: "Social", value: 17 },
+        {
+            label: "Search",
+            value: 48,
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+        },
+        { label: "Direct", value: 22 },
+        { label: "Social", value: 17 },
     ];
-    cutout: 0.5;
-    polar: false;                                  // the doughnut's default
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    animated: true;
-    show-values: false;
-    show-percentages: false;
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    slice-clicked(index) =&gt; { debug("clicked slice", index); }
-    legend-toggled(index) =&gt; { debug("toggled slice", index); }
+
+    // Look
+    // cutout: 0.5;                                   // the size of the center hole, 0 to 1
+    // polar: false;                                  // true: equal angles, the radius shows the value
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // animated: true;
+    // show-values: false;                            // the value on each slice
+    // show-percentages: false;                       // the share on each slice
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // slice-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="polar-area-chart">PolarAreaChart</h2>
 <p>Slices of equal angle whose radius shows the value, with labelled value rings. It has the same properties as <code>PieChart</code>.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/polar-area.webp" alt="PolarAreaChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/polar-area-dark.webp" alt="PolarAreaChart" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, PolarAreaChart } from "@slintplot";
+<pre data-shot="polar-area"><code>import { ChartLegendPosition, PolarAreaChart } from "@slintplot";
 
 PolarAreaChart {
+    // Data
     title: "Sales by region";
     slices: [
-    { label: "North", value: 11 },
-    { label: "East", value: 16 },
-    { label: "South", value: 7 },
-    { label: "West", value: 3 },
+        {
+            label: "North",
+            value: 11,
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+        },
+        { label: "East", value: 16 },
+        { label: "South", value: 7 },
+        { label: "West", value: 3 },
     ];
-    cutout: 0;
-    polar: true;                                  // set by PolarAreaChart
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    animated: true;
-    show-values: false;
-    show-percentages: false;
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    slice-clicked(index) =&gt; { debug("clicked slice", index); }
-    legend-toggled(index) =&gt; { debug("toggled slice", index); }
+
+    // Look
+    // cutout: 0;                                     // the size of the center hole, 0 to 1
+    // polar: true;                                   // true: equal angles, the radius shows the value
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // animated: true;
+    // show-values: false;                            // the value on each slice
+    // show-percentages: false;                       // the share on each slice
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // slice-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="radar-chart">RadarChart</h2>
 <p>One spoke per label and one closed polygon per dataset. Hovering a spoke shows every dataset's value for it.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/radar.webp" alt="RadarChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/radar-dark.webp" alt="RadarChart" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, RadarChart } from "@slintplot";
+<pre data-shot="radar"><code>import { ChartLegendPosition, ChartSeriesType, RadarChart } from "@slintplot";
 
 RadarChart {
+    // Data
     title: "Skills";
     labels: ["Speed", "Power", "Range", "Comfort", "Price"];
     datasets: [
-        { label: "Model A", values: [80, 65, 70, 50, 60], fill: true },
+        {
+            label: "Model A",
+            values: [80, 65, 70, 50, 60],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            fill: true,
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
         { label: "Model B", values: [55, 80, 60, 75, 70], fill: true },
     ];
-    begin-at-zero: true;
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    show-points: true;
-    animated: true;
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    category-clicked(index) =&gt; { debug("clicked spoke", index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-points: true;
+    // animated: true;
+
+    // Value axis
+    // begin-at-zero: true;
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }  // a spoke
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -844,15 +1146,80 @@ RadarChart {
 <h2 id="mixed-charts">Mixed charts</h2>
 <p>Any dataset in a line or bar chart can be drawn as the other type with <code>series-type</code>. Lines in a bar chart go through the bar centers, and stacking keeps lines and bars apart.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/combo-bar-line.webp" alt="Bars with a line" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/combo-bar-line-dark.webp" alt="Bars with a line" loading="lazy"></figure>
-<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
-<pre><code>import { BarChart, ChartSeriesType } from "@slintplot";
+<pre data-shot="combo-bar-line"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
 
 BarChart {
+    // Data
     labels: ["Q1", "Q2", "Q3", "Q4"];
     datasets: [
-        { label: "Sales", values: [12, 19, 8, 15] },
+        {
+            label: "Sales",
+            values: [12, 19, 8, 15],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
         { label: "Average", values: [10, 14, 12, 13], series-type: ChartSeriesType.line },
     ];
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
+    // Value axis
+    // begin-at-zero: true;                           // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="percent-bars">100% stacked bars</h2>
@@ -863,21 +1230,58 @@ survey answers. The percentage labels use largest remainder rounding, so each ba
 below: a fade from dark blue to light blue. Give each dataset its own <code>color</code>, which always wins over the theme; without one,
 the datasets take the theme's colors.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/survey.webp" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/survey-dark.webp" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"></figure>
-<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
-<pre><code>HorizontalBarChart {
+<pre data-shot="survey"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, HorizontalBarChart } from "@slintplot";
+
+HorizontalBarChart {
+    // Data
     title: "How often do you work from home?";
     labels: ["Engineering", "Sales", "Support"];
-    stacked-percent: true;
-    show-values: true;
-    fill-opacity: 1;
-    bar-border-width: 0;
     datasets: [
-        { label: "Every day", values: [24, 5, 8], color: #172f73 },
+        {
+            label: "Every day",
+            values: [24, 5, 8],
+            // points: [],                            // scatter, bubble and time series charts
+            color: #172f73,
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
         { label: "Most days", values: [30, 12, 14], color: #1d4ed8 },
         { label: "Some days", values: [28, 34, 23], color: #3b7ef0 },
         { label: "Rarely", values: [12, 28, 25], color: #5f9cf2 },
         { label: "Never", values: [6, 21, 30], color: #86b6ef },
     ];
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    show-values: true;                                // default false
+    // animated: true;
+    fill-opacity: 1;                                  // default ChartTheme.fill-opacity
+    // bar-radius: 0;                                 // rounded bar corners
+    bar-border-width: 0;                              // default 1px
+
+    // Value axis
+    // begin-at-zero: true;
+    // stacked: false;
+    stacked-percent: true;                            // default false
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="time-series">TimeSeriesChart</h2>
@@ -886,46 +1290,82 @@ The axis picks round times for its ticks: seconds, minutes, hours, days, months 
 tooltip shows the date and time. Hovering anywhere above or below the lines shows the values at that time. Tick steps follow the visible span, from years down to seconds. When no tick falls on a midnight (or on a January), the first
 tick also shows the date (or the year), so a zoomed-in axis always says when it is. Zoomed in between points, lines continue to the
 edges of the plot.</p>
-<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/time-hourly.webp" alt="TimeSeriesChart with hourly values over two weeks" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/time-hourly-dark.webp" alt="TimeSeriesChart with hourly values over two weeks" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, TimeSeriesChart } from "@slintplot";
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/time-hourly.webp" alt="TimeSeriesChart of hourly temperatures" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/time-hourly-dark.webp" alt="TimeSeriesChart of hourly temperatures" loading="lazy"></figure>
+<pre data-shot="time-hourly"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, TimeSeriesChart } from "@slintplot";
 
 TimeSeriesChart {
+    // Data
     title: "Temperature";
-    datasets: [{
-    label: "Oslo",
-    // One point per hour: x is seconds after the time origin.
-    points: [{ x: 0, y: 8.5 }, { x: 3600, y: 9.1 }, { x: 7200, y: 10.4 }],
-    }];
-    time-origin: { year: 2026, month: 10, day: 11 };  // default 1970-01-01
-    time-axis: true;                              // set by TimeSeriesChart
-    utc-offset: 0;                                // minutes added to UTC
-    show-lines: true;
-    show-points: false;
+    datasets: [
+        {  // One point per hour: x is seconds after the time origin.
+            label: "Oslo",
+            // values: [],                            // line, bar and radar charts
+            points: [{ x: 0, y: 8.5 },      { x: 3600, y: 8.1 },  { x: 7200, y: 7.8 },  { x: 10800, y: 7.6 },
+                     { x: 14400, y: 7.9 },  { x: 18000, y: 8.6 }, { x: 21600, y: 9.8 }, { x: 25200, y: 11.2 },
+                     { x: 28800, y: 12.5 }, { x: 32400, y: 13.4 }, { x: 36000, y: 13.9 }, { x: 39600, y: 14.1 }],
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+    ];
+
     // Look
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    show-values: false;
-    animated: true;
-    begin-at-zero: false;
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: false;                            // markers on lines
+    // show-lines: true;                              // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
     // Value axis
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    logarithmic: false;
-    x-title: "";
-    y-title: "";
-    value-prefix: "";
-    value-suffix: " °C";                          // default ""
-    value-decimals: -1;
-    decimate: true;
-    // Zoom and pan
-    zoom-enabled: true;                           // default false
-    view-start: 0;
-    view-end: 1;
-    min-view: 0.0005;
-    point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+    // begin-at-zero: false;                          // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    value-suffix: " °C";                              // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: true;                               // true in TimeSeriesChart
+    time-origin: { year: 2026, month: 10, day: 11 };  // default 1970-01-01
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    zoom-enabled: true;                               // default false
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -941,31 +1381,40 @@ TimeSeriesChart {
 <p>A matrix of colored cells: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order.
 Missing values (NaN) are drawn as empty cells.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap.webp" alt="HeatmapChart: visits by weekday and hour" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-dark.webp" alt="HeatmapChart: visits by weekday and hour" loading="lazy"></figure>
-<pre><code>import { ChartTheme, HeatmapChart } from "@slintplot";
+<pre data-shot="heatmap"><code>import { ChartTheme, HeatmapChart } from "@slintplot";
 
 HeatmapChart {
+    // Data
     title: "Visits by weekday and hour";
-    x-labels: ["09", "10", "11", "12"];
-    y-labels: ["Mon", "Tue"];
-    // values[row * columns + column]
-    values: [12, 30, 45, 52,
-             10, 28, 49, 60];
-    color: ChartTheme.colors[0];
-    diverging: false;
-    center-value: 0;
-    negative-color: ChartTheme.colors[2];
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    show-values: false;
-    show-legend: true;
-    show-tooltip: true;
-    cell-gap: 2px;
-    cell-radius: 3px;
-    value-prefix: "";
-    value-suffix: " visits";                      // default ""
-    value-decimals: -1;
-    cell-clicked(row, column) =&gt; { debug("clicked", row, column); }
+    x-labels: ["09", "10", "11", "12", "13", "14"];
+    y-labels: ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    values: [12, 30, 45, 52, 38, 41,
+             10, 28, 49, 60, 42, 47,
+             14, 33, 51, 58, 40, 44,
+             11, 26, 43, 55, 36, 39,
+              8, 21, 35, 41, 27, 22];
+
+    // Look
+    // color: ChartTheme.colors[0];                   // the highest values
+    // diverging: false;                              // true: two colors, split at center-value
+    // center-value: 0;
+    // negative-color: ChartTheme.colors[2];          // values below center-value
+    // show-values: false;                            // the value in each cell
+    // show-legend: true;
+    // show-tooltip: true;
+    // cell-gap: 2px;
+    // cell-radius: 3px;
+
+    // Values
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // value-prefix: "";
+    value-suffix: " visits";                          // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // cell-clicked(row, column) =&gt; { debug("clicked", row, column); }
 }</code></pre>
 <p>A diverging scale suits values around a center, such as correlations:</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap-diverging.webp" alt="A diverging heatmap of correlations" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-diverging-dark.webp" alt="A diverging heatmap of correlations" loading="lazy"></figure>
@@ -989,23 +1438,31 @@ weekday labels and a "Less … More" legend. Days are colored in <code>levels</c
 so a few very active days don't wash out the rest; zero or missing days are empty. The days take the theme's first color, in
 lighter shades for fewer contributions; set <code>color</code> for another, such as GitHub's green.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/calendar.webp" alt="CalendarHeatmap of a year of contributions" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/calendar-dark.webp" alt="CalendarHeatmap of a year of contributions" loading="lazy"></figure>
-<pre><code>import { CalendarHeatmap, ChartTheme } from "@slintplot";
+<pre data-shot="calendar"><code>import { CalendarHeatmap, ChartTheme } from "@slintplot";
 
 CalendarHeatmap {
+    // Data
     title: "Contributions in the last year";
     start-date: { year: 2025, month: 10, day: 26 };
-    values: root.daily-counts;                    // one value per day
-    color: ChartTheme.dark ? #39d353 : #216e39;   // GitHub's green; default ChartTheme.colors[0]
-    levels: 4;
-    week-starts-monday: false;
-    show-legend: true;
-    show-tooltip: true;
-    cell-gap: 3px;
-    cell-radius: 2px;
-    value-prefix: "";
-    value-suffix: " contributions";               // default ""
-    value-decimals: -1;
-    day-clicked(index) =&gt; { debug("day", index); }
+    values: root.daily-counts;                        // one value per day
+
+    // Look
+    color: ChartTheme.dark ? #39d353 : #216e39;       // GitHub's green; default ChartTheme.colors[0]
+    // levels: 4;                                     // color steps
+    // week-starts-monday: false;
+    // show-legend: true;
+    // show-tooltip: true;
+    // cell-gap: 3px;
+    // cell-radius: 2px;
+    // min-cell-size: 11px;                           // scrolls when the cells would be smaller
+
+    // Values
+    // value-prefix: "";
+    value-suffix: " contributions";                   // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // day-clicked(index) =&gt; { debug("clicked day", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1027,28 +1484,40 @@ the legend lists the groups, and clicking one hides it. Without groups, every it
 Missing, zero and negative values take no space. Labels and values are written in the rectangles where they fit, in white or dark
 text depending on the fill.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/treemap.webp" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/treemap-dark.webp" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, TreemapChart } from "@slintplot";
+<pre data-shot="treemap"><code>import { ChartLegendPosition, TreemapChart } from "@slintplot";
 
 TreemapChart {
+    // Data
     title: "World population (millions)";
     items: [
-        { label: "India", value: 1464, group: "Asia" },
+        {
+            label: "India",
+            value: 1464,
+            group: "Asia",
+            // color: transparent,                    // transparent: the group's color
+        },
         { label: "China", value: 1416, group: "Asia" },
         { label: "Nigeria", value: 237, group: "Africa" },
         { label: "United States", value: 347, group: "Americas" },
         { label: "Brazil", value: 212, group: "Americas", color: transparent },  // transparent: the group's color
     ];
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    show-values: true;
-    cell-gap: 2px;
-    cell-radius: 3px;
-    value-prefix: "";
-    value-suffix: " M";                           // default ""
-    value-decimals: -1;
-    item-clicked(index) =&gt; { debug("clicked", index); }
-    legend-toggled(index) =&gt; { debug("toggled group", index); }
+
+    // Look
+    // show-legend: true;                             // the groups
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: true;                             // the value under each label
+    // cell-gap: 2px;
+    // cell-radius: 3px;
+
+    // Values
+    // value-prefix: "";
+    value-suffix: " M";                               // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // item-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled group", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1069,35 +1538,48 @@ Top-level items take the theme's colors in order and their children a lighter sh
 children zooms into it, so that it fills the rings; clicking the center zooms back out. The center shows the total of what is shown.
 Labels are written on the arcs where they fit, and the legend lists the top-level items.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/sunburst.webp" alt="SunburstChart of world population by continent, region and country" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/sunburst-dark.webp" alt="SunburstChart of world population by continent, region and country" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, SunburstChart } from "@slintplot";
+<pre data-shot="sunburst"><code>import { ChartLegendPosition, ChartTexts, SunburstChart } from "@slintplot";
 
 SunburstChart {
+    // Data
     title: "World population (millions)";
     items: [
-        { label: "Asia", parent: -1 },                       // 0: its value is the sum of its children
-        { label: "South Asia", parent: 0 },                  // 1
+        {  // 0: its value is the sum of its children
+            label: "Asia",
+            // value: 0,                              // 0 for parents: the sum of their children
+            parent: -1,
+            // color: transparent,                    // transparent: the theme's next color, or the parent's
+            // hidden: false,
+        },
+        { label: "South Asia", parent: 0 },           // 1
         { label: "India", value: 1464, parent: 1 },
         { label: "Pakistan", value: 255, parent: 1 },
-        { label: "East Asia", parent: 0 },                   // 4
+        { label: "East Asia", parent: 0 },            // 4
         { label: "China", value: 1416, parent: 4 },
-        { label: "Europe", parent: -1, color: transparent }, // 6; transparent: the theme's next color
+        { label: "Europe", parent: -1, color: transparent },  // 6; transparent: the theme's next color
         { label: "Germany", value: 84, parent: 6 },
         { label: "France", value: 66, parent: 6, hidden: false },
     ];
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    animated: true;
-    show-labels: true;
-    cutout: 0.3;
-    center-label: "Total";
-    zoom-item: -1;
-    value-prefix: "";
-    value-suffix: " M";                                     // default ""
-    value-decimals: -1;
-    item-clicked(index) =&gt; { debug("clicked", index); }
-    zoomed(index) =&gt; { debug("zoomed into", index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+
+    // Look
+    // show-legend: true;                             // the top level
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // animated: true;
+    // show-labels: true;
+    // cutout: 0.3;                                   // the size of the center hole, 0 to 1
+    // center-label: ChartTexts.total;                // "Total", in the chart's language
+    // zoom-item: -1;                                 // the item zoomed into; -1: none
+
+    // Values
+    // value-prefix: "";
+    value-suffix: " M";                               // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // item-clicked(index) =&gt; { debug("clicked", index); }
+    // zoomed(index) =&gt; { debug("zoomed into", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1122,32 +1604,44 @@ narrow, and badges on the right show the share of the previous stage each one ke
 rows are too short for text, the names, values and badges are left out, and the tooltip shows them. Stages are
 <code>ChartSlice</code>s, as in pie charts.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/funnel.webp" alt="FunnelChart of website visitors through to a purchase" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/funnel-dark.webp" alt="FunnelChart of website visitors through to a purchase" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, ChartTheme, FunnelChart } from "@slintplot";
+<pre data-shot="funnel"><code>import { ChartLegendPosition, ChartTheme, FunnelChart } from "@slintplot";
 
 FunnelChart {
+    // Data
     title: "Visitors to purchases";
     stages: [
-        { label: "Visited the site", value: 12400 },
+        {
+            label: "Visited the site",
+            value: 12400,
+            // color: transparent,                    // transparent: the fade
+            // hidden: false,
+        },
         { label: "Viewed a product", value: 7350 },
         { label: "Added to cart", value: 3120 },
         { label: "Purchased", value: 1150, color: transparent, hidden: false },  // transparent: the fade
     ];
-    show-legend: false;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    animated: true;
-    show-labels: true;
-    show-values: true;
-    show-percentages: true;
-    show-conversions: true;
-    color: ChartTheme.colors[0];
-    curved: true;
-    gap: 4px;
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    stage-clicked(index) =&gt; { debug("clicked", index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+
+    // Look
+    // color: ChartTheme.colors[0];                   // the top stage; lower stages fade
+    // curved: true;
+    // gap: 4px;                                      // between the stages
+    // show-labels: true;
+    // show-values: true;
+    // show-percentages: true;                        // each stage's share of the first
+    // show-conversions: true;                        // badges with the share of the previous stage
+    // show-legend: false;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // animated: true;
+
+    // Values
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // stage-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1170,38 +1664,49 @@ Steps with <code>total: true</code> are bars from zero to the running total, in 
 ignored. Thin lines connect each bar's end to the next bar. The value axis always includes zero; the tooltip shows the change and
 the running total. Negative values are written with the sign before the prefix: "-$48k".</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/waterfall.webp" alt="WaterfallChart of a profit and loss statement" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/waterfall-dark.webp" alt="WaterfallChart of a profit and loss statement" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, ChartTheme, WaterfallChart } from "@slintplot";
+<pre data-shot="waterfall"><code>import { ChartLegendPosition, ChartTexts, ChartTheme, WaterfallChart } from "@slintplot";
 
 WaterfallChart {
+    // Data
     title: "Profit and loss";
     steps: [
-        { label: "Revenue", value: 420 },
+        {
+            label: "Revenue",
+            value: 420,
+            // total: false,                          // true: a bar from zero to the running total
+        },
         { label: "Cost of sales", value: -185 },
         { label: "Gross profit", total: true },
         { label: "Marketing", value: -48 },
         { label: "Net profit", total: true },
     ];
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    animated: true;
-    show-values: true;                              // default false
-    show-connectors: true;
-    increase-color: #10b981;                        // default: green, lighter in dark mode
-    decrease-color: #f43f5e;                        // default: red, lighter in dark mode
-    total-color: ChartTheme.colors[0];
-    increase-label: "Increase";
-    decrease-label: "Decrease";
-    total-label: "Total";
-    bar-radius: 0;
-    bar-border-width: 1px;
-    fill-opacity: 0.5;                              // default ChartTheme.fill-opacity
-    x-title: "";
-    y-title: "";
-    value-prefix: "$";                              // default ""
-    value-suffix: "k";                              // default ""
-    value-decimals: -1;
-    step-clicked(index) =&gt; { debug("clicked", index); }
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // animated: true;
+    show-values: true;                                // default false
+    // show-connectors: true;                         // lines from each bar to the next
+    increase-color: #10b981;                          // default: green, lighter in dark mode
+    decrease-color: #f43f5e;                          // default: red, lighter in dark mode
+    // total-color: ChartTheme.colors[0];
+    // increase-label: ChartTexts.increase;           // "Increase", in the chart's language
+    // decrease-label: ChartTexts.decrease;
+    // total-label: ChartTexts.total;
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+    // fill-opacity: ChartTheme.fill-opacity;         // 0.5
+
+    // Value axis
+    // x-title: "";
+    // y-title: "";
+    value-prefix: "$";                                // default ""
+    value-suffix: "k";                                // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // step-clicked(index) =&gt; { debug("clicked", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1221,35 +1726,53 @@ WaterfallChart {
 two values per category, such as before and after. It takes <code>labels</code> and <code>datasets</code> like a horizontal bar chart,
 and works with more than two datasets too. With exactly two, the tooltip also shows the change from the first to the second.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/dumbbell.webp" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/dumbbell-dark.webp" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, DumbbellChart } from "@slintplot";
+<pre data-shot="dumbbell"><code>import { ChartLegendPosition, ChartSeriesType, DumbbellChart } from "@slintplot";
 
 DumbbellChart {
+    // Data
     title: "Life expectancy at birth (years)";
     labels: ["Japan", "India", "Nigeria"];
     datasets: [
-        { label: "2000", values: [81.1, 62.7, 46.3] },
+        {
+            label: "2000",
+            values: [81.1, 62.7, 46.3],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
         { label: "2023", values: [84.7, 72.0, 54.5] },
     ];
-    show-legend: true;
-    legend-position: ChartLegendPosition.top;
-    show-tooltip: true;
-    animated: true;
-    begin-at-zero: false;
-    show-values: true;                              // default false
-    dot-radius: 6px;
-    bar-width: 4px;
-    bar-color: gray;                                // default: between the grid and axis colors
-    fixed-range: false;
-    min-value: 0;
-    max-value: 100;
-    logarithmic: false;
-    x-title: "";
-    y-title: "";
-    value-prefix: "";
-    value-suffix: "";
-    value-decimals: -1;
-    category-clicked(index) =&gt; { debug("clicked", index); }
-    legend-toggled(index) =&gt; { debug("toggled", index); }
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // animated: true;
+    show-values: true;                                // default false
+    // dot-radius: 6px;
+    // bar-width: 4px;
+    bar-color: gray;                                  // default: between the grid and axis colors
+
+    // Value axis
+    // begin-at-zero: false;
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    // y-title: "";
+    // value-prefix: "";
+    // value-suffix: "";
+    // value-decimals: -1;                            // -1: automatic
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1274,35 +1797,46 @@ styles after common dashboard gauges:</p>
   ticks and their labels inside it, and a needle pointing at the value, which is written below the hub.</li>
 </ul>
 <p>The value is sized to the gauge, and the gauge moves smoothly to new values. Hovering a band shows its range.</p>
-<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/gauge.webp" alt="Three gauges: a half circle fill, a 240° fill with a ring of bands, and a needle with ticks" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/gauge-dark.webp" alt="Three gauges: a half circle fill, a 240° fill with a ring of bands, and a needle with ticks" loading="lazy"></figure>
-<pre><code>import { ChartLegendPosition, ChartTheme, GaugeChart } from "@slintplot";
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/gauge.webp" alt="GaugeChart: a needle with ticks over three colored bands" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/gauge-dark.webp" alt="GaugeChart: a needle with ticks over three colored bands" loading="lazy"></figure>
+<pre data-shot="gauge"><code>import { ChartLegendPosition, ChartTheme, GaugeChart } from "@slintplot";
 
 GaugeChart {
+    // Data
     title: "CPU temperature";
     value: 77;
-    min-value: 20;                                  // default 0
-    max-value: 100;
     label: "Package";
     bands: [
-        { to: 60, label: "Normal", color: #10b981 },
+        {
+            to: 60,
+            label: "Normal",
+            color: #10b981,
+        },
         { to: 85, label: "Warm", color: #f59e0b },
         { to: 100, label: "Hot", color: transparent },  // transparent: the theme's next color
     ];
-    show-needle: true;                              // default false
-    show-ticks: true;
-    rounded: true;                                  // fill style only
-    sweep: 240;                                     // default 180
-    cutout: 0.86;                                   // default 0.86 with a needle, else 0.72
-    color: ChartTheme.colors[0];
-    show-min-max: true;                             // hidden while tick labels show the ends
-    show-legend: true;                              // default false
-    legend-position: ChartLegendPosition.bottom;
-    show-tooltip: true;
-    animated: true;
-    value-font-size: 0px;                           // 0: sized to the gauge
-    value-prefix: "";
-    value-suffix: " °C";                            // default ""
-    value-decimals: 0;                              // default -1
+
+    // Scale
+    min-value: 20;                                    // default 0
+    // max-value: 100;
+
+    // Look
+    show-needle: true;                                // default false
+    sweep: 240;                                       // default 180
+    // cutout: 0.86;                                  // the arc's inner radius; 0.86 with a needle
+    // rounded: true;                                 // fill style: rounded arc ends
+    // show-ticks: true;                              // needle style
+    // color: ChartTheme.colors[0];                   // the fill, without bands
+    // show-min-max: true;                            // min-value and max-value at the ends
+    show-legend: true;                                // default false
+    // legend-position: ChartLegendPosition.bottom;
+    // show-tooltip: true;
+    // animated: true;
+    // value-font-size: 0px;                          // 0px: sized to fit
+
+    // Value
+    // value-prefix: "";
+    value-suffix: " °C";                              // default ""
+    value-decimals: 0;                                // default -1
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1331,13 +1865,79 @@ GaugeChart {
   <li><strong>Formatting:</strong> <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> (-1 for automatic) apply to the value axis, tooltips and data labels. Pies and radar charts have them too. A minus sign goes before the prefix: "-$5". Separators and dates follow <code>ChartTheme.language</code> (see <a href="#languages">Languages</a>).</li>
 </ul>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-log.webp" alt="A logarithmic axis" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-log-dark.webp" alt="A logarithmic axis" loading="lazy"></figure>
-<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
-<pre><code>LineChart {
+<pre data-shot="axes-log"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
+
+LineChart {
+    // Data
     labels: ["Q1", "Q2", "Q3", "Q4"];
-    datasets: [{ label: "Users", values: [12, 340, 2900, 61000] }];
-    logarithmic: true;
-    y-title: "Users (log scale)";
-    value-suffix: " users";
+    datasets: [
+        {
+            label: "Users",
+            values: [12, 340, 2900, 61000],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+    ];
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
+    // Value axis
+    // begin-at-zero: false;                          // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    logarithmic: true;                                // default false
+    // x-title: "";
+    y-title: "Users (log scale)";                     // default ""
+    // value-prefix: "";
+    value-suffix: " users";                           // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h3 id="second-axis">A second value axis</h3>
@@ -1353,16 +1953,80 @@ When either axis is fixed or logarithmic they can't line up; then the right axis
 It works in <code>LineChart</code>, <code>BarChart</code>, <code>ScatterChart</code>, <code>BubbleChart</code> and
 <code>TimeSeriesChart</code>; other charts ignore <code>right-axis</code>.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-two.webp" alt="Temperature as a line on the left axis and rainfall as bars on the right axis" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-two-dark.webp" alt="Temperature as a line on the left axis and rainfall as bars on the right axis" loading="lazy"></figure>
-<pre><code>BarChart {
+<pre data-shot="axes-two"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
+
+BarChart {
+    // Data
     labels: ["Jan", "Feb", "Mar", "Apr"];
     datasets: [
-        { label: "Temperature", values: [-1.5, -1.2, 1.2, 5.5], series-type: ChartSeriesType.line },
+        {
+            label: "Temperature",
+            values: [-1.5, -1.2, 1.2, 5.5],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            series-type: ChartSeriesType.line,
+            // right-axis: false,                     // true: the second value axis
+        },
         { label: "Rainfall", values: [86, 136, 88, 103], right-axis: true },
     ];
-    y-title: "Temperature";
-    value-suffix: " °C";
-    y2-title: "Rainfall";
-    y2-value-suffix: " mm";
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    // show-values: false;                            // a label on each bar or point
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
+    // Value axis
+    // begin-at-zero: true;                           // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    // x-title: "";
+    y-title: "Temperature";                           // default ""
+    // value-prefix: "";
+    value-suffix: " °C";                              // default ""
+    // value-decimals: -1;                            // -1: automatic
+
+    // Second value axis, for datasets with right-axis: true
+    y2-title: "Rainfall";                             // default ""
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    y2-value-suffix: " mm";                           // default ""
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <p>Two value axes are easy to misread: the heights of the two datasets can't be compared, and where they cross means nothing.
 Give both axes a title, and make it clear which dataset belongs to which, for example with a line for one and bars for the other.</p>
@@ -1371,15 +2035,79 @@ Give both axes a title, and make it clear which dataset belongs to which, for ex
 <p><code>show-values: true</code> writes each value next to its bar or point, or inside stacked segments. Pies write the value inside
 each slice, or its share with <code>show-percentages: true</code>; slices too thin for a label get none.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-format.webp" alt="Bars with data labels and dollar formatting" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-format-dark.webp" alt="Bars with data labels and dollar formatting" loading="lazy"></figure>
-<p class="muted">This example sets only the properties for this feature; the chart sections above list all of them.</p>
-<pre><code>BarChart {
+<pre data-shot="axes-format"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
+
+BarChart {
+    // Data
     labels: ["Jan", "Feb", "Mar"];
-    datasets: [{ label: "Revenue", values: [7869, 5941, 5946] }];
-    show-values: true;
-    value-prefix: "$";
-    value-decimals: 0;
-    x-title: "Month";
-    y-title: "Revenue (USD)";
+    datasets: [
+        {
+            label: "Revenue",
+            values: [7869, 5941, 5946],
+            // points: [],                            // scatter, bubble and time series charts
+            // color: transparent,                    // transparent: the theme's next color
+            // hidden: false,
+            // fill: false,                           // line charts: fill the area below
+            // tension: 0,                            // line charts: 0 for straight lines
+            // stepped: false,                        // line charts: steps instead of slopes
+            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
+            // right-axis: false,                     // true: the second value axis
+        },
+    ];
+
+    // Look
+    // show-legend: true;
+    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
+    // show-tooltip: true;
+    show-values: true;                                // default false
+    // show-points: true;                             // markers on lines
+    // show-lines: false;                             // scatter charts: connect the points
+    // animated: true;
+    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
+    // bar-radius: 0;                                 // rounded bar corners
+    // bar-border-width: 1px;
+
+    // Value axis
+    // begin-at-zero: true;                           // true by default in bar charts
+    // stacked: false;
+    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
+    // fixed-range: false;                            // true: use min-value and max-value
+    // min-value: 0;
+    // max-value: 100;
+    // logarithmic: false;
+    x-title: "Month";                                 // default ""
+    y-title: "Revenue (USD)";                         // default ""
+    value-prefix: "$";                                // default ""
+    // value-suffix: "";
+    value-decimals: 0;                                // default -1
+
+    // Second value axis, for datasets with right-axis: true
+    // y2-title: "";
+    // y2-begin-at-zero: false;                       // default: begin-at-zero
+    // y2-fixed-range: false;
+    // y2-min-value: 0;
+    // y2-max-value: 100;
+    // y2-logarithmic: false;
+    // y2-value-prefix: "";
+    // y2-value-suffix: "";
+    // y2-value-decimals: -1;
+
+    // Time axis
+    // time-axis: false;                              // true in TimeSeriesChart
+    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
+    // utc-offset: 0;                                 // minutes added to UTC
+
+    // Large datasets, zoom and pan
+    // decimate: true;                                // lines: one span per pixel column
+    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
+    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
+    // view-end: 1;
+    // min-view: 0.0005;                              // the smallest visible part
+
+    // Callbacks
+    // category-clicked(index) =&gt; { debug("clicked", index); }
+    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
+    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="cartesian-properties">Cartesian properties</h2>

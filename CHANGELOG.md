@@ -2,7 +2,12 @@
 
 ## 0.2.1
 
-No code changes. The crates.io pages get the new README and license text.
+- Heatmaps size the row labels for the widest one. Labels of the same
+  length, such as weekday names, were measured from the narrowest, so "Mon"
+  and "Wed" were cut off.
+- The website's chart screenshots are rendered from the code examples next to
+  them (`slintplot-docshots`), and every example lists all the chart's
+  properties, with the ones at their default value commented out.
 
 - The README follows the website: getting started in four steps, a table of
   every chart type with links to its documentation, and links to the
