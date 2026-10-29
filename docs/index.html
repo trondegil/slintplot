@@ -1695,7 +1695,9 @@ impl&lt;T: Clone + 'static&gt; StreamModel&lt;T&gt; {
         if dropped &gt;= before {
             self.notify.reset();
         } else {
-            self.notify.row_removed(0, dropped);
+            if dropped &gt; 0 {
+                self.notify.row_removed(0, dropped);
+            }
             self.notify.row_added(len - added, added);
         }
     }
