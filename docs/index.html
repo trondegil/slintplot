@@ -112,7 +112,11 @@
   .layout { display: flex; min-height: 100vh; }
   nav {
     position: sticky; top: 0; align-self: flex-start;
-    width: 250px; height: 100vh; overflow-y: auto;
+    /* dvh: on phones 100vh is taller than the screen between the browser's
+       bars, which hides the end of the menu. overscroll-behavior keeps a
+       scroll that reaches the end of the menu from moving the page. */
+    width: 250px; height: 100vh; height: 100dvh; overflow-y: auto;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
     padding: 20px 16px 40px;
     background: var(--sidebar);
     border-right: 1px solid var(--border);
@@ -244,14 +248,17 @@
     .menu-button svg { width: 20px; height: 20px; }
     .js nav {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
-      width: min(300px, 85vw); height: auto;
+      width: min(300px, 85vw); height: 100vh; height: 100dvh; bottom: auto;
+      padding-bottom: calc(40px + env(safe-area-inset-bottom));
       border-right: 1px solid var(--border); border-bottom: 0;
       transform: translateX(-100%); visibility: hidden;
       transition: transform .2s ease, visibility .2s;
     }
     .menu-open nav { transform: none; visibility: visible; }
-    .menu-open .backdrop { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .4); }
-    .menu-open { overflow: hidden; }
+    .menu-open .backdrop { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .4); touch-action: none; }
+    /* Safari on iOS scrolls the page under an open menu unless the body is
+       held too. */
+    .menu-open, .menu-open body { overflow: hidden; }
     /* Section links land below the sticky top bar. */
     .js { scroll-padding-top: 68px; }
   }
