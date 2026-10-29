@@ -553,6 +553,10 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
         let room = (max - min) * req.grace;
         (min, max) = (min - room, max + room);
     }
+    // Bubbles at the ends of the axis stay inside the plot.
+    if req.kind == Kind::Bubble && !req.logarithmic {
+        (min, max) = pad_for_radius(min, max, bubble_radius(visible()), req.length);
+    }
     if req.begin_at_zero && !req.logarithmic {
         min = min.min(0.0);
         max = max.max(0.0);
@@ -624,6 +628,26 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
         ticks,
         widest_label: widest_label.unwrap_or_default(),
     }
+}
+
+/// The largest bubble radius among the visible datasets, in pixels.
+fn bubble_radius<'a>(datasets: impl Iterator<Item = &'a Dataset>) -> f64 {
+    datasets
+        .flat_map(|d| d.points.iter())
+        .map(|p| p.r)
+        .filter(|r| r.is_finite())
+        .fold(0.0, f64::max)
+}
+
+/// Widens `min..max` so a bubble of radius `r` pixels at either end stays
+/// inside an axis `length` pixels long.
+fn pad_for_radius(min: f64, max: f64, r: f64, length: f32) -> (f64, f64) {
+    let room = length as f64 - 2.0 * r;
+    if r <= 0.0 || max <= min || room <= 0.0 {
+        return (min, max);
+    }
+    let per_pixel = (max - min) / room;
+    (min - r * per_pixel, max + r * per_pixel)
 }
 
 /// The x range shown by a scatter or bubble chart for the zoom window `view`.
@@ -1197,6 +1221,13 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
     // binary search, so a zoomed-in view reads only what it shows.
     let ordered = req.time.is_some();
     let (min, max) = scatter_x_window(req.datasets, req.view, ordered);
+    // Bubbles at the ends of the axis stay inside the plot, unless zoomed.
+    let (min, max) = if req.kind == Kind::Bubble && clamp_view(req.view) == (0.0, 1.0) {
+        let visible = visible.iter().map(|&i| &req.datasets[i]);
+        pad_for_radius(min, max, bubble_radius(visible), req.width)
+    } else {
+        (min, max)
+    };
     // Room for labels like "-1,000.5" between ticks.
     let max_ticks = (req.width / (req.font_size.max(1.0) * 6.0))
         .floor()
@@ -1608,6 +1639,43 @@ mod tests {
     }
 
     #[test]
+    fn bubbles_stay_inside_the_plot() {
+        let bubble = |x, y, r| DataPoint { x, y, r };
+        let data = [Dataset {
+            points: vec![
+                bubble(20.0, 30.0, 15.0),
+                bubble(48.0, 18.0, 24.0),
+                bubble(85.0, 46.0, 18.0),
+            ]
+            .into(),
+            ..Default::default()
+        }];
+        // The chart computes the y axis first, as the components do.
+        let y = axis(&data, Kind::Bubble, false, 300.0, false);
+        let req = LayoutRequest {
+            height: 300.0,
+            y_min: y.min,
+            y_max: y.max,
+            ..request(Kind::Bubble, &data, NO_LABELS)
+        };
+        let l = layout(&req);
+        for p in &l.series[0].points {
+            assert!(
+                p.x - p.r >= 0.0 && p.x + p.r <= req.width,
+                "x {} r {}",
+                p.x,
+                p.r
+            );
+            assert!(
+                p.y - p.r >= 0.0 && p.y + p.r <= req.height,
+                "y {} r {}",
+                p.y,
+                p.r
+            );
+        }
+    }
+
+    #[test]
     fn bubbles_are_hit_anywhere_inside() {
         let data = [Dataset {
             points: vec![
@@ -1626,8 +1694,9 @@ mod tests {
             ..Default::default()
         }];
         let l = layout(&request(Kind::Bubble, &data, NO_LABELS));
-        assert_eq!(l.series[0].points[0].r, 30.0);
-        let hit = nearest_point(&l.series, 25.0, 90.0, 5.0, false);
+        let bubble = l.series[0].points[0];
+        assert_eq!(bubble.r, 30.0);
+        let hit = nearest_point(&l.series, bubble.x + 25.0, bubble.y, 5.0, false);
         assert_eq!(
             hit.map(|(_, p)| p.index),
             Some(0),

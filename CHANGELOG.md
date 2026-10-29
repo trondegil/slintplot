@@ -2,6 +2,8 @@
 
 ## 0.2.1
 
+- Bubble charts leave room for the bubbles at the ends of both axes. A
+  bubble at the smallest or largest value used to overlap the axis.
 - Heatmaps size the row labels for the widest one. Labels of the same
   length, such as weekday names, were measured from the narrowest, so "Mon"
   and "Wed" were cut off.

@@ -379,88 +379,22 @@ slintplot = "0.2"</code></pre>
 }</code></pre>
 
 <h3>3. Use a chart: <code>ui/app.slint</code></h3>
-<pre><code>import { ChartEngine, ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
+<pre><code>import { ChartEngine, LineChart } from "@slintplot";
 export { ChartEngine } // required, so Rust can connect it
 
 export component App inherits Window {
     preferred-width: 800px;
     preferred-height: 500px;
 
-    // Every property is listed. The ones at their default value are commented
-    // out: `LineChart { labels: ...; datasets: ...; }` is a complete chart.
+    // Only the data and the properties that differ from their default.
+    // The LineChart section lists every property.
     LineChart {
-        // Data
-        title: "Revenue";                                 // default ""
+        title: "Revenue";
         labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
         datasets: [
-            {
-                label: "2025",
-                values: [12, 19, 8, 15, 22, 18],
-                // points: [],                            // scatter, bubble and time series charts
-                // color: transparent,                    // transparent: the theme's next color
-                // hidden: false,
-                fill: true,                               // default false
-                tension: 0.4,                             // default 0: straight lines
-                // stepped: false,                        // line charts: steps instead of slopes
-                // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-                // right-axis: false,                     // true: the second value axis
-            },
+            { label: "2025", values: [12, 19, 8, 15, 22, 18], fill: true, tension: 0.4 },
             { label: "2026", values: [15, 22, 13, 24, 26, 30], tension: 0.4 },
         ];
-
-        // Look
-        // show-legend: true;
-        // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-        // show-tooltip: true;
-        // show-values: false;                            // a label on each bar or point
-        // show-points: true;                             // markers on lines
-        // show-lines: false;                             // scatter charts: connect the points
-        // animated: true;
-        // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-        // bar-radius: 0;                                 // rounded bar corners
-        // bar-border-width: 1px;
-
-        // Value axis
-        // begin-at-zero: false;                          // true by default in bar charts
-        // stacked: false;
-        // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-        // fixed-range: false;                            // true: use min-value and max-value
-        // min-value: 0;
-        // max-value: 100;
-        // logarithmic: false;
-        // x-title: "";
-        // y-title: "";
-        // value-prefix: "";
-        // value-suffix: "";
-        // value-decimals: -1;                            // -1: automatic
-
-        // Second value axis, for datasets with right-axis: true
-        // y2-title: "";
-        // y2-begin-at-zero: false;                       // default: begin-at-zero
-        // y2-fixed-range: false;
-        // y2-min-value: 0;
-        // y2-max-value: 100;
-        // y2-logarithmic: false;
-        // y2-value-prefix: "";
-        // y2-value-suffix: "";
-        // y2-value-decimals: -1;
-
-        // Time axis
-        // time-axis: false;                              // true in TimeSeriesChart
-        // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-        // utc-offset: 0;                                 // minutes added to UTC
-
-        // Large datasets, zoom and pan
-        // decimate: true;                                // lines: one span per pixel column
-        // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-        // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-        // view-end: 1;
-        // min-view: 0.0005;                              // the smallest visible part
-
-        // Callbacks
-        // category-clicked(index) =&gt; { debug("clicked", index); }
-        // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-        // legend-toggled(index) =&gt; { debug("toggled", index); }
     }
 }</code></pre>
 <p>Import only the charts you use, plus <code>ChartEngine</code>, which must always be imported and exported. Charts you don't
@@ -496,730 +430,400 @@ fn main() -> Result&lt;(), slint::PlatformError&gt; {
 <h2 id="line-chart">LineChart</h2>
 <p>Lines through the values of each dataset, one point per label.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/line.webp" alt="LineChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/line-dark.webp" alt="LineChart" loading="lazy"></figure>
-<pre data-shot="line"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
+<pre data-shot="line"><code>import { LineChart } from "@slintplot";
 
 LineChart {
-    // Data
     title: "Temperature";
     labels: ["Mon", "Tue", "Wed", "Thu", "Fri"];
     datasets: [
-        {
-            label: "Oslo",
-            values: [4, 6, 5, 8, 7],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            tension: 0.4,
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Oslo", values: [4, 6, 5, 8, 7], tension: 0.4 },
         { label: "Bergen", values: [7, 8, 8, 9, 10], tension: 0.4, fill: true },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: false;                          // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>values</code>, <code>color</code>, <code>hidden</code>, <code>fill</code>, <code>tension</code>, <code>stepped</code>, <code>series-type</code>, <code>right-axis</code>. See <a href="#chart-dataset">ChartDataset</a></td></tr>
+  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>The categories on the x axis; each dataset has one value per label</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>true</code></td><td>A marker on every point; turn off for large datasets</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value by its point</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: areas of datasets with <code>fill: true</code>. The theme's default is 0.5</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>false</code></td><td>Include 0 in the value axis</td></tr>
+  <tr><td><code>stacked</code></td><td><code>bool</code></td><td><code>false</code></td><td>Stack the datasets on top of each other</td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the vertical axis</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>y2-title</code>, <code>y2-begin-at-zero</code>, <code>y2-fixed-range</code>, <code>y2-min-value</code>, <code>y2-max-value</code>, <code>y2-logarithmic</code>, <code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code></td><td></td><td>as without y2-</td><td>The second value axis, on the right, for datasets with <code>right-axis: true</code>. See <a href="#second-axis">A second value axis</a></td></tr>
+  <tr><td><code>decimate</code></td><td><code>bool</code></td><td><code>true</code></td><td>Draw a line with more points than pixels as one span per pixel column; turn off to draw every point</td></tr>
+  <tr><td><code>zoom-enabled</code></td><td><code>bool</code></td><td><code>false</code></td><td>The mouse wheel zooms the x axis around the mouse, dragging pans, and a double-click resets</td></tr>
+  <tr><td><code>view-start</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>0</code></td><td>The start of the visible part of the x axis, from 0 to 1; set it to zoom from code</td></tr>
+  <tr><td><code>view-end</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>1</code></td><td>The end of the visible part of the x axis, from 0 to 1</td></tr>
+  <tr><td><code>min-view</code></td><td><code>float</code></td><td><code>0.0005</code></td><td>The smallest part of the x axis a zoom can show</td></tr>
+  <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The category under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>category-clicked(index)</code></td><td>callback</td><td></td><td>A category was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
+</table>
 <p>Dataset options that apply to lines: <code>tension</code> (0 for straight segments, about 0.4 for smooth curves),
 <code>fill</code> (fill to the axis, or to the dataset below when stacked) and <code>stepped</code> (steps instead of slopes).
 All properties are listed under <a href="#cartesian-properties">Cartesian properties</a>.</p>
 <h3>Stepped and stacked lines</h3>
-<pre data-shot="area-stacked"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
+<pre data-shot="area-stacked"><code>import { LineChart } from "@slintplot";
 
 LineChart {
-    // Data
     labels: ["Q1", "Q2", "Q3", "Q4"];
     datasets: [
-        {
-            label: "Solar",
-            values: [10, 25, 30, 12],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            fill: true,
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Solar", values: [10, 25, 30, 12], fill: true },
         { label: "Wind", values: [20, 15, 18, 26], fill: true },
         { label: "Price", values: [5, 7, 6, 8], stepped: true },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: false;                          // true by default in bar charts
-    stacked: true;                                    // default false
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    stacked: true;
 }</code></pre>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/area-stacked.webp" alt="A stacked area chart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/area-stacked-dark.webp" alt="A stacked area chart" loading="lazy"></figure>
 
 <h2 id="bar-chart">BarChart</h2>
 <p>Vertical bars, grouped by default and stacked with <code>stacked: true</code>. The value axis begins at zero.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bar-vertical.webp" alt="BarChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bar-vertical-dark.webp" alt="BarChart" loading="lazy"></figure>
-<pre data-shot="bar-vertical"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
+<pre data-shot="bar-vertical"><code>import { BarChart } from "@slintplot";
 
 BarChart {
-    // Data
     title: "Visitors";
     labels: ["Jan", "Feb", "Mar"];
     datasets: [
-        {
-            label: "Desktop",
-            values: [1200, 1350, 1100],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Desktop", values: [1200, 1350, 1100] },
         { label: "Mobile", values: [2400, 2650, 2900] },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    bar-radius: 6px;                                  // default 0
-    bar-border-width: 2px;                            // default 1px
-
-    // Value axis
-    // begin-at-zero: true;                           // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    bar-radius: 6px;
+    bar-border-width: 2px;
 }</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>values</code>, <code>color</code>, <code>hidden</code>, <code>series-type</code>, <code>right-axis</code>. See <a href="#chart-dataset">ChartDataset</a></td></tr>
+  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>The categories on the x axis; each dataset has one value per label</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value on its bar</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: the bars. The theme's default is 0.5</td></tr>
+  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Rounded bar corners</td></tr>
+  <tr><td><code>bar-border-width</code></td><td><code>length</code></td><td><code>1px</code></td><td>The width of the solid bar outline</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>true</code></td><td>Include 0 in the value axis</td></tr>
+  <tr><td><code>stacked</code></td><td><code>bool</code></td><td><code>false</code></td><td>Stack the datasets; positive and negative values stack separately</td></tr>
+  <tr><td><code>stacked-percent</code></td><td><code>bool</code></td><td><code>false</code></td><td>Split each bar into the datasets' shares, from 0 to 100%. See <a href="#percent-bars">100% stacked bars</a></td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the vertical axis</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>y2-title</code>, <code>y2-begin-at-zero</code>, <code>y2-fixed-range</code>, <code>y2-min-value</code>, <code>y2-max-value</code>, <code>y2-logarithmic</code>, <code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code></td><td></td><td>as without y2-</td><td>The second value axis, on the right, for datasets with <code>right-axis: true</code>. See <a href="#second-axis">A second value axis</a></td></tr>
+  <tr><td><code>zoom-enabled</code></td><td><code>bool</code></td><td><code>false</code></td><td>The mouse wheel zooms the x axis around the mouse, dragging pans, and a double-click resets</td></tr>
+  <tr><td><code>view-start</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>0</code></td><td>The start of the visible part of the x axis, from 0 to 1; set it to zoom from code</td></tr>
+  <tr><td><code>view-end</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>1</code></td><td>The end of the visible part of the x axis, from 0 to 1</td></tr>
+  <tr><td><code>min-view</code></td><td><code>float</code></td><td><code>0.0005</code></td><td>The smallest part of the x axis a zoom can show</td></tr>
+  <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The category under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>category-clicked(index)</code></td><td>callback</td><td></td><td>A category was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
+</table>
 <p>When stacked, positive and negative values stack separately.</p>
 
 <h2 id="horizontal-bar-chart">HorizontalBarChart</h2>
 <p>Categories run down the left side and bars grow to the right.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bar-horizontal.webp" alt="HorizontalBarChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bar-horizontal-dark.webp" alt="HorizontalBarChart" loading="lazy"></figure>
-<pre data-shot="bar-horizontal"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, HorizontalBarChart } from "@slintplot";
+<pre data-shot="bar-horizontal"><code>import { ChartLegendPosition, HorizontalBarChart } from "@slintplot";
 
 HorizontalBarChart {
-    // Data
     title: "Languages used (%)";
     labels: ["JavaScript", "Python", "Rust"];
     datasets: [
-        {
-            label: "2025",
-            values: [62, 51, 12],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "2025", values: [62, 51, 12] },
         { label: "2026", values: [60, 55, 15] },
     ];
-
-    // Look
-    // show-legend: true;
-    legend-position: ChartLegendPosition.right;       // default top
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: true;
-    // stacked: false;
-    // stacked-percent: false;                        // every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    legend-position: ChartLegendPosition.right;
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>datasets</code>, <code>labels</code>, <code>title</code></td><td></td><td></td><td>As for <a href="#cartesian-properties">cartesian charts</a></td></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>values</code>, <code>color</code>, <code>hidden</code>. See <a href="#chart-dataset">ChartDataset</a></td></tr>
+  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>The categories down the left side; each dataset has one value per label</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value on its bar</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: the bars. The theme's default is 0.5</td></tr>
+  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Rounded bar corners</td></tr>
+  <tr><td><code>bar-border-width</code></td><td><code>length</code></td><td><code>1px</code></td><td>The width of the solid bar outline</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
   <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>true</code></td><td>Include 0 in the value axis</td></tr>
   <tr><td><code>stacked</code></td><td><code>bool</code></td><td><code>false</code></td><td>Stack the datasets end to end</td></tr>
-  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code></td><td></td><td></td><td>As for cartesian charts</td></tr>
-  <tr><td><code>bar-radius</code>, <code>bar-border-width</code></td><td><code>length</code></td><td><code>0</code>, <code>1px</code></td><td>Rounded bars and their outline</td></tr>
-  <tr><td><code>stacked-percent</code>, <code>show-values</code>, <code>fill-opacity</code></td><td></td><td></td><td>As for <a href="#cartesian-properties">cartesian charts</a></td></tr>
-  <tr><td><code>x-title</code>, <code>y-title</code>, <code>fixed-range</code>, <code>min-value</code>, <code>max-value</code>, <code>logarithmic</code>, value formatting</td><td></td><td></td><td>See <a href="#axes">Axes and formatting</a>; the value axis is the x axis</td></tr>
-  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The category under the mouse or selected with the arrow keys, or -1</td></tr>
-  <tr><td><code>category-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+  <tr><td><code>stacked-percent</code></td><td><code>bool</code></td><td><code>false</code></td><td>Split each bar into the datasets' shares, from 0 to 100%. See <a href="#percent-bars">100% stacked bars</a></td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the value axis, at the bottom</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the category axis, on the left</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The category under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>category-clicked(index)</code></td><td>callback</td><td></td><td>A category was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
 </table>
 
 <h2 id="scatter-chart">ScatterChart</h2>
 <p>Points on numeric x and y axes. Datasets use <code>points</code> instead of <code>values</code>.
 Hovering highlights the nearest point and shows its coordinates.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/scatter.webp" alt="ScatterChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/scatter-dark.webp" alt="ScatterChart" loading="lazy"></figure>
-<pre data-shot="scatter"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, ScatterChart } from "@slintplot";
+<pre data-shot="scatter"><code>import { ScatterChart } from "@slintplot";
 
 ScatterChart {
-    // Data
     title: "Height and weight";
     datasets: [
         {
             label: "Group A",
-            // values: [],                            // line, bar and radar charts
             points: [{ x: 158, y: 52 }, { x: 162, y: 57 }, { x: 165, y: 58 }, { x: 168, y: 64 }, { x: 170, y: 61 },
                      { x: 172, y: 70 }, { x: 175, y: 72 }, { x: 177, y: 69 }, { x: 180, y: 82 }, { x: 184, y: 79 }],
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
         },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: false;                          // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    zoom-enabled: true;                               // default false
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    x-title: "Height (cm)";
+    y-title: "Weight (kg)";
+    zoom-enabled: true;
 }</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>points</code>, <code>color</code>, <code>hidden</code>, <code>right-axis</code>. See <a href="#chart-dataset">ChartDataset</a>. Each point is <code>{ x, y }</code></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-lines</code></td><td><code>bool</code></td><td><code>false</code></td><td>Connect the points of each dataset in order</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each y value by its point</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: the points. The theme's default is 0.5</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>false</code></td><td>Include 0 in the y axis</td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the vertical axis</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>y2-title</code>, <code>y2-begin-at-zero</code>, <code>y2-fixed-range</code>, <code>y2-min-value</code>, <code>y2-max-value</code>, <code>y2-logarithmic</code>, <code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code></td><td></td><td>as without y2-</td><td>The second value axis, on the right, for datasets with <code>right-axis: true</code>. See <a href="#second-axis">A second value axis</a></td></tr>
+  <tr><td><code>zoom-enabled</code></td><td><code>bool</code></td><td><code>false</code></td><td>The mouse wheel zooms the x axis around the mouse, dragging pans, and a double-click resets</td></tr>
+  <tr><td><code>view-start</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>0</code></td><td>The start of the visible part of the x axis, from 0 to 1; set it to zoom from code</td></tr>
+  <tr><td><code>view-end</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>1</code></td><td>The end of the visible part of the x axis, from 0 to 1</td></tr>
+  <tr><td><code>min-view</code></td><td><code>float</code></td><td><code>0.0005</code></td><td>The smallest part of the x axis a zoom can show</td></tr>
+  <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
+  <tr><td><code>hovered-point</code> <span class="tag">out</span></td><td><code>ChartHit</code></td><td></td><td>The point under the mouse or selected with the keyboard; its <code>dataset</code> is -1 when there is none</td></tr>
+  <tr><td><code>point-clicked(dataset, index)</code></td><td>callback</td><td></td><td>A point was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
+</table>
 
 <h2 id="bubble-chart">BubbleChart</h2>
 <p>A scatter chart whose points have a radius: <code>r</code> is the bubble radius in pixels. Hovering works anywhere inside a bubble.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bubble.webp" alt="BubbleChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bubble-dark.webp" alt="BubbleChart" loading="lazy"></figure>
-<pre data-shot="bubble"><code>import { BubbleChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
+<pre data-shot="bubble"><code>import { BubbleChart } from "@slintplot";
 
 BubbleChart {
-    // Data
     title: "Markets";
     datasets: [
         {  // r: the bubble radius in pixels
             label: "Retail",
-            // values: [],                            // line, bar and radar charts
             points: [{ x: 20, y: 30, r: 15 }, { x: 35, y: 18, r: 8 }, { x: 48, y: 40, r: 24 },
                      { x: 60, y: 25, r: 12 }, { x: 72, y: 46, r: 18 }, { x: 85, y: 34, r: 10 }],
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
         },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: false;                          // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>points</code>, <code>color</code>, <code>hidden</code>, <code>right-axis</code>. See <a href="#chart-dataset">ChartDataset</a>. Each point is <code>{ x, y, r }</code>; <code>r</code> is the radius in pixels</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each y value by its bubble</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: the bubbles. The theme's default is 0.5</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>false</code></td><td>Include 0 in the y axis</td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the vertical axis</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>y2-title</code>, <code>y2-begin-at-zero</code>, <code>y2-fixed-range</code>, <code>y2-min-value</code>, <code>y2-max-value</code>, <code>y2-logarithmic</code>, <code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code></td><td></td><td>as without y2-</td><td>The second value axis, on the right, for datasets with <code>right-axis: true</code>. See <a href="#second-axis">A second value axis</a></td></tr>
+  <tr><td><code>hovered-point</code> <span class="tag">out</span></td><td><code>ChartHit</code></td><td></td><td>The point under the mouse or selected with the keyboard; its <code>dataset</code> is -1 when there is none</td></tr>
+  <tr><td><code>point-clicked(dataset, index)</code></td><td>callback</td><td></td><td>A point was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
+</table>
 
 <h2 id="pie-chart">PieChart</h2>
 <p>Slices proportional to their values. The hovered slice moves outwards, and the tooltip shows its value and share.
 Clicking a legend entry hides the slice.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/pie-labels.webp" alt="PieChart of browser shares" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/pie-labels-dark.webp" alt="PieChart of browser shares" loading="lazy"></figure>
-<pre data-shot="pie-labels"><code>import { ChartLegendPosition, PieChart } from "@slintplot";
+<pre data-shot="pie-labels"><code>import { PieChart } from "@slintplot";
 
 PieChart {
-    // Data
     title: "Browsers";
     slices: [
-        {
-            label: "Chrome",
-            value: 64,
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-        },
+        { label: "Chrome", value: 64 },
         { label: "Safari", value: 19 },
         { label: "Edge", value: 5 },
         { label: "Other", value: 12, color: transparent, hidden: false },
     ];
-
-    // Look
-    // cutout: 0;                                     // the size of the center hole, 0 to 1
-    // polar: false;                                  // true: equal angles, the radius shows the value
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // animated: true;
-    // show-values: false;                            // the value on each slice
-    // show-percentages: false;                       // the share on each slice
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // slice-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table id="pie-properties">
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>slices</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td><code>{ label, value, color, hidden }</code>. Non-positive values are skipped.</td></tr>
+  <tr><td><code>slices</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td>One entry per slice: <code>label</code>, <code>value</code>, <code>color</code>, <code>hidden</code>. Slices of 0 or less are skipped. See <a href="#data-types">Data types</a></td></tr>
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
-  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0</code></td><td>Size of the center hole, as a fraction of the radius</td></tr>
-  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td></td></tr>
-  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td></td></tr>
-  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td></td></tr>
-  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the slices in when the chart appears</td></tr>
-  <tr><td><code>show-values</code>, <code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's value, or its share, on it</td></tr>
-  <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td></td><td></td><td>How values are written</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0</code></td><td>The size of the center hole, as a share of the radius</td></tr>
+  <tr><td><code>polar</code></td><td><code>bool</code></td><td><code>false</code></td><td>Equal angles, with the radius showing the value, as in a polar area chart</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value on its slice</td></tr>
+  <tr><td><code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's share of the total on it</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the slices; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The slice under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>slice-clicked(index)</code></td><td>callback</td><td></td><td>A slice was clicked</td></tr>
-  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry was clicked; the slice's <code>hidden</code> flag has already been toggled</td></tr>
+  <tr><td><code>slice-clicked(index)</code></td><td>callback</td><td></td><td>A slice was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a slice</td></tr>
 </table>
 
 <h2 id="doughnut-chart">DoughnutChart</h2>
 <p>A <code>PieChart</code> with <code>cutout: 0.5</code>. It has the same properties.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/doughnut.webp" alt="DoughnutChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/doughnut-dark.webp" alt="DoughnutChart" loading="lazy"></figure>
-<pre data-shot="doughnut"><code>import { ChartLegendPosition, DoughnutChart } from "@slintplot";
+<pre data-shot="doughnut"><code>import { DoughnutChart } from "@slintplot";
 
 DoughnutChart {
-    // Data
     title: "Traffic sources";
     slices: [
-        {
-            label: "Search",
-            value: 48,
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-        },
+        { label: "Search", value: 48 },
         { label: "Direct", value: 22 },
         { label: "Social", value: 17 },
     ];
-
-    // Look
-    // cutout: 0.5;                                   // the size of the center hole, 0 to 1
-    // polar: false;                                  // true: equal angles, the radius shows the value
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // animated: true;
-    // show-values: false;                            // the value on each slice
-    // show-percentages: false;                       // the share on each slice
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // slice-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>slices</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td>One entry per slice: <code>label</code>, <code>value</code>, <code>color</code>, <code>hidden</code>. Slices of 0 or less are skipped. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.5</code></td><td>The size of the center hole, as a share of the radius</td></tr>
+  <tr><td><code>polar</code></td><td><code>bool</code></td><td><code>false</code></td><td>Equal angles, with the radius showing the value, as in a polar area chart</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value on its slice</td></tr>
+  <tr><td><code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's share of the total on it</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the slices; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The slice under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>slice-clicked(index)</code></td><td>callback</td><td></td><td>A slice was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a slice</td></tr>
+</table>
 
 <h2 id="polar-area-chart">PolarAreaChart</h2>
 <p>Slices of equal angle whose radius shows the value, with labelled value rings. It has the same properties as <code>PieChart</code>.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/polar-area.webp" alt="PolarAreaChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/polar-area-dark.webp" alt="PolarAreaChart" loading="lazy"></figure>
-<pre data-shot="polar-area"><code>import { ChartLegendPosition, PolarAreaChart } from "@slintplot";
+<pre data-shot="polar-area"><code>import { PolarAreaChart } from "@slintplot";
 
 PolarAreaChart {
-    // Data
     title: "Sales by region";
     slices: [
-        {
-            label: "North",
-            value: 11,
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-        },
+        { label: "North", value: 11 },
         { label: "East", value: 16 },
         { label: "South", value: 7 },
         { label: "West", value: 3 },
     ];
-
-    // Look
-    // cutout: 0;                                     // the size of the center hole, 0 to 1
-    // polar: true;                                   // true: equal angles, the radius shows the value
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // animated: true;
-    // show-values: false;                            // the value on each slice
-    // show-percentages: false;                       // the share on each slice
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // slice-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>slices</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td>One entry per slice: <code>label</code>, <code>value</code>, <code>color</code>, <code>hidden</code>. Slices of 0 or less are skipped. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0</code></td><td>The size of the center hole, as a share of the radius</td></tr>
+  <tr><td><code>polar</code></td><td><code>bool</code></td><td><code>true</code></td><td>Equal angles, with the radius showing the value, as in a polar area chart</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value on its slice</td></tr>
+  <tr><td><code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's share of the total on it</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the slices; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The slice under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>slice-clicked(index)</code></td><td>callback</td><td></td><td>A slice was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a slice</td></tr>
+</table>
 
 <h2 id="radar-chart">RadarChart</h2>
 <p>One spoke per label and one closed polygon per dataset. Hovering a spoke shows every dataset's value for it.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/radar.webp" alt="RadarChart" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/radar-dark.webp" alt="RadarChart" loading="lazy"></figure>
-<pre data-shot="radar"><code>import { ChartLegendPosition, ChartSeriesType, RadarChart } from "@slintplot";
+<pre data-shot="radar"><code>import { RadarChart } from "@slintplot";
 
 RadarChart {
-    // Data
     title: "Skills";
     labels: ["Speed", "Power", "Range", "Comfort", "Price"];
     datasets: [
-        {
-            label: "Model A",
-            values: [80, 65, 70, 50, 60],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            fill: true,
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Model A", values: [80, 65, 70, 50, 60], fill: true },
         { label: "Model B", values: [55, 80, 60, 75, 70], fill: true },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-points: true;
-    // animated: true;
-
-    // Value axis
-    // begin-at-zero: true;
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }  // a spoke
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>Uses <code>label</code>, <code>values</code>, <code>color</code>, <code>hidden</code> and <code>fill</code>. Needs at least three labels.</td></tr>
-  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>One spoke per label</td></tr>
-  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td></td></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>values</code>, <code>color</code>, <code>hidden</code>, <code>fill</code>. See <a href="#chart-dataset">ChartDataset</a></td></tr>
+  <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>One spoke per label; at least three</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>true</code></td><td>A marker on every corner of the polygons</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
   <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>true</code></td><td>The center is 0</td></tr>
-  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, value formatting</td><td></td><td></td><td>As for other charts</td></tr>
-  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>true</code></td><td>Markers on the polygon corners</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The spoke under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>category-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+  <tr><td><code>category-clicked(index)</code></td><td>callback</td><td></td><td>A spoke was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
 </table>
 
 <h2 id="mixed-charts">Mixed charts</h2>
 <p>Any dataset in a line or bar chart can be drawn as the other type with <code>series-type</code>. Lines in a bar chart go through the bar centers, and stacking keeps lines and bars apart.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/combo-bar-line.webp" alt="Bars with a line" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/combo-bar-line-dark.webp" alt="Bars with a line" loading="lazy"></figure>
-<pre data-shot="combo-bar-line"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
+<pre data-shot="combo-bar-line"><code>import { BarChart, ChartSeriesType } from "@slintplot";
 
 BarChart {
-    // Data
     labels: ["Q1", "Q2", "Q3", "Q4"];
     datasets: [
-        {
-            label: "Sales",
-            values: [12, 19, 8, 15],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Sales", values: [12, 19, 8, 15] },
         { label: "Average", values: [10, 14, 12, 13], series-type: ChartSeriesType.line },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: true;                           // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 
 <h2 id="percent-bars">100% stacked bars</h2>
@@ -1230,58 +834,22 @@ survey answers. The percentage labels use largest remainder rounding, so each ba
 below: a fade from dark blue to light blue. Give each dataset its own <code>color</code>, which always wins over the theme; without one,
 the datasets take the theme's colors.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/survey.webp" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/survey-dark.webp" alt="A 100% stacked horizontal bar chart of survey answers" loading="lazy"></figure>
-<pre data-shot="survey"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, HorizontalBarChart } from "@slintplot";
+<pre data-shot="survey"><code>import { HorizontalBarChart } from "@slintplot";
 
 HorizontalBarChart {
-    // Data
     title: "How often do you work from home?";
     labels: ["Engineering", "Sales", "Support"];
     datasets: [
-        {
-            label: "Every day",
-            values: [24, 5, 8],
-            // points: [],                            // scatter, bubble and time series charts
-            color: #172f73,
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Every day", values: [24, 5, 8], color: #172f73 },
         { label: "Most days", values: [30, 12, 14], color: #1d4ed8 },
         { label: "Some days", values: [28, 34, 23], color: #3b7ef0 },
         { label: "Rarely", values: [12, 28, 25], color: #5f9cf2 },
         { label: "Never", values: [6, 21, 30], color: #86b6ef },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    show-values: true;                                // default false
-    // animated: true;
-    fill-opacity: 1;                                  // default ChartTheme.fill-opacity
-    // bar-radius: 0;                                 // rounded bar corners
-    bar-border-width: 0;                              // default 1px
-
-    // Value axis
-    // begin-at-zero: true;
-    // stacked: false;
-    stacked-percent: true;                            // default false
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    show-values: true;
+    fill-opacity: 1;
+    bar-border-width: 0;
+    stacked-percent: true;
 }</code></pre>
 
 <h2 id="time-series">TimeSeriesChart</h2>
@@ -1291,87 +859,55 @@ tooltip shows the date and time. Hovering anywhere above or below the lines show
 tick also shows the date (or the year), so a zoomed-in axis always says when it is. Zoomed in between points, lines continue to the
 edges of the plot.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/time-hourly.webp" alt="TimeSeriesChart of hourly temperatures" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/time-hourly-dark.webp" alt="TimeSeriesChart of hourly temperatures" loading="lazy"></figure>
-<pre data-shot="time-hourly"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, TimeSeriesChart } from "@slintplot";
+<pre data-shot="time-hourly"><code>import { TimeSeriesChart } from "@slintplot";
 
 TimeSeriesChart {
-    // Data
     title: "Temperature";
     datasets: [
         {  // One point per hour: x is seconds after the time origin.
             label: "Oslo",
-            // values: [],                            // line, bar and radar charts
             points: [{ x: 0, y: 8.5 },      { x: 3600, y: 8.1 },  { x: 7200, y: 7.8 },  { x: 10800, y: 7.6 },
                      { x: 14400, y: 7.9 },  { x: 18000, y: 8.6 }, { x: 21600, y: 9.8 }, { x: 25200, y: 11.2 },
                      { x: 28800, y: 12.5 }, { x: 32400, y: 13.4 }, { x: 36000, y: 13.9 }, { x: 39600, y: 14.1 }],
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
         },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: false;                            // markers on lines
-    // show-lines: true;                              // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: false;                          // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    value-suffix: " °C";                              // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: true;                               // true in TimeSeriesChart
-    time-origin: { year: 2026, month: 10, day: 11 };  // default 1970-01-01
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    zoom-enabled: true;                               // default false
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    value-suffix: " °C";
+    time-origin: { year: 2026, month: 10, day: 11 };
+    zoom-enabled: true;
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>time-origin</code></td><td><code>ChartDateTime</code></td><td>1970-01-01</td><td>The time of <code>x: 0</code> (UTC)</td></tr>
-  <tr><td><code>utc-offset</code></td><td><code>int</code></td><td><code>0</code></td><td>Minutes added to UTC for the displayed times, such as <code>120</code></td></tr>
-  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>false</code></td><td>Markers on the points</td></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>points</code>, <code>color</code>, <code>hidden</code>, <code>right-axis</code>. See <a href="#chart-dataset">ChartDataset</a>. Each point is <code>{ x, y }</code>, with <code>x</code> in seconds after <code>time-origin</code>; points must be sorted by <code>x</code></td></tr>
+  <tr><td><code>time-origin</code></td><td><code>ChartDateTime</code></td><td><code>1970-01-01</code></td><td>The time of <code>x: 0</code>, in UTC</td></tr>
+  <tr><td><code>utc-offset</code></td><td><code>int</code></td><td><code>0</code></td><td>Minutes added to UTC for the times on the axis and in the tooltip, such as 120</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-lines</code></td><td><code>bool</code></td><td><code>true</code></td><td>Lines through the points</td></tr>
+  <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>false</code></td><td>A marker on every point</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value by its point</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>false</code></td><td>Include 0 in the value axis</td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the vertical axis</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>y2-title</code>, <code>y2-begin-at-zero</code>, <code>y2-fixed-range</code>, <code>y2-min-value</code>, <code>y2-max-value</code>, <code>y2-logarithmic</code>, <code>y2-value-prefix</code>, <code>y2-value-suffix</code>, <code>y2-value-decimals</code></td><td></td><td>as without y2-</td><td>The second value axis, on the right, for datasets with <code>right-axis: true</code>. See <a href="#second-axis">A second value axis</a></td></tr>
+  <tr><td><code>decimate</code></td><td><code>bool</code></td><td><code>true</code></td><td>Draw a line with more points than pixels as one span per pixel column; turn off to draw every point</td></tr>
+  <tr><td><code>zoom-enabled</code></td><td><code>bool</code></td><td><code>false</code></td><td>The mouse wheel zooms the x axis around the mouse, dragging pans, and a double-click resets</td></tr>
+  <tr><td><code>view-start</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>0</code></td><td>The start of the visible part of the x axis, from 0 to 1; set it to zoom from code</td></tr>
+  <tr><td><code>view-end</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>1</code></td><td>The end of the visible part of the x axis, from 0 to 1</td></tr>
+  <tr><td><code>min-view</code></td><td><code>float</code></td><td><code>0.0005</code></td><td>The smallest part of the x axis a zoom can show</td></tr>
+  <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
+  <tr><td><code>hovered-point</code> <span class="tag">out</span></td><td><code>ChartHit</code></td><td></td><td>The point under the mouse or selected with the keyboard; its <code>dataset</code> is -1 when there is none</td></tr>
+  <tr><td><code>point-clicked(dataset, index)</code></td><td>callback</td><td></td><td>A point was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
 </table>
 <p>All <a href="#cartesian-properties">cartesian properties</a> apply as well, including <code>decimate</code> and <code>zoom-enabled</code>.
 <code>ScatterChart</code> has the same <code>time-axis</code>, <code>time-origin</code> and <code>show-lines</code> properties.
@@ -1381,10 +917,9 @@ TimeSeriesChart {
 <p>A matrix of colored cells: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order.
 Missing values (NaN) are drawn as empty cells.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap.webp" alt="HeatmapChart: visits by weekday and hour" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-dark.webp" alt="HeatmapChart: visits by weekday and hour" loading="lazy"></figure>
-<pre data-shot="heatmap"><code>import { ChartTheme, HeatmapChart } from "@slintplot";
+<pre data-shot="heatmap"><code>import { HeatmapChart } from "@slintplot";
 
 HeatmapChart {
-    // Data
     title: "Visits by weekday and hour";
     x-labels: ["09", "10", "11", "12", "13", "14"];
     y-labels: ["Mon", "Tue", "Wed", "Thu", "Fri"];
@@ -1393,44 +928,35 @@ HeatmapChart {
              14, 33, 51, 58, 40, 44,
              11, 26, 43, 55, 36, 39,
               8, 21, 35, 41, 27, 22];
-
-    // Look
-    // color: ChartTheme.colors[0];                   // the highest values
-    // diverging: false;                              // true: two colors, split at center-value
-    // center-value: 0;
-    // negative-color: ChartTheme.colors[2];          // values below center-value
-    // show-values: false;                            // the value in each cell
-    // show-legend: true;
-    // show-tooltip: true;
-    // cell-gap: 2px;
-    // cell-radius: 3px;
-
-    // Values
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // value-prefix: "";
-    value-suffix: " visits";                          // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // cell-clicked(row, column) =&gt; { debug("clicked", row, column); }
+    value-suffix: " visits";
 }</code></pre>
-<p>A diverging scale suits values around a center, such as correlations:</p>
-<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap-diverging.webp" alt="A diverging heatmap of correlations" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-diverging-dark.webp" alt="A diverging heatmap of correlations" loading="lazy"></figure>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>x-labels</code>, <code>y-labels</code></td><td><code>[string]</code></td><td></td><td>Column and row labels</td></tr>
-  <tr><td><code>values</code></td><td><code>[float]</code></td><td></td><td><code>values[row * columns + column]</code>; NaN for missing</td></tr>
-  <tr><td><code>color</code></td><td><code>color</code></td><td>palette slot 1</td><td>The color of the largest value</td></tr>
-  <tr><td><code>diverging</code>, <code>center-value</code>, <code>negative-color</code></td><td><code>bool</code>, <code>float</code>, <code>color</code></td><td><code>false</code>, <code>0</code>, palette slot 3</td><td>Values below the center use <code>negative-color</code></td></tr>
-  <tr><td><code>fixed-range</code>, <code>min-value</code>, <code>max-value</code></td><td></td><td>fit the data</td><td>A fixed color range</td></tr>
+  <tr><td><code>x-labels</code></td><td><code>[string]</code></td><td></td><td>The column labels</td></tr>
+  <tr><td><code>y-labels</code></td><td><code>[string]</code></td><td></td><td>The row labels</td></tr>
+  <tr><td><code>values</code></td><td><code>[float]</code></td><td></td><td>The cells in row order: <code>values[row * columns + column]</code>; NaN for an empty cell</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The color of the highest value; lower values are lighter</td></tr>
+  <tr><td><code>diverging</code></td><td><code>bool</code></td><td><code>false</code></td><td>Two colors, split at <code>center-value</code>, for values around a center</td></tr>
+  <tr><td><code>center-value</code></td><td><code>float</code></td><td><code>0</code></td><td>Where a diverging scale changes color</td></tr>
+  <tr><td><code>negative-color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[2]</code></td><td>The color of values below <code>center-value</code></td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> for the color scale instead of the data's range</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The value of the lightest color, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The value of the strongest color, with <code>fixed-range</code></td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write the value in each cell</td></tr>
-  <tr><td><code>cell-gap</code>, <code>cell-radius</code></td><td><code>length</code></td><td><code>2px</code>, <code>3px</code></td><td></td></tr>
-  <tr><td><code>show-legend</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for other charts</td></tr>
-  <tr><td><code>hovered-row</code>, <code>hovered-column</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The cell under the mouse, or -1</td></tr>
-  <tr><td><code>cell-clicked(row, column)</code></td><td>callback</td><td></td><td></td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A color scale under the chart</td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>cell-gap</code></td><td><code>length</code></td><td><code>2px</code></td><td>The space between cells</td></tr>
+  <tr><td><code>cell-radius</code></td><td><code>length</code></td><td><code>3px</code></td><td>Rounded cell corners</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>hovered-row</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The row of the cell under the mouse, or -1</td></tr>
+  <tr><td><code>hovered-column</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The column of the cell under the mouse, or -1</td></tr>
+  <tr><td><code>cell-clicked(row, column)</code></td><td>callback</td><td></td><td>A cell was clicked, or chosen with Enter</td></tr>
 </table>
+<p>A diverging scale suits values around a center, such as correlations:</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap-diverging.webp" alt="A diverging heatmap of correlations" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-diverging-dark.webp" alt="A diverging heatmap of correlations" loading="lazy"></figure>
 
 <h2 id="calendar-heatmap">CalendarHeatmap</h2>
 <p>A year (or any span) of daily values, like GitHub's contribution graph: one column per week, one row per weekday, with month and
@@ -1441,40 +967,30 @@ lighter shades for fewer contributions; set <code>color</code> for another, such
 <pre data-shot="calendar"><code>import { CalendarHeatmap, ChartTheme } from "@slintplot";
 
 CalendarHeatmap {
-    // Data
     title: "Contributions in the last year";
     start-date: { year: 2025, month: 10, day: 26 };
     values: root.daily-counts;                        // one value per day
-
-    // Look
     color: ChartTheme.dark ? #39d353 : #216e39;       // GitHub's green; default ChartTheme.colors[0]
-    // levels: 4;                                     // color steps
-    // week-starts-monday: false;
-    // show-legend: true;
-    // show-tooltip: true;
-    // cell-gap: 3px;
-    // cell-radius: 2px;
-    // min-cell-size: 11px;                           // scrolls when the cells would be smaller
-
-    // Values
-    // value-prefix: "";
-    value-suffix: " contributions";                   // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // day-clicked(index) =&gt; { debug("clicked day", index); }
+    value-suffix: " contributions";
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
   <tr><td><code>start-date</code></td><td><code>ChartDateTime</code></td><td></td><td>The date of the first value</td></tr>
   <tr><td><code>values</code></td><td><code>[float]</code></td><td></td><td>One value per day</td></tr>
-  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The color of the most active days; fewer contributions are lighter shades of it</td></tr>
-  <tr><td><code>levels</code></td><td><code>int</code></td><td><code>4</code></td><td>Color steps besides "empty"</td></tr>
-  <tr><td><code>week-starts-monday</code></td><td><code>bool</code></td><td><code>false</code></td><td>Weeks start on Sunday, like GitHub, unless set</td></tr>
-  <tr><td><code>cell-gap</code>, <code>cell-radius</code></td><td><code>length</code></td><td><code>3px</code>, <code>2px</code></td><td></td></tr>
-  <tr><td><code>show-legend</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The color of the busiest days; quieter days are lighter</td></tr>
+  <tr><td><code>levels</code></td><td><code>int</code></td><td><code>4</code></td><td>Color steps besides empty</td></tr>
+  <tr><td><code>week-starts-monday</code></td><td><code>bool</code></td><td><code>false</code></td><td>Start weeks on Monday instead of Sunday</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The Less … More scale under the calendar</td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>cell-gap</code></td><td><code>length</code></td><td><code>3px</code></td><td>The space between days</td></tr>
+  <tr><td><code>cell-radius</code></td><td><code>length</code></td><td><code>2px</code></td><td>Rounded day corners</td></tr>
+  <tr><td><code>min-cell-size</code></td><td><code>length</code></td><td><code>11px</code></td><td>The smallest day; with less room, the calendar scrolls</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The day under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>day-clicked(index)</code></td><td>callback</td><td></td><td></td></tr>
+  <tr><td><code>day-clicked(index)</code></td><td>callback</td><td></td><td>A day was clicked, or chosen with Enter; <code>index</code> counts from <code>start-date</code></td></tr>
 </table>
 
 <h2 id="treemap">TreemapChart</h2>
@@ -1484,50 +1000,35 @@ the legend lists the groups, and clicking one hides it. Without groups, every it
 Missing, zero and negative values take no space. Labels and values are written in the rectangles where they fit, in white or dark
 text depending on the fill.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/treemap.webp" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/treemap-dark.webp" alt="TreemapChart of world population by country, grouped by continent" loading="lazy"></figure>
-<pre data-shot="treemap"><code>import { ChartLegendPosition, TreemapChart } from "@slintplot";
+<pre data-shot="treemap"><code>import { TreemapChart } from "@slintplot";
 
 TreemapChart {
-    // Data
     title: "World population (millions)";
     items: [
-        {
-            label: "India",
-            value: 1464,
-            group: "Asia",
-            // color: transparent,                    // transparent: the group's color
-        },
+        { label: "India", value: 1464, group: "Asia" },
         { label: "China", value: 1416, group: "Asia" },
         { label: "Nigeria", value: 237, group: "Africa" },
         { label: "United States", value: 347, group: "Americas" },
         { label: "Brazil", value: 212, group: "Americas", color: transparent },  // transparent: the group's color
     ];
-
-    // Look
-    // show-legend: true;                             // the groups
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: true;                             // the value under each label
-    // cell-gap: 2px;
-    // cell-radius: 3px;
-
-    // Values
-    // value-prefix: "";
-    value-suffix: " M";                               // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // item-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled group", index); }
+    value-suffix: " M";
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>items</code></td><td><code>[ChartTreemapItem]</code></td><td></td><td><code>{ label, value, group, color }</code></td></tr>
+  <tr><td><code>items</code> <span class="tag">in-out</span></td><td><code>[ChartTreemapItem]</code></td><td></td><td>One entry per rectangle: <code>label</code>, <code>value</code>, <code>group</code>, <code>color</code>. Items of a group are placed together. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>true</code></td><td>Write each value under its label, where there is room</td></tr>
-  <tr><td><code>cell-gap</code>, <code>cell-radius</code></td><td><code>length</code></td><td><code>2px</code>, <code>3px</code></td><td>Groups are three gaps apart</td></tr>
-  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>cell-gap</code></td><td><code>length</code></td><td><code>2px</code></td><td>The space between rectangles; groups are three gaps apart</td></tr>
+  <tr><td><code>cell-radius</code></td><td><code>length</code></td><td><code>3px</code></td><td>Rounded corners</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the groups; clicking one hides or shows it</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The item under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>item-clicked(index)</code></td><td>callback</td><td></td><td>The index of the clicked item in <code>items</code></td></tr>
-  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A group was hidden or shown</td></tr>
+  <tr><td><code>item-clicked(index)</code></td><td>callback</td><td></td><td>An item was clicked, or chosen with Enter; <code>index</code> is its place in <code>items</code></td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a group</td></tr>
 </table>
 
 <h2 id="sunburst">SunburstChart</h2>
@@ -1538,19 +1039,12 @@ Top-level items take the theme's colors in order and their children a lighter sh
 children zooms into it, so that it fills the rings; clicking the center zooms back out. The center shows the total of what is shown.
 Labels are written on the arcs where they fit, and the legend lists the top-level items.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/sunburst.webp" alt="SunburstChart of world population by continent, region and country" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/sunburst-dark.webp" alt="SunburstChart of world population by continent, region and country" loading="lazy"></figure>
-<pre data-shot="sunburst"><code>import { ChartLegendPosition, ChartTexts, SunburstChart } from "@slintplot";
+<pre data-shot="sunburst"><code>import { SunburstChart } from "@slintplot";
 
 SunburstChart {
-    // Data
     title: "World population (millions)";
     items: [
-        {  // 0: its value is the sum of its children
-            label: "Asia",
-            // value: 0,                              // 0 for parents: the sum of their children
-            parent: -1,
-            // color: transparent,                    // transparent: the theme's next color, or the parent's
-            // hidden: false,
-        },
+        { label: "Asia", parent: -1 },                // 0: its value is the sum of its children
         { label: "South Asia", parent: 0 },           // 1
         { label: "India", value: 1464, parent: 1 },
         { label: "Pakistan", value: 255, parent: 1 },
@@ -1560,40 +1054,27 @@ SunburstChart {
         { label: "Germany", value: 84, parent: 6 },
         { label: "France", value: 66, parent: 6, hidden: false },
     ];
-
-    // Look
-    // show-legend: true;                             // the top level
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // animated: true;
-    // show-labels: true;
-    // cutout: 0.3;                                   // the size of the center hole, 0 to 1
-    // center-label: ChartTexts.total;                // "Total", in the chart's language
-    // zoom-item: -1;                                 // the item zoomed into; -1: none
-
-    // Values
-    // value-prefix: "";
-    value-suffix: " M";                               // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // item-clicked(index) =&gt; { debug("clicked", index); }
-    // zoomed(index) =&gt; { debug("zoomed into", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    value-suffix: " M";
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>items</code> <span class="tag">in-out</span></td><td><code>[ChartSunburstItem]</code></td><td></td><td><code>{ label, value, parent, color, hidden }</code></td></tr>
-  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>Write each item's label on its arc, where it fits</td></tr>
-  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.3</code></td><td>Size of the center circle, as a share of the radius</td></tr>
-  <tr><td><code>center-label</code></td><td><code>string</code></td><td><code>"Total"</code></td><td>Shown above the total when not zoomed in</td></tr>
-  <tr><td><code>zoom-item</code> <span class="tag">in-out</span></td><td><code>int</code></td><td><code>-1</code></td><td>The zoomed-in item, or -1 for all; set it to zoom from code</td></tr>
+  <tr><td><code>items</code> <span class="tag">in-out</span></td><td><code>[ChartSunburstItem]</code></td><td></td><td>One entry per arc: <code>label</code>, <code>value</code>, <code>parent</code>, <code>color</code>, <code>hidden</code>. A parent comes before its children. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>Write each label on its arc, where it fits</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.3</code></td><td>The size of the center circle, as a share of the radius</td></tr>
+  <tr><td><code>center-label</code></td><td><code>string</code></td><td><code>"Total"</code></td><td>Shown above the total in the center, in the chart's language</td></tr>
+  <tr><td><code>zoom-item</code> <span class="tag">in-out</span></td><td><code>int</code></td><td><code>-1</code></td><td>The item zoomed into, or -1 for all; set it to zoom from code</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the top-level items; clicking one hides or shows it</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the rings in when the chart appears</td></tr>
-  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The item under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>item-clicked(index)</code></td><td>callback</td><td></td><td>The index of the clicked item in <code>items</code></td></tr>
-  <tr><td><code>zoomed(index)</code></td><td>callback</td><td></td><td>The chart zoomed into <code>index</code>, or out to -1</td></tr>
-  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A top-level item was hidden or shown; <code>index</code> counts the legend entries</td></tr>
+  <tr><td><code>item-clicked(index)</code></td><td>callback</td><td></td><td>An item was clicked; <code>index</code> is its place in <code>items</code></td></tr>
+  <tr><td><code>zoomed(index)</code></td><td>callback</td><td></td><td>The chart zoomed into an item, or out to -1</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a top-level item</td></tr>
 </table>
 
 <h2 id="funnel">FunnelChart</h2>
@@ -1604,58 +1085,38 @@ narrow, and badges on the right show the share of the previous stage each one ke
 rows are too short for text, the names, values and badges are left out, and the tooltip shows them. Stages are
 <code>ChartSlice</code>s, as in pie charts.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/funnel.webp" alt="FunnelChart of website visitors through to a purchase" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/funnel-dark.webp" alt="FunnelChart of website visitors through to a purchase" loading="lazy"></figure>
-<pre data-shot="funnel"><code>import { ChartLegendPosition, ChartTheme, FunnelChart } from "@slintplot";
+<pre data-shot="funnel"><code>import { FunnelChart } from "@slintplot";
 
 FunnelChart {
-    // Data
     title: "Visitors to purchases";
     stages: [
-        {
-            label: "Visited the site",
-            value: 12400,
-            // color: transparent,                    // transparent: the fade
-            // hidden: false,
-        },
+        { label: "Visited the site", value: 12400 },
         { label: "Viewed a product", value: 7350 },
         { label: "Added to cart", value: 3120 },
         { label: "Purchased", value: 1150, color: transparent, hidden: false },  // transparent: the fade
     ];
-
-    // Look
-    // color: ChartTheme.colors[0];                   // the top stage; lower stages fade
-    // curved: true;
-    // gap: 4px;                                      // between the stages
-    // show-labels: true;
-    // show-values: true;
-    // show-percentages: true;                        // each stage's share of the first
-    // show-conversions: true;                        // badges with the share of the previous stage
-    // show-legend: false;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // animated: true;
-
-    // Values
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // stage-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>stages</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td><code>{ label, value, color, hidden }</code>, from the first stage to the last</td></tr>
-  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>The stage names on the left</td></tr>
-  <tr><td><code>show-values</code>, <code>show-percentages</code></td><td><code>bool</code></td><td><code>true</code>, <code>true</code></td><td>The value, and the share of the first stage, on each slice</td></tr>
-  <tr><td><code>show-conversions</code></td><td><code>bool</code></td><td><code>true</code></td><td>Badges with the share of the previous stage kept</td></tr>
+  <tr><td><code>stages</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td>One entry per stage, from the first to the last: <code>label</code>, <code>value</code>, <code>color</code>, <code>hidden</code>. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The first stage's color; the others fade from it</td></tr>
-  <tr><td><code>curved</code></td><td><code>bool</code></td><td><code>true</code></td><td>Curved sides between the stages, or straight ones</td></tr>
-  <tr><td><code>gap</code></td><td><code>length</code></td><td><code>4px</code></td><td>Space between the slices</td></tr>
-  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>The names are on the left already; the legend can hide stages</td></tr>
-  <tr><td><code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts; the stages open out one after the other</td></tr>
+  <tr><td><code>curved</code></td><td><code>bool</code></td><td><code>true</code></td><td>Curved sides between the stages; false for straight ones</td></tr>
+  <tr><td><code>gap</code></td><td><code>length</code></td><td><code>4px</code></td><td>The space between the stages</td></tr>
+  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>The stage names on the left</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>true</code></td><td>Each stage's value on its slice</td></tr>
+  <tr><td><code>show-percentages</code></td><td><code>bool</code></td><td><code>true</code></td><td>Each stage's share of the first stage</td></tr>
+  <tr><td><code>show-conversions</code></td><td><code>bool</code></td><td><code>true</code></td><td>Badges with the share of the previous stage kept</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>A legend of the stages; clicking one hides or shows it</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Open the stages out one after the other when the chart appears</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The stage under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>stage-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+  <tr><td><code>stage-clicked(index)</code></td><td>callback</td><td></td><td>A stage was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a stage</td></tr>
 </table>
 
 <h2 id="waterfall">WaterfallChart</h2>
@@ -1664,61 +1125,49 @@ Steps with <code>total: true</code> are bars from zero to the running total, in 
 ignored. Thin lines connect each bar's end to the next bar. The value axis always includes zero; the tooltip shows the change and
 the running total. Negative values are written with the sign before the prefix: "-$48k".</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/waterfall.webp" alt="WaterfallChart of a profit and loss statement" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/waterfall-dark.webp" alt="WaterfallChart of a profit and loss statement" loading="lazy"></figure>
-<pre data-shot="waterfall"><code>import { ChartLegendPosition, ChartTexts, ChartTheme, WaterfallChart } from "@slintplot";
+<pre data-shot="waterfall"><code>import { WaterfallChart } from "@slintplot";
 
 WaterfallChart {
-    // Data
     title: "Profit and loss";
     steps: [
-        {
-            label: "Revenue",
-            value: 420,
-            // total: false,                          // true: a bar from zero to the running total
-        },
+        { label: "Revenue", value: 420 },
         { label: "Cost of sales", value: -185 },
         { label: "Gross profit", total: true },
         { label: "Marketing", value: -48 },
         { label: "Net profit", total: true },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // animated: true;
-    show-values: true;                                // default false
-    // show-connectors: true;                         // lines from each bar to the next
+    show-values: true;
     increase-color: #10b981;                          // default: green, lighter in dark mode
     decrease-color: #f43f5e;                          // default: red, lighter in dark mode
-    // total-color: ChartTheme.colors[0];
-    // increase-label: ChartTexts.increase;           // "Increase", in the chart's language
-    // decrease-label: ChartTexts.decrease;
-    // total-label: ChartTexts.total;
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-    // fill-opacity: ChartTheme.fill-opacity;         // 0.5
-
-    // Value axis
-    // x-title: "";
-    // y-title: "";
-    value-prefix: "$";                                // default ""
-    value-suffix: "k";                                // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // step-clicked(index) =&gt; { debug("clicked", index); }
+    value-prefix: "$";
+    value-suffix: "k";
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>steps</code></td><td><code>[ChartWaterfallStep]</code></td><td></td><td><code>{ label, value, total }</code></td></tr>
-  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each change (with its sign) or total by its bar</td></tr>
+  <tr><td><code>steps</code></td><td><code>[ChartWaterfallStep]</code></td><td></td><td>One entry per bar: <code>label</code>, <code>value</code>, <code>total</code>. A step with <code>total: true</code> shows the running total. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each change, with its sign, or total by its bar</td></tr>
   <tr><td><code>show-connectors</code></td><td><code>bool</code></td><td><code>true</code></td><td>Lines from each bar's end to the next bar</td></tr>
-  <tr><td><code>increase-color</code>, <code>decrease-color</code>, <code>total-color</code></td><td><code>color</code></td><td>green, red, first theme color</td><td></td></tr>
-  <tr><td><code>increase-label</code>, <code>decrease-label</code>, <code>total-label</code></td><td><code>string</code></td><td><code>"Increase"</code>, <code>"Decrease"</code>, <code>"Total"</code></td><td>The legend entries</td></tr>
-  <tr><td><code>bar-radius</code>, <code>bar-border-width</code>, <code>fill-opacity</code>, <code>x-title</code>, <code>y-title</code></td><td></td><td></td><td>As for bar charts</td></tr>
-  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>increase-color</code></td><td><code>color</code></td><td>green</td><td>The color of increases</td></tr>
+  <tr><td><code>decrease-color</code></td><td><code>color</code></td><td>red</td><td>The color of decreases</td></tr>
+  <tr><td><code>total-color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The color of totals</td></tr>
+  <tr><td><code>increase-label</code></td><td><code>string</code></td><td><code>"Increase"</code></td><td>The legend entry for increases, in the chart's language</td></tr>
+  <tr><td><code>decrease-label</code></td><td><code>string</code></td><td><code>"Decrease"</code></td><td>The legend entry for decreases</td></tr>
+  <tr><td><code>total-label</code></td><td><code>string</code></td><td><code>"Total"</code></td><td>The legend entry for totals</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: the bars. The theme's default is 0.5</td></tr>
+  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Rounded bar corners</td></tr>
+  <tr><td><code>bar-border-width</code></td><td><code>length</code></td><td><code>1px</code></td><td>The width of the solid bar outline</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the three colors</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the vertical axis</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The step under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>step-clicked(index)</code></td><td>callback</td><td></td><td></td></tr>
+  <tr><td><code>step-clicked(index)</code></td><td>callback</td><td></td><td>A step was clicked, or chosen with Enter</td></tr>
 </table>
 
 <h2 id="dumbbell">DumbbellChart</h2>
@@ -1726,64 +1175,44 @@ WaterfallChart {
 two values per category, such as before and after. It takes <code>labels</code> and <code>datasets</code> like a horizontal bar chart,
 and works with more than two datasets too. With exactly two, the tooltip also shows the change from the first to the second.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/dumbbell.webp" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/dumbbell-dark.webp" alt="DumbbellChart of life expectancy in 2000 and 2023" loading="lazy"></figure>
-<pre data-shot="dumbbell"><code>import { ChartLegendPosition, ChartSeriesType, DumbbellChart } from "@slintplot";
+<pre data-shot="dumbbell"><code>import { DumbbellChart } from "@slintplot";
 
 DumbbellChart {
-    // Data
     title: "Life expectancy at birth (years)";
     labels: ["Japan", "India", "Nigeria"];
     datasets: [
-        {
-            label: "2000",
-            values: [81.1, 62.7, 46.3],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "2000", values: [81.1, 62.7, 46.3] },
         { label: "2023", values: [84.7, 72.0, 54.5] },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // animated: true;
-    show-values: true;                                // default false
-    // dot-radius: 6px;
-    // bar-width: 4px;
+    show-values: true;
     bar-color: gray;                                  // default: between the grid and axis colors
-
-    // Value axis
-    // begin-at-zero: false;
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    // y-title: "";
-    // value-prefix: "";
-    // value-suffix: "";
-    // value-decimals: -1;                            // -1: automatic
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>The data, one entry per dataset: <code>label</code>, <code>values</code>, <code>color</code>, <code>hidden</code>. See <a href="#chart-dataset">ChartDataset</a>. Each dataset is one dot per row</td></tr>
   <tr><td><code>labels</code></td><td><code>[string]</code></td><td></td><td>One row per label</td></tr>
-  <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td></td><td>One dot per dataset and row, from <code>values</code></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write the smallest value left of its dot and the largest right of it</td></tr>
-  <tr><td><code>dot-radius</code>, <code>bar-width</code>, <code>bar-color</code></td><td></td><td><code>6px</code>, <code>4px</code>, gray</td><td></td></tr>
-  <tr><td><code>begin-at-zero</code>, <code>fixed-range</code>, <code>min-value</code>, <code>max-value</code>, <code>logarithmic</code>, <code>x-title</code>, <code>y-title</code></td><td></td><td></td><td>As for <a href="#cartesian-properties">cartesian charts</a>; the value axis is horizontal</td></tr>
-  <tr><td><code>show-legend</code>, <code>legend-position</code>, <code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>dot-radius</code></td><td><code>length</code></td><td><code>6px</code></td><td>The size of the dots</td></tr>
+  <tr><td><code>bar-width</code></td><td><code>length</code></td><td><code>4px</code></td><td>The thickness of the bar between the dots</td></tr>
+  <tr><td><code>bar-color</code></td><td><code>color</code></td><td>gray</td><td>The color of the bar, between the grid and axis colors</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>false</code></td><td>Include 0 in the value axis, which is horizontal</td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
+  <tr><td><code>y-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the vertical axis</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The row under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>category-clicked(index)</code>, <code>legend-toggled(index)</code></td><td>callbacks</td><td></td><td></td></tr>
+  <tr><td><code>category-clicked(index)</code></td><td>callback</td><td></td><td>A row was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
 </table>
 
 <h2 id="gauge">GaugeChart</h2>
@@ -1798,61 +1227,47 @@ styles after common dashboard gauges:</p>
 </ul>
 <p>The value is sized to the gauge, and the gauge moves smoothly to new values. Hovering a band shows its range.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/gauge.webp" alt="GaugeChart: a needle with ticks over three colored bands" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/gauge-dark.webp" alt="GaugeChart: a needle with ticks over three colored bands" loading="lazy"></figure>
-<pre data-shot="gauge"><code>import { ChartLegendPosition, ChartTheme, GaugeChart } from "@slintplot";
+<pre data-shot="gauge"><code>import { GaugeChart } from "@slintplot";
 
 GaugeChart {
-    // Data
     title: "CPU temperature";
     value: 77;
     label: "Package";
     bands: [
-        {
-            to: 60,
-            label: "Normal",
-            color: #10b981,
-        },
+        { to: 60, label: "Normal", color: #10b981 },
         { to: 85, label: "Warm", color: #f59e0b },
         { to: 100, label: "Hot", color: transparent },  // transparent: the theme's next color
     ];
-
-    // Scale
-    min-value: 20;                                    // default 0
-    // max-value: 100;
-
-    // Look
-    show-needle: true;                                // default false
-    sweep: 240;                                       // default 180
-    // cutout: 0.86;                                  // the arc's inner radius; 0.86 with a needle
-    // rounded: true;                                 // fill style: rounded arc ends
-    // show-ticks: true;                              // needle style
-    // color: ChartTheme.colors[0];                   // the fill, without bands
-    // show-min-max: true;                            // min-value and max-value at the ends
-    show-legend: true;                                // default false
-    // legend-position: ChartLegendPosition.bottom;
-    // show-tooltip: true;
-    // animated: true;
-    // value-font-size: 0px;                          // 0px: sized to fit
-
-    // Value
-    // value-prefix: "";
-    value-suffix: " °C";                              // default ""
-    value-decimals: 0;                                // default -1
+    min-value: 20;
+    show-needle: true;
+    sweep: 240;
+    show-legend: true;
+    value-suffix: " °C";
+    value-decimals: 0;
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>value</code>, <code>min-value</code>, <code>max-value</code></td><td><code>float</code></td><td><code>0</code>, <code>0</code>, <code>100</code></td><td>Values outside the range are drawn at its ends</td></tr>
+  <tr><td><code>value</code></td><td><code>float</code></td><td><code>0</code></td><td>The value shown; values outside the range are drawn at its ends</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the scale</td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the scale</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>label</code></td><td><code>string</code></td><td><code>""</code></td><td>Written under the value</td></tr>
-  <tr><td><code>bands</code></td><td><code>[ChartGaugeBand]</code></td><td></td><td><code>{ to, label, color }</code>; each band starts where the previous one ends</td></tr>
-  <tr><td><code>show-needle</code></td><td><code>bool</code></td><td><code>false</code></td><td>The needle style: the bands in full, ticks and a needle, instead of a fill</td></tr>
-  <tr><td><code>show-ticks</code></td><td><code>bool</code></td><td><code>true</code></td><td>Needle style: major and minor ticks, with labels, inside the arc</td></tr>
-  <tr><td><code>rounded</code></td><td><code>bool</code></td><td><code>true</code></td><td>Fill style: round ends on the track and the fill</td></tr>
+  <tr><td><code>bands</code></td><td><code>[ChartGaugeBand]</code></td><td></td><td>Colored ranges: <code>to</code>, <code>label</code>, <code>color</code>; each band starts where the previous one ends. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>show-needle</code></td><td><code>bool</code></td><td><code>false</code></td><td>The needle style: the bands in full, with ticks and a needle, instead of a filled arc</td></tr>
   <tr><td><code>sweep</code></td><td><code>float</code></td><td><code>180</code></td><td>The angle the arc covers, in degrees</td></tr>
-  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.86</code> with a needle, else <code>0.72</code></td><td>Size of the inside of the arc, as a share of the radius</td></tr>
-  <tr><td><code>color</code></td><td><code>color</code></td><td>first theme color</td><td>The fill without bands</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td>0.72, or 0.86 with a needle</td><td>The inside of the arc, as a share of the radius</td></tr>
+  <tr><td><code>rounded</code></td><td><code>bool</code></td><td><code>true</code></td><td>Fill style: round ends on the arc</td></tr>
+  <tr><td><code>show-ticks</code></td><td><code>bool</code></td><td><code>true</code></td><td>Needle style: ticks with labels inside the arc</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The fill, when there are no bands</td></tr>
   <tr><td><code>show-min-max</code></td><td><code>bool</code></td><td><code>true</code></td><td>Write the minimum and maximum at the ends, unless tick labels show them</td></tr>
-  <tr><td><code>show-legend</code>, <code>legend-position</code></td><td></td><td><code>false</code>, <code>bottom</code></td><td>A legend of the bands</td></tr>
-  <tr><td><code>value-font-size</code></td><td><code>length</code></td><td><code>0px</code></td><td>The size of the value; 0 sizes it to the gauge</td></tr>
-  <tr><td><code>show-tooltip</code>, <code>animated</code>, <code>title</code>, value formatting</td><td></td><td></td><td>As for the other charts</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>A legend of the bands</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
+  <tr><td><code>value-font-size</code></td><td><code>length</code></td><td><code>0px</code></td><td>The size of the value; 0px sizes it to the gauge</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
   <tr><td><code>hovered-band</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The band under the mouse, or -1</td></tr>
 </table>
 
@@ -1865,79 +1280,16 @@ GaugeChart {
   <li><strong>Formatting:</strong> <code>value-prefix</code>, <code>value-suffix</code> and <code>value-decimals</code> (-1 for automatic) apply to the value axis, tooltips and data labels. Pies and radar charts have them too. A minus sign goes before the prefix: "-$5". Separators and dates follow <code>ChartTheme.language</code> (see <a href="#languages">Languages</a>).</li>
 </ul>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-log.webp" alt="A logarithmic axis" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-log-dark.webp" alt="A logarithmic axis" loading="lazy"></figure>
-<pre data-shot="axes-log"><code>import { ChartLegendPosition, ChartSeriesType, ChartTheme, LineChart } from "@slintplot";
+<pre data-shot="axes-log"><code>import { LineChart } from "@slintplot";
 
 LineChart {
-    // Data
     labels: ["Q1", "Q2", "Q3", "Q4"];
     datasets: [
-        {
-            label: "Users",
-            values: [12, 340, 2900, 61000],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Users", values: [12, 340, 2900, 61000] },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: false;                          // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    logarithmic: true;                                // default false
-    // x-title: "";
-    y-title: "Users (log scale)";                     // default ""
-    // value-prefix: "";
-    value-suffix: " users";                           // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    logarithmic: true;
+    y-title: "Users (log scale)";
+    value-suffix: " users";
 }</code></pre>
 
 <h3 id="second-axis">A second value axis</h3>
@@ -1953,80 +1305,18 @@ When either axis is fixed or logarithmic they can't line up; then the right axis
 It works in <code>LineChart</code>, <code>BarChart</code>, <code>ScatterChart</code>, <code>BubbleChart</code> and
 <code>TimeSeriesChart</code>; other charts ignore <code>right-axis</code>.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-two.webp" alt="Temperature as a line on the left axis and rainfall as bars on the right axis" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-two-dark.webp" alt="Temperature as a line on the left axis and rainfall as bars on the right axis" loading="lazy"></figure>
-<pre data-shot="axes-two"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
+<pre data-shot="axes-two"><code>import { BarChart, ChartSeriesType } from "@slintplot";
 
 BarChart {
-    // Data
     labels: ["Jan", "Feb", "Mar", "Apr"];
     datasets: [
-        {
-            label: "Temperature",
-            values: [-1.5, -1.2, 1.2, 5.5],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            series-type: ChartSeriesType.line,
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Temperature", values: [-1.5, -1.2, 1.2, 5.5], series-type: ChartSeriesType.line },
         { label: "Rainfall", values: [86, 136, 88, 103], right-axis: true },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    // show-values: false;                            // a label on each bar or point
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: true;                           // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    // x-title: "";
-    y-title: "Temperature";                           // default ""
-    // value-prefix: "";
-    value-suffix: " °C";                              // default ""
-    // value-decimals: -1;                            // -1: automatic
-
-    // Second value axis, for datasets with right-axis: true
-    y2-title: "Rainfall";                             // default ""
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    y2-value-suffix: " mm";                           // default ""
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    y-title: "Temperature";
+    value-suffix: " °C";
+    y2-title: "Rainfall";
+    y2-value-suffix: " mm";
 }</code></pre>
 <p>Two value axes are easy to misread: the heights of the two datasets can't be compared, and where they cross means nothing.
 Give both axes a title, and make it clear which dataset belongs to which, for example with a line for one and bars for the other.</p>
@@ -2035,79 +1325,18 @@ Give both axes a title, and make it clear which dataset belongs to which, for ex
 <p><code>show-values: true</code> writes each value next to its bar or point, or inside stacked segments. Pies write the value inside
 each slice, or its share with <code>show-percentages: true</code>; slices too thin for a label get none.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/axes-format.webp" alt="Bars with data labels and dollar formatting" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/axes-format-dark.webp" alt="Bars with data labels and dollar formatting" loading="lazy"></figure>
-<pre data-shot="axes-format"><code>import { BarChart, ChartLegendPosition, ChartSeriesType, ChartTheme } from "@slintplot";
+<pre data-shot="axes-format"><code>import { BarChart } from "@slintplot";
 
 BarChart {
-    // Data
     labels: ["Jan", "Feb", "Mar"];
     datasets: [
-        {
-            label: "Revenue",
-            values: [7869, 5941, 5946],
-            // points: [],                            // scatter, bubble and time series charts
-            // color: transparent,                    // transparent: the theme's next color
-            // hidden: false,
-            // fill: false,                           // line charts: fill the area below
-            // tension: 0,                            // line charts: 0 for straight lines
-            // stepped: false,                        // line charts: steps instead of slopes
-            // series-type: ChartSeriesType.auto,     // .line or .bar in mixed charts
-            // right-axis: false,                     // true: the second value axis
-        },
+        { label: "Revenue", values: [7869, 5941, 5946] },
     ];
-
-    // Look
-    // show-legend: true;
-    // legend-position: ChartLegendPosition.top;      // .bottom, .left or .right
-    // show-tooltip: true;
-    show-values: true;                                // default false
-    // show-points: true;                             // markers on lines
-    // show-lines: false;                             // scatter charts: connect the points
-    // animated: true;
-    // fill-opacity: ChartTheme.fill-opacity;         // fills of bars, areas and points; 0.5
-    // bar-radius: 0;                                 // rounded bar corners
-    // bar-border-width: 1px;
-
-    // Value axis
-    // begin-at-zero: true;                           // true by default in bar charts
-    // stacked: false;
-    // stacked-percent: false;                        // bar charts: every bar 0 to 100%
-    // fixed-range: false;                            // true: use min-value and max-value
-    // min-value: 0;
-    // max-value: 100;
-    // logarithmic: false;
-    x-title: "Month";                                 // default ""
-    y-title: "Revenue (USD)";                         // default ""
-    value-prefix: "$";                                // default ""
-    // value-suffix: "";
-    value-decimals: 0;                                // default -1
-
-    // Second value axis, for datasets with right-axis: true
-    // y2-title: "";
-    // y2-begin-at-zero: false;                       // default: begin-at-zero
-    // y2-fixed-range: false;
-    // y2-min-value: 0;
-    // y2-max-value: 100;
-    // y2-logarithmic: false;
-    // y2-value-prefix: "";
-    // y2-value-suffix: "";
-    // y2-value-decimals: -1;
-
-    // Time axis
-    // time-axis: false;                              // true in TimeSeriesChart
-    // time-origin: { year: 1970, month: 1, day: 1 };  // x is seconds after this
-    // utc-offset: 0;                                 // minutes added to UTC
-
-    // Large datasets, zoom and pan
-    // decimate: true;                                // lines: one span per pixel column
-    // zoom-enabled: false;                           // wheel zooms, drag pans, double-click resets
-    // view-start: 0;                                 // the visible part of the x axis, 0 to 1
-    // view-end: 1;
-    // min-view: 0.0005;                              // the smallest visible part
-
-    // Callbacks
-    // category-clicked(index) =&gt; { debug("clicked", index); }
-    // point-clicked(dataset, index) =&gt; { debug("clicked", dataset, index); }  // scatter and bubble charts
-    // legend-toggled(index) =&gt; { debug("toggled", index); }
+    show-values: true;
+    x-title: "Month";
+    y-title: "Revenue (USD)";
+    value-prefix: "$";
+    value-decimals: 0;
 }</code></pre>
 
 <h2 id="cartesian-properties">Cartesian properties</h2>
