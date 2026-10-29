@@ -99,7 +99,11 @@ fn clip(points: &[Point], (lo, hi): (f32, f32)) -> Vec<Point> {
 fn append_segments(out: &mut String, points: &[Point], tension: f32, (lo, hi): (f32, f32)) {
     // NaN draws straight lines; past 1 the curves overshoot, and a huge
     // tension puts the control points at infinity.
-    let tension = if tension.is_nan() { 0.0 } else { tension.min(1.0) };
+    let tension = if tension.is_nan() {
+        0.0
+    } else {
+        tension.min(1.0)
+    };
     if tension <= 0.0 || points.len() < 3 {
         for &(x, y) in &points[1..] {
             let _ = write!(out, " L {x:.2} {y:.2}");
@@ -164,7 +168,11 @@ mod tests {
     fn far_points_are_pulled_in_where_the_line_crosses() {
         // A plot 100 high: points are kept within 100 more either side.
         assert_eq!(
-            line(&[(0.0, 50.0), (10.0, 1050.0), (20.0, 50.0)], 0.0, (0.0, 100.0)),
+            line(
+                &[(0.0, 50.0), (10.0, 1050.0), (20.0, 50.0)],
+                0.0,
+                (0.0, 100.0)
+            ),
             "M 0.00 50.00 L 1.50 200.00 L 10.00 200.00 L 18.50 200.00 L 20.00 50.00"
         );
         // Straight through, top to bottom.

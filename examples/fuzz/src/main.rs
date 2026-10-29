@@ -34,14 +34,16 @@ static CURRENT: std::sync::Mutex<(u64, u64, i32)> = std::sync::Mutex::new((0, 0,
 fn watchdog(seconds: u64) {
     let epoch = std::time::Instant::now();
     STARTED.store(0, std::sync::atomic::Ordering::Relaxed);
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        let now = epoch.elapsed().as_millis() as u64;
-        let started = STARTED.load(std::sync::atomic::Ordering::Relaxed);
-        if now.saturating_sub(started) > seconds * 1000 {
-            let (seed, round, chart) = *CURRENT.lock().unwrap();
-            eprintln!("HANG: over {seconds} s in round {round}, chart {chart}, seed {seed}");
-            std::process::exit(2);
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            let now = epoch.elapsed().as_millis() as u64;
+            let started = STARTED.load(std::sync::atomic::Ordering::Relaxed);
+            if now.saturating_sub(started) > seconds * 1000 {
+                let (seed, round, chart) = *CURRENT.lock().unwrap();
+                eprintln!("HANG: over {seconds} s in round {round}, chart {chart}, seed {seed}");
+                std::process::exit(2);
+            }
         }
     });
     WATCH_EPOCH.set(epoch).ok();
@@ -65,7 +67,10 @@ impl Capped {
         let mut buf = [0u8; 160];
         let mut out = &mut buf[..];
         let (seed, round, chart) = AT.with(Cell::get);
-        let _ = write!(out, "OUT OF MEMORY: {size} more bytes in round {round}, chart {chart}, seed {seed}\n");
+        let _ = writeln!(
+            out,
+            "OUT OF MEMORY: {size} more bytes in round {round}, chart {chart}, seed {seed}"
+        );
         let len = 160 - out.len();
         let _ = std::io::stderr().write_all(&buf[..len]);
         false
@@ -80,7 +85,8 @@ unsafe impl std::alloc::GlobalAlloc for Capped {
         unsafe { std::alloc::System.alloc(layout) }
     }
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
-        self.0.fetch_sub(layout.size(), std::sync::atomic::Ordering::Relaxed);
+        self.0
+            .fetch_sub(layout.size(), std::sync::atomic::Ordering::Relaxed);
         unsafe { std::alloc::System.dealloc(ptr, layout) }
     }
     unsafe fn realloc(&self, ptr: *mut u8, layout: std::alloc::Layout, size: usize) -> *mut u8 {
@@ -90,7 +96,11 @@ unsafe impl std::alloc::GlobalAlloc for Capped {
         }
         let new = unsafe { std::alloc::System.realloc(ptr, layout, size) };
         // Give back the shrink, or the reservation if nothing moved.
-        let back = if new.is_null() { grow } else { layout.size().saturating_sub(size) };
+        let back = if new.is_null() {
+            grow
+        } else {
+            layout.size().saturating_sub(size)
+        };
         self.0.fetch_sub(back, std::sync::atomic::Ordering::Relaxed);
         new
     }
@@ -193,8 +203,16 @@ fn datasets(rng: &mut Rng, decimate: bool) -> Vec<ChartDataset> {
             let mut x = 0.0;
             let points: Vec<ChartXY> = (0..n)
                 .map(|_| {
-                    x = if sorted { x + rng.unit() * 10.0 } else { rng.number() };
-                    ChartXY { x, y: rng.number(), r: rng.number() }
+                    x = if sorted {
+                        x + rng.unit() * 10.0
+                    } else {
+                        rng.number()
+                    };
+                    ChartXY {
+                        x,
+                        y: rng.number(),
+                        r: rng.number(),
+                    }
                 })
                 .collect();
             ChartDataset {
@@ -225,16 +243,27 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
     ui.set_row_labels(model((0..rng.below(12)).map(|_| rng.text()).collect()));
     ui.set_datasets(model(datasets(rng, decimate)));
     let slices: Vec<ChartSlice> = (0..rng.below(12))
-        .map(|_| ChartSlice { label: rng.text(), value: rng.number(), color: rng.color(), hidden: rng.chance(15) })
+        .map(|_| ChartSlice {
+            label: rng.text(),
+            value: rng.number(),
+            color: rng.color(),
+            hidden: rng.chance(15),
+        })
         .collect();
     ui.set_slices(model(slices));
-    ui.set_values(model((0..rng.len().min(800)).map(|_| rng.number()).collect()));
+    ui.set_values(model(
+        (0..rng.len().min(800)).map(|_| rng.number()).collect(),
+    ));
     let count = rng.below(40) as i32;
     let sunburst: Vec<ChartSunburstItem> = (0..count)
         .map(|_| ChartSunburstItem {
             label: rng.text(),
             value: rng.number(),
-            parent: if rng.chance(70) { rng.below(count as u64) as i32 - 1 } else { rng.int() },
+            parent: if rng.chance(70) {
+                rng.below(count as u64) as i32 - 1
+            } else {
+                rng.int()
+            },
             color: rng.color(),
             hidden: rng.chance(10),
         })
@@ -244,17 +273,29 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
         .map(|_| ChartTreemapItem {
             label: rng.text(),
             value: rng.number(),
-            group: if rng.chance(50) { "".into() } else { format!("G{}", rng.below(4)).into() },
+            group: if rng.chance(50) {
+                "".into()
+            } else {
+                format!("G{}", rng.below(4)).into()
+            },
             color: rng.color(),
         })
         .collect();
     ui.set_treemap_items(model(treemap));
     let steps: Vec<ChartWaterfallStep> = (0..rng.below(30))
-        .map(|_| ChartWaterfallStep { label: rng.text(), value: rng.number(), total: rng.chance(25) })
+        .map(|_| ChartWaterfallStep {
+            label: rng.text(),
+            value: rng.number(),
+            total: rng.chance(25),
+        })
         .collect();
     ui.set_steps(model(steps));
     let bands: Vec<ChartGaugeBand> = (0..rng.below(6))
-        .map(|_| ChartGaugeBand { to: rng.number(), label: rng.text(), color: rng.color() })
+        .map(|_| ChartGaugeBand {
+            to: rng.number(),
+            label: rng.text(),
+            color: rng.color(),
+        })
         .collect();
     ui.set_bands(model(bands));
     ui.set_value(rng.number());
@@ -269,7 +310,11 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
     ui.set_min_value(rng.number());
     ui.set_max_value(rng.number());
     ui.set_decimals(rng.int());
-    ui.set_number(if rng.chance(50) { rng.unit() } else { rng.number() });
+    ui.set_number(if rng.chance(50) {
+        rng.unit()
+    } else {
+        rng.number()
+    });
     ui.set_view_start(if rng.chance(50) { 0.0 } else { rng.number() });
     ui.set_view_end(if rng.chance(50) { 1.0 } else { rng.number() });
     ui.set_zoom_item(rng.int());
@@ -289,7 +334,10 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
 fn render(window: &MinimalSoftwareWindow, size: (u32, u32)) {
     slint::platform::update_timers_and_animations();
     let (w, h) = size;
-    let mut buffer = vec![slint::platform::software_renderer::PremultipliedRgbaColor::default(); (w * h) as usize];
+    let mut buffer = vec![
+        slint::platform::software_renderer::PremultipliedRgbaColor::default();
+        (w * h) as usize
+    ];
     window.draw_if_needed(|renderer| {
         renderer.render(&mut buffer, w as usize);
     });
@@ -303,9 +351,12 @@ fn round(ui: &Fuzz, window: &MinimalSoftwareWindow, seed: u64, round: u64) {
         AT.set((seed, round, chart));
         *CURRENT.lock().unwrap() = (seed, round, chart);
         if let Some(epoch) = WATCH_EPOCH.get() {
-            STARTED.store(epoch.elapsed().as_millis() as u64, std::sync::atomic::Ordering::Relaxed);
+            STARTED.store(
+                epoch.elapsed().as_millis() as u64,
+                std::sync::atomic::Ordering::Relaxed,
+            );
         }
-        let mut rng = Rng(round_seed ^ (chart as u64 + 1) * 0x1234_5679);
+        let mut rng = Rng(round_seed ^ ((chart as u64 + 1) * 0x1234_5679));
         ui.set_chart(chart);
         fill(ui, &mut rng);
         let size = match rng.below(6) {

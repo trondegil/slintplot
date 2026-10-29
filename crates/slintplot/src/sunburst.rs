@@ -197,7 +197,12 @@ pub fn layout(
     let depth = levels(&children, first);
     let center = (width / 2.0, height / 2.0);
     let radius = (width.min(height) / 2.0 - 2.0).max(0.0);
-    let hole = radius * if cutout.is_nan() { 0.0 } else { cutout.clamp(0.0, 0.9) };
+    let hole = radius
+        * if cutout.is_nan() {
+            0.0
+        } else {
+            cutout.clamp(0.0, 0.9)
+        };
     let mut out = Sunburst {
         arcs: Vec::new(),
         center,

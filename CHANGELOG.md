@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.2.2
+
+### Fixed
+
+Charts no longer panic, hang or run out of memory on unusual data or
+settings. A new fuzz app (`examples/fuzz`) fills all 18 chart types with
+random data, including NaN, infinities, huge and tiny values, empty and flat
+datasets and extreme settings, and found these:
+
+- A heatmap with a huge `levels` allocated gigabytes. Levels are now 1 to 20.
+- Time series with times far outside the calendar, logarithmic axes reaching
+  infinity, and aligned second axes near the end of the f64 range looped
+  forever. Times more than about 300,000 years from 1970 get no ticks, and tick
+  loops are bounded.
+- NaN or huge values gave bars, steps and highlights sizes the renderer
+  cannot draw, which panicked. Bars are cut at the edge of the view, and
+  border radius and width fit the bar.
+- Lines, areas and bands far outside the view took minutes to draw. They are
+  cut where they leave the plot.
+- A flat range of huge values, such as every value 1e30, had no width.
+- NaN in a bubble radius, line tension, pie, sunburst or gauge cutout, gauge
+  sweep or radar value no longer gives NaN shapes.
+
+### Changed
+
+- With `fixed-range` or `y2-fixed-range`, values outside the range are
+  clipped at the plot's edge instead of drawn over the axes.
+- The hover highlight, markers and tooltip show only for points inside the
+  view.
+
+### Documentation
+
+- Data from other threads: a channel and a `slint::Timer` feeding a
+  `StreamModel`, and `upgrade_in_event_loop`.
+- How decimation works, and what each chart does with missing and invalid
+  values.
+- Memory over time: a 10-minute soak test of all charts kept the heap level
+  (870 KB to 874 KB over 7,760 rounds).
+
 ## 0.2.1
 
 - Bubble charts leave room for the bubbles at the ends of both axes. A

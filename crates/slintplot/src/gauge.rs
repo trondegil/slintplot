@@ -103,7 +103,11 @@ fn extent(start: f32, end: f32) -> (f32, f32, f32) {
 
 pub fn layout(req: &GaugeRequest) -> Gauge {
     // NaN would make every angle NaN: the default sweep and cutout instead.
-    let sweep_degrees = if req.sweep.is_nan() { 180.0 } else { req.sweep.clamp(30.0, 360.0) };
+    let sweep_degrees = if req.sweep.is_nan() {
+        180.0
+    } else {
+        req.sweep.clamp(30.0, 360.0)
+    };
     let sweep = sweep_degrees.to_radians();
     let (start, end) = (-sweep / 2.0, sweep / 2.0);
     let (top, bottom, wide) = extent(start, end);
@@ -134,7 +138,12 @@ pub fn layout(req: &GaugeRequest) -> Gauge {
         req.width / 2.0,
         (req.height - fit(radius)) / 2.0 + top * radius,
     );
-    let inner = radius * if req.cutout.is_nan() { 0.72 } else { req.cutout.clamp(0.0, 0.95) };
+    let inner = radius
+        * if req.cutout.is_nan() {
+            0.72
+        } else {
+            req.cutout.clamp(0.0, 0.95)
+        };
     let thickness = radius - inner;
     let span = req.max - req.min;
     let angle_of = |v: f64| {

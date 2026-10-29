@@ -85,7 +85,12 @@ pub fn layout(req: &PieRequest) -> PieLayout {
     let center = (req.width / 2.0, req.height / 2.0);
     let radius = (req.width.min(req.height) / 2.0 - req.hover_offset).max(0.0);
     // A NaN cutout draws a pie.
-    let inner_radius = radius * if req.cutout.is_nan() { 0.0 } else { req.cutout.clamp(0.0, 0.95) };
+    let inner_radius = radius
+        * if req.cutout.is_nan() {
+            0.0
+        } else {
+            req.cutout.clamp(0.0, 0.95)
+        };
     let shown = |s: &Slice| !s.hidden && s.value.is_finite() && s.value > 0.0;
     let total: f64 = req
         .slices
@@ -113,7 +118,11 @@ pub fn layout(req: &PieRequest) -> PieLayout {
         // An infinite value fills the chart, and NaN draws nothing.
         let r_of = |v: f64| {
             let r = (v / scale.max) as f32 * radius;
-            if r.is_nan() { 0.0 } else { r.clamp(0.0, radius) }
+            if r.is_nan() {
+                0.0
+            } else {
+                r.clamp(0.0, radius)
+            }
         };
         for v in scale.ticks().into_iter().filter(|&v| v > 0.0) {
             let r = r_of(v);

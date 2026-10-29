@@ -336,8 +336,16 @@ pub struct CategoryWindow {
 pub fn clamp_view((start, end): (f32, f32)) -> (f32, f32) {
     // NaN or infinite ends, which an app's own zoom code can produce, show
     // everything; `clamp` would panic on a NaN bound.
-    let start = if start.is_finite() { start.clamp(0.0, 1.0) } else { 0.0 };
-    let end = if end.is_finite() { end.clamp(start, 1.0) } else { 1.0 };
+    let start = if start.is_finite() {
+        start.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let end = if end.is_finite() {
+        end.clamp(start, 1.0)
+    } else {
+        1.0
+    };
     if end - start < 1e-6 {
         (0.0, 1.0)
     } else {
@@ -798,7 +806,11 @@ impl ValueScale {
             // An empty range, or a logarithmic one an app set below zero.
             0.5
         };
-        if fraction.is_nan() { 0.5 } else { fraction.clamp(-10.0, 10.0) }
+        if fraction.is_nan() {
+            0.5
+        } else {
+            fraction.clamp(-10.0, 10.0)
+        }
     }
 
     /// The position of `v` on an axis of `length` pixels, measured from the
@@ -1270,7 +1282,11 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
     // the middle rather than at NaN.
     let x_of = |x: f64| {
         let f = (x - x0) / (x1 - x0);
-        if f.is_finite() { f as f32 * req.width } else { req.width / 2.0 }
+        if f.is_finite() {
+            f as f32 * req.width
+        } else {
+            req.width / 2.0
+        }
     };
     // The window comes from f32 fractions; don't drop points on its edges.
     let edge = (x1 - x0) * 1e-6;

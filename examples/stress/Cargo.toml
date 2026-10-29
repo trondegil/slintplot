@@ -1,6 +1,6 @@
 [package]
 name = "slintplot-stress"
-version = "0.2.1"
+version = "0.2.2"
 description = "Stress test for SlintPlot: up to 8 x 1,000,000 points, 60 Hz streaming and headless benchmarks"
 license.workspace = true
 edition.workspace = true
