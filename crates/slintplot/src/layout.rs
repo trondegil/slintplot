@@ -160,7 +160,12 @@ impl Points {
         let edge = (x1 - x0).abs() * 1e-6;
         let (x0, x1) = (x0 - edge, x1 + edge);
         if ordered {
-            Box::new(self.x_window(x0, x1).map(|i| (i, self.get(i))))
+            // Checked too: unsorted points, or NaN, can fall in the search.
+            Box::new(
+                self.x_window(x0, x1)
+                    .map(|i| (i, self.get(i)))
+                    .filter(move |(_, p)| p.x >= x0 && p.x <= x1),
+            )
         } else {
             Box::new(
                 self.iter()
@@ -329,8 +334,10 @@ pub struct CategoryWindow {
 /// Clamps a zoom window to `0 <= start < end <= 1`; an empty window, such as
 /// the all-zero default from Slint, means everything.
 pub fn clamp_view((start, end): (f32, f32)) -> (f32, f32) {
-    let start = start.clamp(0.0, 1.0);
-    let end = end.clamp(start, 1.0);
+    // NaN or infinite ends, which an app's own zoom code can produce, show
+    // everything; `clamp` would panic on a NaN bound.
+    let start = if start.is_finite() { start.clamp(0.0, 1.0) } else { 0.0 };
+    let end = if end.is_finite() { end.clamp(start, 1.0) } else { 1.0 };
     if end - start < 1e-6 {
         (0.0, 1.0)
     } else {
@@ -778,16 +785,20 @@ pub struct ValueScale {
 
 impl ValueScale {
     /// Where `v` lies between `min` (0) and `max` (1). On a logarithmic
-    /// scale, values that aren't positive lie below `min`.
+    /// scale, values that aren't positive lie below `min`. Values far
+    /// outside the range are kept within ten ranges of it: still off the
+    /// plot, but in pixels the renderer can handle.
     pub fn fraction(&self, v: f64) -> f64 {
-        if self.logarithmic {
+        let fraction = if self.logarithmic && self.min > 0.0 && self.max > self.min {
             let v = if v > 0.0 { v } else { self.min * 1e-3 };
             (v.ln() - self.min.ln()) / (self.max.ln() - self.min.ln())
-        } else if self.max > self.min {
+        } else if !self.logarithmic && self.max > self.min {
             (v - self.min) / (self.max - self.min)
         } else {
+            // An empty range, or a logarithmic one an app set below zero.
             0.5
-        }
+        };
+        if fraction.is_nan() { 0.5 } else { fraction.clamp(-10.0, 10.0) }
     }
 
     /// The position of `v` on an axis of `length` pixels, measured from the
@@ -989,6 +1000,9 @@ impl YMap {
             },
             baseline_value: if logarithmic {
                 min
+            } else if min.is_nan() || max.is_nan() {
+                // `clamp` panics on a NaN bound.
+                0.0
             } else {
                 0f64.clamp(min, max.max(min))
             },
@@ -1036,8 +1050,11 @@ pub fn layout(req: &LayoutRequest) -> Layout {
     let count = category_count(req.datasets, req.labels.count());
     let window = category_window(count, &kinds, req.view);
     let span = window.end - window.start;
+    // A category is at most the plot's width: an app can zoom in to a
+    // sliver of one, which would put the bars and highlight millions of
+    // pixels off the plot.
     let step = if span > 0.0 {
-        req.width / span
+        (req.width / span).min(req.width)
     } else {
         req.width
     };
@@ -1159,6 +1176,8 @@ pub fn layout(req: &LayoutRequest) -> Layout {
         // that, leaving gaps between categories and between bars. Stacked
         // bars share one slot per category.
         let group = step * 0.8;
+        let reach = req.width.max(req.height).max(0.0);
+        let clip = |y: f32| y.clamp(-reach, 2.0 * reach);
         let slots = if req.stacked { 1 } else { bar_sets.len() };
         let slot = group / slots as f32;
         for (k, &ds) in bar_sets.iter().enumerate() {
@@ -1171,7 +1190,10 @@ pub fn layout(req: &LayoutRequest) -> Layout {
                     continue;
                 }
                 let (base, top) = segment(ds, index, v);
-                let (y0, y1) = (axis_of(ds).y(base), axis_of(ds).y(top));
+                // Clipped to a plot's size beyond its edges: off the plot
+                // either way, but within the 16-bit pixels Slint's software
+                // renderer draws rectangles with.
+                let (y0, y1) = (clip(axis_of(ds).y(base)), clip(axis_of(ds).y(top)));
                 let band_left = out.category_x(index) - step / 2.0;
                 out.bars.push(Bar {
                     dataset: ds,
@@ -1246,6 +1268,7 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
     // The window comes from f32 fractions; don't drop points on its edges.
     let edge = (x1 - x0) * 1e-6;
     let progress = req.progress.clamp(0.0, 1.0) as f64;
+    let max_radius = req.width.min(req.height).max(0.0) / 2.0;
     let axes = YMap::both(req);
     let bounds = (0.0, req.height);
     let series = req
@@ -1272,7 +1295,10 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
                     y: y_of(p.y),
                     index,
                     r: match req.kind {
-                        Kind::Bubble if p.r.is_finite() => p.r.max(0.0) as f32 * progress as f32,
+                        // No bigger than the plot: a huge radius can't be drawn.
+                        Kind::Bubble if p.r.is_finite() => {
+                            (p.r.max(0.0) as f32).min(max_radius) * progress as f32
+                        }
                         _ => 0.0,
                     },
                 })

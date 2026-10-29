@@ -62,8 +62,13 @@ impl NiceScale {
         };
         let intervals = count.max(2) as f64 - 1.0;
         let raw = (max - min) / intervals;
+        // No step fits a NaN or infinite range, and near the end of the f64
+        // range the steps overflow before one does: an ordinary scale then.
+        if !raw.is_finite() || raw <= 0.0 {
+            return NiceScale::new(min, max, count);
+        }
         let mut magnitude = 10f64.powf(raw.log10().floor());
-        loop {
+        while magnitude.is_finite() {
             for factor in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0] {
                 let step = clean(factor * magnitude);
                 if step < raw * (1.0 - 1e-9) {
@@ -81,6 +86,7 @@ impl NiceScale {
             }
             magnitude *= 10.0;
         }
+        NiceScale::new(min, max, count)
     }
 }
 
@@ -170,7 +176,8 @@ pub fn log_bounds(min: f64, max: f64) -> (f64, f64) {
 /// Ticks of a logarithmic axis from `min` to `max`: the powers of ten, plus 2
 /// and 5 times them when there is room for at most `max_ticks`.
 pub fn log_ticks(min: f64, max: f64, max_ticks: usize) -> Vec<f64> {
-    if !(min > 0.0 && max > min) {
+    // An infinite end would be billions of decades, each a tick.
+    if !(min > 0.0 && max > min && max.is_finite()) {
         return Vec::new();
     }
     let first = min.log10().floor() as i32;

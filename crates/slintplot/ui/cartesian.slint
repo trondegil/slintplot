@@ -94,6 +94,11 @@ export component CartesianChart {
     private property <float> mouse-category: chart.start + touch.mouse-x / (chart.step * 1px);
     // The category selected with the keyboard.
     private property <int> key-index: -1;
+    // Whether the hovered category is in the zoom window: the keys can select
+    // one outside it, which would be drawn far off the plot.
+    private property <bool> hovered-in-view: root.hovered-index >= 0
+        && category-x(root.hovered-index) >= -chart.step * 1px
+        && category-x(root.hovered-index) <= plot.width + chart.step * 1px;
     // Between a point's coordinates in tooltips: "; " where the decimal is a
     // comma, as in "(1,5; 2,5)".
     private property <string> coordinate-separator: ChartTheme.locale.decimal == "," ? "; " : ", ";
@@ -306,8 +311,9 @@ export component CartesianChart {
                     y: frame.y-title-space + ChartTheme.font-size * 0.75;
                     width: max(0px, parent.width - self.x - max(12px, frame.right-labels-width));
                     height: max(0px, parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space);
-                    // Zoomed data continues past the edges.
-                    clip: root.zoomed;
+                    // Zoomed data continues past the edges, and so do values
+                    // outside a fixed range.
+                    clip: root.zoomed || root.fixed-range || root.y2-fixed-range;
 
                     // Grid
                     for tick in root.grid-ticks: Rectangle {
@@ -337,7 +343,7 @@ export component CartesianChart {
                     }
 
                     // Hover highlight: a band when there are bars, else a crosshair.
-                    if root.hovered-index >= 0: Rectangle {
+                    if root.hovered-in-view: Rectangle {
                         x: category-x(root.hovered-index) - (chart.offset ? chart.step * 1px / 2 : 0.5px);
                         width: chart.offset ? chart.step * 1px : 1px;
                         background: chart.offset ? ChartTheme.grid-color : ChartTheme.axis-color;
@@ -349,9 +355,11 @@ export component CartesianChart {
                         width: bar.width * 1px;
                         height: bar.height * 1px;
                         background: bar.color.with-alpha(root.hovered-index == bar.index ? min(1, root.fill-opacity + 0.3) : root.fill-opacity);
-                        border-radius: root.bar-radius;
+                        // Within what the bar can hold: Slint's software
+                        // renderer panics on a border wider than the bar.
+                        border-radius: clamp(root.bar-radius, 0, min(self.width, self.height) / 2);
                         border-color: bar.color;
-                        border-width: root.bar-border-width;
+                        border-width: clamp(root.bar-border-width, 0, min(self.width, self.height) / 2);
                         animate background { duration: 120ms; }
                         animate x, y, width, height {
                             duration: root.transition;
@@ -462,7 +470,7 @@ export component CartesianChart {
                     // from the values instead of being a state of every marker, so
                     // hovering stays cheap with many points and also works when
                     // point markers are hidden.
-                    if !root.point-chart && root.hovered-index >= 0: Rectangle {
+                    if !root.point-chart && root.hovered-in-view: Rectangle {
                         for ds in chart.visible: Rectangle {
                             property <float> value: ChartEngine.plotted-value(root.datasets, root.kind, root.stacked, ds, root.hovered-index);
                             x: category-x(root.hovered-index) - ChartTheme.point-hover-radius;
@@ -636,7 +644,7 @@ export component CartesianChart {
                     horizontal-alignment: center;
                 }
 
-                if root.show-tooltip && root.hovered-index >= 0 && chart.visible.length > 0: Tooltip {
+                if root.show-tooltip && root.hovered-in-view && chart.visible.length > 0: Tooltip {
                     property <length> anchor: plot.x + category-x(root.hovered-index);
                     x: self.anchor + 12px + self.width > frame.width ? self.anchor - 12px - self.width : self.anchor + 12px;
                     y: clamp(plot.y + (touch.has-hover ? touch.mouse-y : plot.height * 0.3) - self.height / 2, 0px, max(0px, frame.height - self.height));

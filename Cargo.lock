@@ -4110,6 +4110,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slintplot-fuzz"
+version = "0.2.1"
+dependencies = [
+ "slint",
+ "slint-build",
+ "slintplot",
+]
+
+[[package]]
 name = "slintplot-gallery"
 version = "0.2.1"
 dependencies = [

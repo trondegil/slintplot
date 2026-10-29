@@ -10,9 +10,10 @@ pub const UNBOUNDED: (f32, f32) = (f32::NEG_INFINITY, f32::INFINITY);
 /// Builds the commands for a polyline through `points`.
 ///
 /// `tension`: `0` draws straight segments, around `0.4` gives
-/// smooth Bézier curves. Curve control points are clamped to `y_bounds`, so a
+/// smooth Bézier curves, up to `1`. Curve control points are clamped to `y_bounds`, so a
 /// curve between points inside the plot stays inside it.
 pub fn line(points: &[Point], tension: f32, y_bounds: (f32, f32)) -> String {
+    let points = &clip(points, y_bounds);
     let mut out = String::new();
     let Some(&(x0, y0)) = points.first() else {
         return out;
@@ -25,6 +26,7 @@ pub fn line(points: &[Point], tension: f32, y_bounds: (f32, f32)) -> String {
 /// Builds the commands for the area between the line through `points` and the
 /// horizontal `baseline`.
 pub fn area(points: &[Point], tension: f32, baseline: f32, y_bounds: (f32, f32)) -> String {
+    let points = &clip(points, y_bounds);
     let mut out = String::new();
     let (Some(&(x0, y0)), Some(&(last_x, _))) = (points.first(), points.last()) else {
         return out;
@@ -42,7 +44,7 @@ pub fn band(top: &[Point], bottom: &[Point], tension: f32, y_bounds: (f32, f32))
     if out.is_empty() {
         return out;
     }
-    let reversed: Vec<Point> = bottom.iter().rev().copied().collect();
+    let reversed: Vec<Point> = clip(bottom, y_bounds).into_iter().rev().collect();
     if let Some(&(x, y)) = reversed.first() {
         let _ = write!(out, " L {x:.2} {y:.2}");
         append_segments(&mut out, &reversed, tension, y_bounds);
@@ -64,7 +66,40 @@ pub fn steps(points: &[Point]) -> Vec<Point> {
     out
 }
 
+/// Pulls points more than a plot's height above or below `y_bounds` in to
+/// that distance, adding a point where the line crosses it: the visible part
+/// stays the same, and the renderer, whose work grows with a line's length,
+/// never gets one millions of pixels long.
+fn clip(points: &[Point], (lo, hi): (f32, f32)) -> Vec<Point> {
+    let margin = (hi - lo).abs().max(1.0);
+    let (top, bottom) = (lo.min(hi) - margin, lo.max(hi) + margin);
+    if points.iter().all(|&(_, y)| y >= top && y <= bottom) {
+        return points.to_vec();
+    }
+    let mut out = Vec::with_capacity(points.len() + 4);
+    for (i, &(x, y)) in points.iter().enumerate() {
+        if i > 0 {
+            let (px, py) = points[i - 1];
+            // Where the segment crosses the edges, in the order it does.
+            let mut crossings: Vec<f32> = [top, bottom]
+                .into_iter()
+                .filter(|&edge| (py - edge) * (y - edge) < 0.0)
+                .map(|edge| (edge - py) / (y - py))
+                .collect();
+            crossings.sort_by(f32::total_cmp);
+            for t in crossings {
+                out.push((px + (x - px) * t, (py + (y - py) * t).clamp(top, bottom)));
+            }
+        }
+        out.push((x, y.clamp(top, bottom)));
+    }
+    out
+}
+
 fn append_segments(out: &mut String, points: &[Point], tension: f32, (lo, hi): (f32, f32)) {
+    // NaN draws straight lines; past 1 the curves overshoot, and a huge
+    // tension puts the control points at infinity.
+    let tension = if tension.is_nan() { 0.0 } else { tension.min(1.0) };
     if tension <= 0.0 || points.len() < 3 {
         for &(x, y) in &points[1..] {
             let _ = write!(out, " L {x:.2} {y:.2}");
@@ -123,6 +158,20 @@ mod tests {
             "M 0.00 0.00 L 10.00 5.00"
         );
         assert_eq!(line(&[], 0.4, UNBOUNDED), "");
+    }
+
+    #[test]
+    fn far_points_are_pulled_in_where_the_line_crosses() {
+        // A plot 100 high: points are kept within 100 more either side.
+        assert_eq!(
+            line(&[(0.0, 50.0), (10.0, 1050.0), (20.0, 50.0)], 0.0, (0.0, 100.0)),
+            "M 0.00 50.00 L 1.50 200.00 L 10.00 200.00 L 18.50 200.00 L 20.00 50.00"
+        );
+        // Straight through, top to bottom.
+        assert_eq!(
+            line(&[(0.0, -1e9), (10.0, 1e9)], 0.0, (0.0, 100.0)),
+            "M 0.00 -100.00 L 5.00 -100.00 L 5.00 200.00 L 10.00 200.00"
+        );
     }
 
     #[test]

@@ -305,6 +305,7 @@ export component CalendarHeatmap {
     // The color of the most active days: the theme's first color by default.
     // For GitHub's green, use `ChartTheme.dark ? #39d353 : #216e39`.
     in property <color> color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #216e39;
+    // 1 to 20 color steps.
     in property <int> levels: 4;
     // Weeks start on Sunday, like GitHub, unless this is set.
     in property <bool> week-starts-monday: false;
@@ -334,7 +335,9 @@ export component CalendarHeatmap {
     accessible-role: image;
     accessible-label: root.title;
 
-    private property <ChartCalendarLayout> calendar: ChartEngine.calendar-layout(root.start-date, root.values, root.levels, root.week-starts-monday, ChartTheme.locale);
+    // An app's levels kept to 1 to 20: one legend swatch is made per level.
+    private property <int> steps: clamp(root.levels, 1, 20);
+    private property <ChartCalendarLayout> calendar: ChartEngine.calendar-layout(root.start-date, root.values, root.steps, root.week-starts-monday, ChartTheme.locale);
     private property <int> first-weekday: root.calendar.days.length > 0 ? root.calendar.days[0].weekday : 0;
     private property <color> empty: ChartTheme.dark ? #2b2f36 : #ebedf0;
     private property <length> label-width: max(ChartTheme.font-size * 2.6, weekday-measure.preferred-width + 6px);
@@ -356,7 +359,7 @@ export component CalendarHeatmap {
     }
 
     pure function level-color(level: int) -> color {
-        level <= 0 ? root.empty : root.color.mix(root.empty, 0.25 + 0.75 * (level - 1) / max(1, root.levels - 1))
+        level <= 0 ? root.empty : root.color.mix(root.empty, 0.25 + 0.75 * (level - 1) / max(1, root.steps - 1))
     }
 
     min-width: 200px;
@@ -521,7 +524,7 @@ export component CalendarHeatmap {
                 font-size: ChartTheme.font-size * 0.9;
                 vertical-alignment: center;
             }
-            for level in root.levels + 1: VerticalLayout {
+            for level in root.steps + 1: VerticalLayout {
                 alignment: center;
                 Rectangle {
                     // A fixed size: sizing it like the cells would make the

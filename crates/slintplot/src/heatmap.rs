@@ -51,7 +51,7 @@ pub fn weekday_labels(locale: &Locale, week_starts_monday: bool) -> Vec<String> 
 
 /// Lays out one value per day, starting on `start_day` (days since
 /// 1970-01-01), in weeks starting on Monday or, like GitHub, on Sunday.
-/// Positive values are split into `levels` levels by quantiles, so a few
+/// Positive values are split into `levels` levels (1 to 20) by quantiles, so a few
 /// very active days don't wash out the rest.
 pub fn calendar(
     start_day: i64,
@@ -76,7 +76,8 @@ pub fn calendar_in(
     week_starts_monday: bool,
     locale: &Locale,
 ) -> Calendar {
-    let levels = levels.max(1);
+    // More steps than this can't be told apart, and each one costs memory.
+    let levels = levels.clamp(1, 20);
     // 1970-01-01 was a Thursday: 4 days after Sunday, 3 after Monday.
     let first_weekday = (start_day + if week_starts_monday { 3 } else { 4 }).rem_euclid(7) as usize;
     let mut active: Vec<f64> = values

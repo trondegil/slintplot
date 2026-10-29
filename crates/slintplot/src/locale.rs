@@ -180,6 +180,9 @@ pub(crate) fn trim_decimals(s: String, decimal: &str) -> String {
 /// A number with `decimals` decimals, `decimal` before them and `group`
 /// between thousands.
 pub(crate) fn number(value: f64, decimals: usize, decimal: &str, group: &str) -> String {
+    // More decimals than a float holds mean nothing, and `format!` panics on
+    // very large ones.
+    let decimals = decimals.min(20);
     let raw = format!("{:.*}", decimals, crate::ticks::clean(value).abs());
     let (int, frac) = raw
         .split_once('.')

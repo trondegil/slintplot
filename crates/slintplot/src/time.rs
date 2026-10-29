@@ -45,6 +45,8 @@ enum Unit {
 }
 
 const DAY: f64 = 86_400.0;
+/// The largest time, in seconds either side of 1970, that gets ticks.
+const LIMIT: f64 = 1e13;
 const UNITS: &[Unit] = &[
     Unit::Seconds(1.0),
     Unit::Seconds(2.0),
@@ -158,10 +160,16 @@ pub fn time_ticks_in(
     utc_offset_minutes: i32,
     locale: &Locale,
 ) -> Vec<(f64, String)> {
-    // Also rejects NaN.
-    if end.partial_cmp(&start) != Some(std::cmp::Ordering::Greater) {
+    // Also rejects NaN. Times past about 300,000 years from 1970, or
+    // infinite, can't be labeled, and adding a step to them changes nothing.
+    if end.partial_cmp(&start) != Some(std::cmp::Ordering::Greater)
+        || !(start.abs() < LIMIT && end.abs() < LIMIT)
+    {
         return Vec::new();
     }
+    // The steps keep to `max_ticks` except for spans of thousands of years;
+    // this keeps every loop below finite.
+    let most = max_ticks.clamp(2, 1000) * 2;
     let offset = utc_offset_minutes as f64 * 60.0;
     let span = end - start;
     let intervals = (max_ticks.max(2) - 1) as f64;
@@ -177,7 +185,7 @@ pub fn time_ticks_in(
             // Weeks start on Monday; 1970-01-01 was a Thursday.
             let shift = if u == 7.0 * DAY { 3.0 * DAY } else { 0.0 };
             let mut t = ((local_start + shift) / u).ceil() * u - shift;
-            while t <= local_end + 1e-6 {
+            while t <= local_end + 1e-6 && ticks.len() < most {
                 ticks.push((t - offset, label(t, unit, locale)));
                 t += u;
             }
@@ -192,7 +200,7 @@ pub fn time_ticks_in(
             loop {
                 let (y, m) = (index.div_euclid(12), index.rem_euclid(12) as u32 + 1);
                 let t = days_from_civil(y, m, 1) as f64 * DAY;
-                if t > local_end + 1e-6 {
+                if t > local_end + 1e-6 || ticks.len() >= most {
                     break;
                 }
                 if t >= local_start - 1e-6 {

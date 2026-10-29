@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/slintplot", "examples/gallery", "examples/stress", "examples/docshots"]
+members = ["crates/slintplot", "examples/gallery", "examples/stress", "examples/docshots", "examples/fuzz"]
 
 [workspace.package]
 edition = "2024"

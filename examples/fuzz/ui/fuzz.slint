@@ -1,0 +1,224 @@
+// Every chart type, fed whatever the fuzzer sets: `cargo run --release -p slintplot-fuzz`.
+import {
+    BarChart, BubbleChart, CalendarHeatmap, ChartDataset, ChartEngine, ChartGaugeBand, ChartLegendPosition, ChartSlice,
+    ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GaugeChart,
+    HeatmapChart, HorizontalBarChart, LineChart, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
+    TimeSeriesChart, TreemapChart, WaterfallChart,
+} from "@slintplot";
+export { ChartEngine }
+
+export component Fuzz inherits Window {
+    in property <int> chart;
+
+    // Data.
+    in property <[string]> labels;
+    in property <[string]> row-labels;
+    in-out property <[ChartDataset]> datasets;
+    in-out property <[ChartSlice]> slices;
+    in property <[float]> values;
+    in-out property <[ChartSunburstItem]> sunburst-items;
+    in-out property <[ChartTreemapItem]> treemap-items;
+    in property <[ChartWaterfallStep]> steps;
+    in property <[ChartGaugeBand]> bands;
+    in property <float> value;
+
+    // Options.
+    in property <bool> stacked;
+    in property <bool> stacked-percent;
+    in property <bool> logarithmic;
+    in property <bool> fixed-range;
+    in property <bool> begin-at-zero;
+    in property <bool> decimate;
+    in property <bool> show-values;
+    in property <bool> flag;
+    in property <float> min-value;
+    in property <float> max-value;
+    in property <int> decimals;
+    in property <float> number;
+    in-out property <float> view-start;
+    in-out property <float> view-end;
+    in-out property <int> zoom-item;
+    in property <int> utc-offset;
+    in property <int> year;
+    in property <length> size;
+    in property <ChartLegendPosition> legend-position;
+
+    VerticalLayout {
+        if root.chart == 0: LineChart {
+            labels: root.labels;
+            datasets <=> root.datasets;
+            stacked: root.stacked;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            begin-at-zero: root.begin-at-zero;
+            decimate: root.decimate;
+            show-values: root.show-values;
+            show-points: root.flag;
+            value-decimals: root.decimals;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+            min-view: root.number;
+            legend-position: root.legend-position;
+            y2-logarithmic: root.flag;
+            y2-fixed-range: root.fixed-range;
+            y2-min-value: root.max-value;
+            y2-max-value: root.min-value;
+        }
+        if root.chart == 1: BarChart {
+            labels: root.labels;
+            datasets <=> root.datasets;
+            stacked: root.stacked;
+            stacked-percent: root.stacked-percent;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            begin-at-zero: root.begin-at-zero;
+            show-values: root.show-values;
+            value-decimals: root.decimals;
+            bar-radius: root.size;
+            bar-border-width: root.size;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+            legend-position: root.legend-position;
+        }
+        if root.chart == 2: ScatterChart {
+            datasets <=> root.datasets;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            show-lines: root.flag;
+            decimate: root.decimate;
+            show-values: root.show-values;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+        }
+        if root.chart == 3: BubbleChart {
+            datasets <=> root.datasets;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            show-values: root.show-values;
+        }
+        if root.chart == 4: TimeSeriesChart {
+            datasets <=> root.datasets;
+            time-origin: { year: root.year, month: 13, day: 40 };
+            utc-offset: root.utc-offset;
+            decimate: root.decimate;
+            show-points: root.flag;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+            min-view: root.number;
+        }
+        if root.chart == 5: HorizontalBarChart {
+            labels: root.labels;
+            datasets <=> root.datasets;
+            stacked: root.stacked;
+            stacked-percent: root.stacked-percent;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            show-values: root.show-values;
+            value-decimals: root.decimals;
+            legend-position: root.legend-position;
+        }
+        if root.chart == 6: PieChart {
+            slices <=> root.slices;
+            show-values: root.show-values;
+            show-percentages: root.flag;
+            cutout: root.number;
+            value-decimals: root.decimals;
+            legend-position: root.legend-position;
+        }
+        if root.chart == 7: DoughnutChart {
+            slices <=> root.slices;
+            show-percentages: root.flag;
+        }
+        if root.chart == 8: PolarAreaChart {
+            slices <=> root.slices;
+            show-values: root.show-values;
+        }
+        if root.chart == 9: RadarChart {
+            labels: root.labels;
+            datasets <=> root.datasets;
+            begin-at-zero: root.begin-at-zero;
+            value-decimals: root.decimals;
+        }
+        if root.chart == 10: HeatmapChart {
+            x-labels: root.labels;
+            y-labels: root.row-labels;
+            values: root.values;
+            diverging: root.flag;
+            center-value: root.number;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            show-values: root.show-values;
+            value-decimals: root.decimals;
+            cell-gap: root.size;
+        }
+        if root.chart == 11: CalendarHeatmap {
+            start-date: { year: root.year, month: root.decimals, day: root.utc-offset };
+            values: root.values;
+            levels: root.decimals;
+            week-starts-monday: root.flag;
+            min-cell-size: root.size;
+        }
+        if root.chart == 12: TreemapChart {
+            items <=> root.treemap-items;
+            show-values: root.show-values;
+            cell-gap: root.size;
+        }
+        if root.chart == 13: SunburstChart {
+            items <=> root.sunburst-items;
+            cutout: root.number;
+            zoom-item <=> root.zoom-item;
+            show-labels: root.flag;
+        }
+        if root.chart == 14: FunnelChart {
+            stages <=> root.slices;
+            curved: root.flag;
+            gap: root.size;
+            show-values: root.show-values;
+        }
+        if root.chart == 15: WaterfallChart {
+            steps: root.steps;
+            show-values: root.show-values;
+            value-decimals: root.decimals;
+            bar-radius: root.size;
+        }
+        if root.chart == 16: DumbbellChart {
+            labels: root.labels;
+            datasets <=> root.datasets;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            show-values: root.show-values;
+        }
+        if root.chart == 17: GaugeChart {
+            value: root.value;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            bands: root.bands;
+            show-needle: root.flag;
+            sweep: root.number * 400;
+            cutout: root.number;
+            value-decimals: root.decimals;
+            value-font-size: root.size;
+        }
+    }
+}

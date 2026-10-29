@@ -1,0 +1,18 @@
+[package]
+name = "slintplot-fuzz"
+version = "0.2.1"
+description = "Feeds every SlintPlot chart random and malformed data, to check that nothing panics"
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+# `software-renderer-path` lets the software renderer draw paths.
+slint = { workspace = true, features = ["software-renderer-path"] }
+slintplot.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true
+slintplot.workspace = true

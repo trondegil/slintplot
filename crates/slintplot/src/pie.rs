@@ -103,12 +103,17 @@ pub fn layout(req: &PieRequest) -> PieLayout {
         let max = shown
             .iter()
             .map(|&i| req.slices[i].value)
+            .filter(|v| v.is_finite())
             .fold(0.0, f64::max);
         let max_ticks = (radius / (req.font_size.max(1.0) * 2.5))
             .floor()
             .clamp(2.0, 8.0) as usize;
         let scale = NiceScale::new(0.0, if max > 0.0 { max } else { 1.0 }, max_ticks);
-        let r_of = |v: f64| (v / scale.max) as f32 * radius;
+        // An infinite value fills the chart, and NaN draws nothing.
+        let r_of = |v: f64| {
+            let r = (v / scale.max) as f32 * radius;
+            if r.is_nan() { 0.0 } else { r.clamp(0.0, radius) }
+        };
         for v in scale.ticks().into_iter().filter(|&v| v > 0.0) {
             let r = r_of(v);
             let (top, bottom) = ((center.0, center.1 - r), (center.0, center.1 + r));
