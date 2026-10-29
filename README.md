@@ -13,7 +13,7 @@
   <b><a href="https://slintplot.dev/#pricing">Buy a commercial license</a></b>
 </p>
 
-# SlintPlot
+<br>
 
 Native, interactive charts for [Slint](https://slint.dev).
 
