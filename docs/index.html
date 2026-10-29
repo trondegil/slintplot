@@ -317,7 +317,9 @@
   <a href="#interaction">Interaction</a>
   <a href="#updating-data">Updating data from Rust</a>
   <a href="#streaming">Streaming</a>
+  <a href="#threads">Data from other threads</a>
   <a href="#large-datasets">Large datasets</a>
+  <a href="#invalid-values">Missing and invalid values</a>
   <a href="#rust-api">Rust API</a>
   <a href="#engine">ChartEngine</a>
   <p class="group">More</p>
@@ -1684,6 +1686,56 @@ points.extend(new_points);</code></pre>
 </ul>
 <p>The gallery's <em>Live data</em> sample streams a time series at 10 to 60 updates a second, and the stress app streams up to 8 datasets at up to
 100,000 samples a second, with windows from 1,000 values to everything it has received.</p>
+<p>Memory stays level however long the app runs: a <code>StreamModel</code> holds at most its capacity, and the charts keep
+nothing between frames that grows with time. The <a href="#examples">fuzz app</a>'s soak test renders the same data over and over,
+with hovering, clicks, scrolling and keys, and checks that memory in use stops growing. In 10 minutes, 7,760 rounds of all 18 chart
+components, it went from 870 KB after the first rounds to 874 KB at the end.</p>
+
+<h2 id="threads">Data from other threads</h2>
+<p>Slint models live on the UI thread: a <code>VecModel</code> or <code>StreamModel</code> can't be sent to another thread, and
+changing one from elsewhere doesn't compile. Read the data on any thread or async task, send it to the UI thread, and change the
+models there. Two ways:</p>
+<ul>
+  <li><strong>A stream of samples</strong> (a serial port, a socket, a sensor): send them through a channel, and move what arrived into
+    the model once a frame, from a <code>slint::Timer</code>. This also batches the samples, as <a href="#streaming">Streaming</a> recommends.</li>
+  <li><strong>An occasional result</strong> (a database query, a file): pass a closure to the UI thread with
+    <code>upgrade_in_event_loop</code> on the component's weak handle, or <code>slint::invoke_from_event_loop</code>.</li>
+</ul>
+<pre><code>use std::rc::Rc;
+use std::sync::mpsc;
+use std::time::Duration;
+use slint::{Timer, TimerMode, VecModel};
+
+// A thread, or a tokio task, reads the samples and sends them on.
+let (tx, rx) = mpsc::channel::&lt;f32&gt;();
+std::thread::spawn(move || loop {
+    let sample = read_sensor();
+    if tx.send(sample).is_err() {
+        break; // The app has closed.
+    }
+});
+
+// On the UI thread, once a frame: move what arrived into the model.
+let values = Rc::new(StreamModel::new(10_000, Vec::new()));
+let timer = Timer::default();
+timer.start(TimerMode::Repeated, Duration::from_millis(16), {
+    let values = values.clone();
+    move || values.extend(rx.try_iter())
+});
+
+// A one-off result: build the models on the UI thread.
+let weak = app.as_weak();
+std::thread::spawn(move || {
+    let rows: Vec&lt;f32&gt; = fetch_rows();
+    weak.upgrade_in_event_loop(move |app| {
+        let values = Rc::new(VecModel::from(rows));
+        // ... put `values` in a ChartDataset and set it on `app`.
+    })
+    .ok();
+});</code></pre>
+<p>Keep the <code>Timer</code> alive as long as the chart updates: dropping it stops it. With tokio, use
+<code>tokio::sync::mpsc</code> and its <code>try_recv</code> in the same way, or call <code>upgrade_in_event_loop</code> from the task;
+Slint's event loop runs on the main thread, so run tokio on its own threads.</p>
 
 <h2 id="large-datasets">Large datasets</h2>
 <ul>
@@ -1699,6 +1751,50 @@ points.extend(new_points);</code></pre>
   <tr><td>Frame</td><td>237 ms</td><td>46 ms</td></tr>
   <tr><td>Hover</td><td>3.1 ms</td><td></td></tr>
 </table>
+
+<h3>How decimation works</h3>
+<p>Line charts, time series and scatter charts with <code>show-lines: true</code> decimate a line when it has more than twice as many
+points as the plot is wide in pixels. Within each pixel column, the line becomes one vertical span from the lowest to the highest
+point in the column, joined to the previous column. In line charts, a filled area keeps the first, lowest, highest and last point of each column.</p>
+<ul>
+  <li><strong>Peaks are kept.</strong> The lowest and highest value of every column are always drawn, so a single spike among a million
+    points still shows. What is lost is detail inside a column: two values a pixel apart look like one span.</li>
+  <li><strong>Lines are straight.</strong> <code>tension</code> and <code>stepped</code> don't apply while a line is decimated, and point markers
+    aren't drawn. Zoom in until there are fewer than two points per pixel, and the line is drawn as usual again.</li>
+  <li><strong>The points must be in x order.</strong> Decimation groups neighbouring points by pixel column; SlintPlot doesn't sort them.
+    Line and bar charts are always in order, since the x axis is the index. For time series, points must be sorted by time anyway
+    (see <a href="#streaming">Streaming</a>): out of order, points can be missing from the view, and the line jumps back and forth.
+    A scatter chart with lines joins the points in data order, decimated or not, so sort them by x first if the line should go
+    left to right.</li>
+  <li><strong>Only what is shown is decimated.</strong> The data in your models isn't changed. Tooltips and <code>hovered-index</code> report
+    the real values.</li>
+</ul>
+
+<h2 id="invalid-values">Missing and invalid values</h2>
+<p>NaN and infinite values mark a value as missing; both behave the same. A missing value never stops a chart: it is left out, and the
+axes are computed from the remaining values.</p>
+<table>
+  <tr><th>Chart</th><th>A missing value</th></tr>
+  <tr><td>Line</td><td>No point. The line joins the values either side of it, without a gap.</td></tr>
+  <tr><td>Bar, horizontal bar</td><td>No bar; the category stays. In stacked charts it adds nothing to the stack.</td></tr>
+  <tr><td>Scatter, bubble, time series</td><td>The point is left out if its x or y is missing. A bubble with a missing radius is drawn as an ordinary point.</td></tr>
+  <tr><td>Pie, doughnut, polar area</td><td>The slice isn't shown, as with zero and negative values.</td></tr>
+  <tr><td>Radar</td><td>No point on that spoke.</td></tr>
+  <tr><td>Heatmap</td><td>An empty cell.</td></tr>
+  <tr><td>Calendar heatmap</td><td>A day without activity, as with zero.</td></tr>
+  <tr><td>Treemap</td><td>The item isn't shown.</td></tr>
+  <tr><td>Sunburst</td><td>The item counts as 0: it isn't shown, unless it has children, which are.</td></tr>
+  <tr><td>Funnel</td><td>A stage of 0.</td></tr>
+  <tr><td>Waterfall</td><td>The step adds nothing; the running total carries on.</td></tr>
+  <tr><td>Gauge</td><td>The needle or fill stays at <code>min-value</code>.</td></tr>
+</table>
+<p>Values outside a fixed range (<code>fixed-range: true</code>) lie off the plot, which is then clipped: lines towards them
+end at its edge. On a logarithmic axis, zero and negative values lie below the bottom of the axis.</p>
+<p>Settings are kept to what can be drawn: <code>tension</code> above 1 draws as 1, a <code>CalendarHeatmap</code> has 1 to 20 <code>levels</code>,
+and a line or bar chart zoomed in to less than one category shows one category across the plot.</p>
+<p>The <a href="#examples">fuzz app</a> feeds every chart random data with NaN, infinities, the largest and smallest floats, empty and
+very long lists, and out-of-range settings, renders it at sizes down to 1&times;1 pixel, and moves the mouse and keyboard over it,
+checking that nothing panics, hangs or runs out of memory.</p>
 
 <h2 id="rust-api">Rust API</h2>
 <h3><code>slintplot::library_path() -&gt; PathBuf</code></h3>
@@ -1765,6 +1861,12 @@ development packages first, such as <code>libfontconfig-dev</code> and <code>lib
 <p>The source of the apps is on GitHub, in <a href="https://github.com/trondegil/slintplot/tree/main/examples/gallery">examples/gallery</a>
 and <a href="https://github.com/trondegil/slintplot/tree/main/examples/stress">examples/stress</a>.
 The gallery's <code>ui/gallery.slint</code> has a working example of every chart.</p>
+<p>A third app, <a href="https://github.com/trondegil/slintplot/tree/main/examples/fuzz">examples/fuzz</a>, tests the library
+rather than showing it, and runs from a clone of the repository. It feeds every chart random and malformed data
+(see <a href="#invalid-values">Missing and invalid values</a>) and stops with the round, chart and seed that reproduce a panic,
+a hang or a runaway allocation. Its soak test repeats the same rounds for a while and checks that memory in use levels off.</p>
+<pre><code>cargo run --release -p slintplot-fuzz -- 300 42     # 300 rounds from seed 42
+cargo run --release -p slintplot-fuzz -- soak 60    # an hour of the same rounds</code></pre>
 <p>The gallery also runs in the browser, built with WebAssembly: <a href="demo/">slintplot.dev/demo</a>.</p>
 <p>Ready-built apps for macOS, Windows and Linux are on the
 <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.0">releases page</a>.
