@@ -22,9 +22,11 @@ impl NiceScale {
             };
         }
         if min == max {
-            // Widen a flat range by one unit each way.
-            min -= 1.0;
-            max += 1.0;
+            // Widen a flat range by one unit each way, or more where 1 is
+            // lost in a huge value.
+            let widen = (min.abs() * 1e-9).max(1.0);
+            min -= widen;
+            max += widen;
         }
         // The smallest nice step that keeps within `max_ticks`.
         let max_spaces = (max_ticks.max(2) - 1) as f64;
@@ -210,6 +212,13 @@ fn format_number(value: f64, decimals: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn flat_huge_range_still_has_width() {
+        let scale = NiceScale::new(1e30, 1e30, 5);
+        assert!(scale.max > scale.min, "{scale:?}");
+        assert!(scale.min <= 1e30 && scale.max >= 1e30);
+    }
 
     #[test]
     fn minus_goes_before_the_prefix() {

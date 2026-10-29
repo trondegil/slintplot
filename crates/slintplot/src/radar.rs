@@ -110,7 +110,10 @@ pub fn layout(req: &RadarRequest) -> RadarLayout {
         .floor()
         .clamp(2.0, 8.0) as usize;
     let scale = NiceScale::new(min, max, max_ticks);
-    let r_of = |v: f64| ((v - scale.min) / (scale.max - scale.min)) as f32 * radius;
+    let r_of = |v: f64| {
+        let f = ((v - scale.min) / (scale.max - scale.min)) as f32;
+        if f.is_finite() { f.clamp(0.0, 1.0) * radius } else { 0.0 }
+    };
 
     for v in scale.ticks() {
         let r = r_of(v);

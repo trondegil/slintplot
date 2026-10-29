@@ -102,7 +102,9 @@ fn extent(start: f32, end: f32) -> (f32, f32, f32) {
 }
 
 pub fn layout(req: &GaugeRequest) -> Gauge {
-    let sweep = req.sweep.clamp(30.0, 360.0).to_radians();
+    // NaN would make every angle NaN: the default sweep and cutout instead.
+    let sweep_degrees = if req.sweep.is_nan() { 180.0 } else { req.sweep.clamp(30.0, 360.0) };
+    let sweep = sweep_degrees.to_radians();
     let (start, end) = (-sweep / 2.0, sweep / 2.0);
     let (top, bottom, wide) = extent(start, end);
     let end_y = -start.cos();
@@ -132,15 +134,17 @@ pub fn layout(req: &GaugeRequest) -> Gauge {
         req.width / 2.0,
         (req.height - fit(radius)) / 2.0 + top * radius,
     );
-    let inner = radius * req.cutout.clamp(0.0, 0.95);
+    let inner = radius * if req.cutout.is_nan() { 0.72 } else { req.cutout.clamp(0.0, 0.95) };
     let thickness = radius - inner;
     let span = req.max - req.min;
     let angle_of = |v: f64| {
+        // An infinite range gives NaN: the start, as for a missing value.
         let f = if span > 0.0 {
             ((v - req.min) / span).clamp(0.0, 1.0)
         } else {
             0.0
         };
+        let f = if f.is_nan() { 0.0 } else { f };
         start + f as f32 * sweep
     };
     let value_angle = if req.value.is_finite() {
@@ -187,7 +191,7 @@ pub fn layout(req: &GaugeRequest) -> Gauge {
     if req.needle && req.ticks && span > 0.0 && radius > 0.0 {
         // Major ticks about every 40°, with labels, and minor ticks between
         // them where there is room.
-        let count = ((req.sweep / 40.0).round() as usize + 1).clamp(3, 9);
+        let count = ((sweep_degrees / 40.0).round() as usize + 1).clamp(3, 9);
         let scale = NiceScale::new(req.min, req.max, count);
         let major = (thickness * 0.8).clamp(5.0, 14.0);
         let outer = inner - 2.0;

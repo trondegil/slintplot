@@ -84,7 +84,8 @@ pub fn layout(req: &PieRequest) -> PieLayout {
         .collect();
     let center = (req.width / 2.0, req.height / 2.0);
     let radius = (req.width.min(req.height) / 2.0 - req.hover_offset).max(0.0);
-    let inner_radius = radius * req.cutout.clamp(0.0, 0.95);
+    // A NaN cutout draws a pie.
+    let inner_radius = radius * if req.cutout.is_nan() { 0.0 } else { req.cutout.clamp(0.0, 0.95) };
     let shown = |s: &Slice| !s.hidden && s.value.is_finite() && s.value > 0.0;
     let total: f64 = req
         .slices

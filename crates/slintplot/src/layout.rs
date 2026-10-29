@@ -1262,9 +1262,16 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
     } else if max > min {
         (min, max)
     } else {
-        (min - 1.0, max + 1.0)
+        // One each way, or more where 1 is lost in a huge value.
+        let widen = (min.abs().max(max.abs()) * 1e-9).max(1.0);
+        (min - widen, max + widen)
     };
-    let x_of = |x: f64| ((x - x0) / (x1 - x0)) as f32 * req.width;
+    // A window of no width, such as NaN or huge ends, puts everything in
+    // the middle rather than at NaN.
+    let x_of = |x: f64| {
+        let f = (x - x0) / (x1 - x0);
+        if f.is_finite() { f as f32 * req.width } else { req.width / 2.0 }
+    };
     // The window comes from f32 fractions; don't drop points on its edges.
     let edge = (x1 - x0) * 1e-6;
     let progress = req.progress.clamp(0.0, 1.0) as f64;
