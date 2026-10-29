@@ -41,7 +41,7 @@ to the mouse.
 *The gallery app shows every chart type with live data, themes and dark mode.
 [Try it in your browser](https://slintplot.dev/demo/), install it with
 `cargo install slintplot-gallery`, or download it ready-built from the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.0).*
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.2).*
 
 ## Getting started
 
@@ -202,7 +202,7 @@ cargo install slintplot-stress    # up to 8 × 1,000,000 points, 60 Hz streaming
 fontconfig and xkbcommon development packages (`libfontconfig-dev` and
 `libxkbcommon-dev` on Debian and Ubuntu). Ready-built apps for macOS, Windows
 and Linux are on the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.0),
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.2.2),
 and the source is in [`examples/gallery`](https://github.com/trondegil/slintplot/tree/main/examples/gallery) and
 [`examples/stress`](https://github.com/trondegil/slintplot/tree/main/examples/stress). The gallery's `ui/gallery.slint` has a
 working example of every chart.
