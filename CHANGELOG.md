@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.2.1
+
+No code changes. The crates.io pages get the new README and license text.
+
+- The README follows the website: getting started in four steps, a table of
+  every chart type with links to its documentation, and links to the
+  documentation, the web gallery and the pricing at the top.
+- The license sections of the README and the example apps' READMEs list the
+  three licenses with links to their texts, and the commercial plans, early
+  bird and perpetual fallback, as in COMMERCIAL.md.
+
+## 0.2.0
 
 ### Added
 

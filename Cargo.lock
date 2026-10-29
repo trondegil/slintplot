@@ -4097,11 +4097,11 @@ dependencies = [
 
 [[package]]
 name = "slintplot"
-version = "0.2.0"
+version = "0.2.1"
 
 [[package]]
 name = "slintplot-gallery"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -4117,7 +4117,7 @@ dependencies = [
 
 [[package]]
 name = "slintplot-stress"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
