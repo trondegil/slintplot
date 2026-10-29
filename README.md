@@ -13,6 +13,8 @@
   <b><a href="https://slintplot.dev/#pricing">Buy a commercial license</a></b>
 </p>
 
+# SlintPlot
+
 Native, interactive charts for [Slint](https://slint.dev).
 
 Charts are built from Slint's own `Path`, `Rectangle` and `Text` elements, not
