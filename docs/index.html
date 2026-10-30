@@ -2292,7 +2292,7 @@ cargo install slintplot-stress</code></pre>
 development packages first, such as <code>libfontconfig-dev</code> and <code>libxkbcommon-dev</code> on Debian and Ubuntu.</p>
 <table>
   <tr><th>Command</th><th>What it shows</th></tr>
-  <tr><td><code>slintplot-gallery</code></td><td>A sample browser: every chart type, with Randomize, Add dataset, Add data, Remove dataset and Remove data buttons, a theme selector and dark mode. The code button (&lt;/&gt;) shows the Slint code of the sample, with a Copy button, and clicking a chart shows the click callback and what was clicked at the bottom right</td></tr>
+  <tr><td><code>slintplot-gallery</code></td><td>A sample browser: every chart type, with Randomize, Add dataset, Add data, Remove dataset and Remove data buttons, a theme selector and dark mode. The code button (&lt;/&gt;) shows the Slint code of the sample as a complete window, with the data it shows at that moment, and a Copy button, and clicking a chart shows the click callback and what was clicked at the bottom right</td></tr>
   <tr><td><code>slintplot-stress</code></td><td>Streams line, bar, time series and scatter charts with up to 8 datasets: 10 to 100,000 samples a second, a window from 1,000 to 10,000,000 values or everything received, and random walk, sine, square or noise signals with optional spikes. Also waterfall, dumbbell, funnel and sunburst charts and a gauge; points, smoothing, fill, steps, decimation, zoom, themes, and live frame times. Streaming stops by itself if the chart falls more than 3 seconds behind.</td></tr>
   <tr><td><code>slintplot-gallery --snapshot &lt;dir&gt;</code></td><td>Renders every gallery sample to PNG without a window</td></tr>
   <tr><td><code>slintplot-stress --bench</code></td><td>Headless timings for 100 to 1,000,000 points, then the streaming limits; see <a href="#performance">Performance</a></td></tr>
@@ -2301,7 +2301,7 @@ development packages first, such as <code>libfontconfig-dev</code> and <code>lib
 </table>
 <p>The source of the apps is on GitHub, in <a href="https://github.com/trondegil/slintplot/tree/main/examples/gallery">examples/gallery</a>
 and <a href="https://github.com/trondegil/slintplot/tree/main/examples/stress">examples/stress</a>.
-The gallery's <code>ui/gallery.slint</code> has a working example of every chart; the gallery's code view shows each one, taken from that file when the app is built.</p>
+The gallery's <code>ui/gallery.slint</code> has a working example of every chart; the gallery's code view shows each one, taken from that file when the app is built, with the data filled in so it runs as it is.</p>
 <p>A third app, <a href="https://github.com/trondegil/slintplot/tree/main/examples/fuzz">examples/fuzz</a>, tests the library
 rather than showing it, and runs from a clone of the repository. It feeds every chart random and malformed data
 (see <a href="#invalid-values">Missing and invalid values</a>) and stops with the round, chart and seed that reproduce a panic,

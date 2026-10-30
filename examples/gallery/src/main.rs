@@ -7,6 +7,7 @@
 mod dock_icon;
 #[cfg(not(target_arch = "wasm32"))]
 mod snapshot;
+mod code;
 mod stream_model;
 
 use std::cell::{Cell, RefCell};
@@ -19,12 +20,10 @@ use stream_model::StreamModel;
 slint::include_modules!();
 include!(concat!(env!("OUT_DIR"), "/sample_code.rs"));
 
-/// The Slint code of the sample `id`, for the code panel.
-fn sample_code(id: &str) -> &'static str {
-    SAMPLE_CODE
-        .iter()
-        .find(|(sample, _)| *sample == id)
-        .map_or("", |(_, code)| code)
+/// Opens the code panel on the current sample's code, with its data now.
+fn open_code(ui: &Gallery) {
+    ui.set_code(code::sample_code(ui, &ui.get_sample()).into());
+    ui.set_code_open(true);
 }
 
 const MONTHS: [&str; 12] = [
@@ -1589,7 +1588,6 @@ impl State {
         ui.set_ohlc(false);
         ui.set_skip_gaps(true);
         ui.set_status("".into());
-        ui.set_code(sample_code(sample.id).into());
         if sample.shape == Shape::Live {
             self.live.paused = false;
             self.live_reset();
@@ -2210,6 +2208,12 @@ fn main() {
     ui.set_cjk_fonts(false);
     ui.on_open_url(|url| open_page(url.as_str()));
     ui.on_copy_text(|text| copy_to_clipboard(text.as_str()));
+    let weak = ui.as_weak();
+    ui.on_show_code(move || {
+        if let Some(ui) = weak.upgrade() {
+            open_code(ui);
+        }
+    });
     ui.run().expect("the event loop");
 }
 
@@ -2480,24 +2484,11 @@ fn snapshots(
         snapshot::render(window);
         snapshot::settle(Duration::from_millis(300));
         snapshot::save(window, &dir.join(format!("click-status{suffix}.png")))?;
-        ui.set_code_open(true);
+        open_code(ui);
         snapshot::render(window);
         snapshot::settle(Duration::from_millis(300));
         snapshot::save(window, &dir.join(format!("code-panel{suffix}.png")))?;
         ui.set_code_open(false);
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn every_sample_has_code() {
-        for sample in SAMPLES {
-            let code = sample_code(sample.id);
-            assert!(code.contains("from \"@slintplot\";"), "{}", sample.id);
-        }
-    }
 }

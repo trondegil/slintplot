@@ -894,6 +894,9 @@ export component Gallery inherits Window {
     callback open-url(url: string);
     // The code panel's Copy button: the browser copies the code from Rust.
     callback copy-text(text: string);
+    // The code button: Rust sets `code` to the sample's code with its data
+    // now, and opens the code panel.
+    callback show-code();
     // Samples with their own light and dark colors update them.
     callback dark-mode-changed();
     // The "languages" sample sets the chart language and translates its texts.
@@ -1034,7 +1037,7 @@ export component Gallery inherits Window {
                         spacing: 2px;
                         CodeButton {
                             clicked => {
-                                root.code-open = true;
+                                root.show-code();
                             }
                         }
                         // The documentation: an open book.

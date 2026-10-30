@@ -14,7 +14,8 @@ slintplot-gallery --snapshot <dir>   # render every sample to PNG, without a win
 
 `ui/gallery.slint` has a working example of every chart. The code button
 (`</>`) at the top right shows the sample's code, taken from that file at build
-time, with a Copy button. Clicking a chart shows the click callback and what
+time, as a complete window with the data the chart shows at that moment, so it
+runs as it is when you paste it. A Copy button copies it. Clicking a chart shows the click callback and what
 was clicked, such as `slice-clicked: Safari, 19`, at the bottom right.
 
 On Linux, Slint needs the fontconfig and xkbcommon development packages first

@@ -15,13 +15,16 @@ fn main() {
 
 /// A Rust table of (sample id, code) for every `if root.sample == "<id>":`
 /// element whose element is a chart, or a layout of charts: the element,
-/// de-indented, after an import line of the SlintPlot names it uses.
+/// de-indented. Also the names imported from SlintPlot, for the code's
+/// import line (see src/code.rs).
 fn sample_code(source: &str) -> String {
     let imports = slintplot_imports(source);
     let lines: Vec<&str> = source.lines().collect();
-    let mut table = String::from(
-        "/// The Slint code of each sample, from ui/gallery.slint (see build.rs).\n\
-         const SAMPLE_CODE: &[(&str, &str)] = &[\n",
+    let mut table = format!(
+        "/// The names ui/gallery.slint imports from SlintPlot.\n\
+         const SLINTPLOT_NAMES: &[&str] = &{imports:?};\n\n\
+         /// The Slint code of each sample, from ui/gallery.slint (see build.rs).\n\
+         const SAMPLE_CODE: &[(&str, &str)] = &[\n"
     );
     for (start, line) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
@@ -48,7 +51,7 @@ fn sample_code(source: &str) -> String {
             body.push_str(l.get(indent..).unwrap_or(l.trim_start()));
             body.push('\n');
         }
-        let code = with_header(&body, &imports);
+        let code = body.trim_end();
         for id in ids {
             writeln!(table, "    ({id:?}, {code:?}),").unwrap();
         }
@@ -94,83 +97,4 @@ fn block_end(lines: &[&str], start: usize) -> usize {
         }
     }
     panic!("unbalanced braces after line {}", start + 1);
-}
-
-/// `body` after the import line of the names it uses, and a comment on the
-/// gallery properties it reads.
-fn with_header(body: &str, imports: &[String]) -> String {
-    let words: Vec<&str> = body
-        .split(|c: char| !c.is_ascii_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .collect();
-    let mut used: Vec<&str> = imports
-        .iter()
-        .map(String::as_str)
-        .filter(|i| words.contains(i))
-        .collect();
-    used.sort_unstable();
-    let mut header = format!("import {{ {} }} from \"@slintplot\";\n\n", used.join(", "));
-    if header.len() > 90 {
-        header = format!(
-            "import {{\n    {},\n}} from \"@slintplot\";\n\n",
-            used.join(",\n    ")
-        );
-    }
-
-    let mut properties: Vec<String> = Vec::new();
-    for (i, _) in body.match_indices("root.") {
-        let name: String = body[i + 5..]
-            .chars()
-            .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
-            .collect();
-        let name = format!("root.{name}");
-        if name != "root.status" && !properties.contains(&name) {
-            properties.push(name);
-        }
-    }
-    let mut text = String::new();
-    if !properties.is_empty() {
-        let list = match properties.as_slice() {
-            [one] => one.clone(),
-            [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
-            [] => unreachable!(),
-        };
-        let verb = if properties.len() == 1 {
-            "is a property"
-        } else {
-            "are properties"
-        };
-        text = format!(
-            "{list} {verb} of the gallery window, mostly set from Rust: see \
-             examples/gallery/src/main.rs."
-        );
-    }
-    if body.contains("root.status") {
-        if !text.is_empty() {
-            text.push(' ');
-        }
-        text.push_str("Clicks write what was clicked to root.status, the gallery's footer text.");
-    }
-    if !text.is_empty() {
-        header.push_str(&wrap_comment(&text, 78));
-    }
-    header + body.trim_end()
-}
-
-/// `text` as `//` comment lines of at most `width` characters.
-fn wrap_comment(text: &str, width: usize) -> String {
-    let mut out = String::new();
-    let mut line = String::from("//");
-    for word in text.split(' ') {
-        if line.len() + 1 + word.len() > width && line.len() > 2 {
-            out.push_str(&line);
-            out.push('\n');
-            line = String::from("//");
-        }
-        line.push(' ');
-        line.push_str(word);
-    }
-    out.push_str(&line);
-    out.push('\n');
-    out
 }
