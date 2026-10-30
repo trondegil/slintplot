@@ -134,6 +134,7 @@ example and its properties.
 | [`RadarChart`](https://slintplot.dev/#radar-chart) | One spoke per label and one closed polygon per dataset |
 | [`TimeSeriesChart`](https://slintplot.dev/#time-series) | Lines over a time axis with calendar-aligned ticks |
 | [`GanttChart`](https://slintplot.dev/#gantt) | One row per task with a bar on a time axis, groups, progress, milestones and a line at now |
+| [`CandlestickChart`](https://slintplot.dev/#candlestick) | Open, high, low and close per period, as candles or OHLC bars, on a zoomable time axis |
 | [`HeatmapChart`](https://slintplot.dev/#heatmap) | A matrix of colored cells, sequential or diverging |
 | [`CalendarHeatmap`](https://slintplot.dev/#calendar-heatmap) | Daily values over a year, like GitHub's contribution graph |
 | [`TreemapChart`](https://slintplot.dev/#treemap) | Squarified rectangles sized by value, optionally in groups |

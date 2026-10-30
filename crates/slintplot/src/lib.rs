@@ -37,6 +37,7 @@
 //! ```
 
 pub mod bullet;
+pub mod candle;
 pub mod funnel;
 pub mod gantt;
 pub mod gauge;
@@ -1464,5 +1465,127 @@ macro_rules! register {
                 .into()
             },
         );
+        // Candles are read on demand, like time series points: a zoomed-in
+        // chart reads only those it shows.
+        fn candles(model: &::slint::ModelRc<ChartCandle>) -> $crate::candle::Candles {
+            model.model_tracker().track_row_count_changes();
+            let rows = model.clone();
+            $crate::candle::Candles::new(
+                model.row_count(),
+                ::std::rc::Rc::new(move |row| {
+                    rows.model_tracker().track_row_data_changes(row);
+                    rows.row_data(row).map_or(
+                        $crate::candle::Candle {
+                            x: f64::NAN,
+                            open: f64::NAN,
+                            high: f64::NAN,
+                            low: f64::NAN,
+                            close: f64::NAN,
+                        },
+                        |c| $crate::candle::Candle {
+                            x: c.x.into(),
+                            open: c.open.into(),
+                            high: c.high.into(),
+                            low: c.low.into(),
+                            close: c.close.into(),
+                        },
+                    )
+                }),
+            )
+        }
+        fn candle_bars(layout: &ChartCandleLayout) -> Vec<f32> {
+            layout.candles.iter().map(|c| c.x).collect()
+        }
+        engine.on_candle_range(
+            |data: ::slint::ModelRc<ChartCandle>,
+             lines: ::slint::ModelRc<ChartDataset>,
+             start: f32,
+             end: f32,
+             positive: bool| {
+                let (min, max) = $crate::candle::value_extent(
+                    &candles(&data),
+                    &datasets(&lines),
+                    (start, end),
+                    positive,
+                )
+                .unwrap_or((0.0, 1.0));
+                ChartRange {
+                    min: min as f32,
+                    max: max as f32,
+                }
+            },
+        );
+        engine.on_candle_layout(|req: ChartCandleRequest| {
+            let started = $crate::profile::start();
+            let lines = datasets(&req.datasets);
+            let out = $crate::candle::layout(&$crate::candle::CandleRequest {
+                candles: &candles(&req.candles),
+                lines: &lines,
+                width: req.width,
+                height: req.height,
+                scale: $crate::layout::ValueScale {
+                    min: req.y_min.into(),
+                    max: req.y_max.into(),
+                    logarithmic: req.logarithmic,
+                },
+                view: (req.view_start, req.view_end),
+                progress: req.progress,
+                decimate: req.decimate,
+                time: $crate::layout::TimeAxis {
+                    origin: seconds(&req.time_origin),
+                    utc_offset_minutes: req.utc_offset,
+                },
+                font_size: req.font_size,
+                locale: &locale(&req.locale),
+                palette: &palette(&req.palette),
+            });
+            let layout = ChartCandleLayout {
+                candles: model(out.bars.into_iter().map(|b| ChartCandleBar {
+                    first: b.first as i32,
+                    last: b.last as i32,
+                    x: b.x,
+                    width: b.width,
+                    open: b.open,
+                    high: b.high,
+                    low: b.low,
+                    close: b.close,
+                    value: ChartCandle {
+                        x: b.value.x as f32,
+                        open: b.value.open as f32,
+                        high: b.value.high as f32,
+                        low: b.value.low as f32,
+                        close: b.value.close as f32,
+                    },
+                    end: b.end as f32,
+                })),
+                series: series(out.series),
+                x_ticks: ticks(out.x_ticks),
+                slot: out.slot,
+            };
+            $crate::profile::record_layout(started.elapsed());
+            layout
+        });
+        engine.on_candle_hit(|layout: ChartCandleLayout, x: f32| {
+            $crate::candle::hit(&candle_bars(&layout), x).map_or(-1, |i| i as i32)
+        });
+        engine.on_candle_at(|layout: ChartCandleLayout, index: i32| {
+            layout
+                .candles
+                .iter()
+                .position(|c| c.first <= index && index <= c.last)
+                .map_or(-1, |i| i as i32)
+        });
+        engine.on_moving_average(|data: ::slint::ModelRc<ChartCandle>, period: i32| {
+            let period = usize::try_from(period).unwrap_or(0);
+            model(
+                $crate::candle::moving_average(&candles(&data), period)
+                    .into_iter()
+                    .map(|p| ChartXY {
+                        x: p.x as f32,
+                        y: p.y as f32,
+                        r: 0.0,
+                    }),
+            )
+        });
     }};
 }

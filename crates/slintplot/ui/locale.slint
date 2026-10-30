@@ -49,6 +49,11 @@ export struct ChartLocale {
     of-previous-stage: string,
     // Calendar heatmap tooltips: "{value} on {date}".
     on-date: string,
+    // Candlestick tooltips: "Open", "High", "Low", "Close".
+    open: string,
+    high: string,
+    low: string,
+    close: string,
 }
 
 // The languages with built-in conventions and texts.
@@ -80,6 +85,7 @@ export global ChartLocales {
                 less: "少", more: "多", no-data: "无数据",
                 increase: "增加", decrease: "减少", total: "合计", running-total: "累计", change: "变化",
                 of-first-stage: "占第一阶段的{value}", of-previous-stage: "占上一阶段的{value}", on-date: "{date}：{value}",
+                open: "开盘", high: "最高", low: "最低", close: "收盘",
             };
         }
         if language == ChartLanguage.danish {
@@ -91,6 +97,7 @@ export global ChartLocales {
                 less: "Mindre", more: "Mere", no-data: "Ingen data",
                 increase: "Stigning", decrease: "Fald", total: "I alt", running-total: "Løbende total", change: "Ændring",
                 of-first-stage: "{value} af første trin", of-previous-stage: "{value} af forrige trin", on-date: "{value} den {date}",
+                open: "Åbning", high: "Høj", low: "Lav", close: "Lukning",
             };
         }
         if language == ChartLanguage.dutch {
@@ -102,6 +109,7 @@ export global ChartLocales {
                 less: "Minder", more: "Meer", no-data: "Geen gegevens",
                 increase: "Toename", decrease: "Afname", total: "Totaal", running-total: "Lopend totaal", change: "Verandering",
                 of-first-stage: "{value} van de eerste fase", of-previous-stage: "{value} van de vorige fase", on-date: "{value} op {date}",
+                open: "Open", high: "Hoog", low: "Laag", close: "Slot",
             };
         }
         if language == ChartLanguage.finnish {
@@ -113,6 +121,7 @@ export global ChartLocales {
                 less: "Vähemmän", more: "Enemmän", no-data: "Ei tietoja",
                 increase: "Lisäys", decrease: "Vähennys", total: "Yhteensä", running-total: "Kertymä", change: "Muutos",
                 of-first-stage: "{value} ensimmäisestä vaiheesta", of-previous-stage: "{value} edellisestä vaiheesta", on-date: "{date}: {value}",
+                open: "Avaus", high: "Ylin", low: "Alin", close: "Päätös",
             };
         }
         if language == ChartLanguage.french {
@@ -124,6 +133,7 @@ export global ChartLocales {
                 less: "Moins", more: "Plus", no-data: "Aucune donnée",
                 increase: "Hausse", decrease: "Baisse", total: "Total", running-total: "Total cumulé", change: "Variation",
                 of-first-stage: "{value} de la première étape", of-previous-stage: "{value} de l’étape précédente", on-date: "{value} le {date}",
+                open: "Ouverture", high: "Haut", low: "Bas", close: "Clôture",
             };
         }
         if language == ChartLanguage.german {
@@ -135,6 +145,7 @@ export global ChartLocales {
                 less: "Weniger", more: "Mehr", no-data: "Keine Daten",
                 increase: "Zunahme", decrease: "Abnahme", total: "Summe", running-total: "Laufende Summe", change: "Änderung",
                 of-first-stage: "{value} der ersten Stufe", of-previous-stage: "{value} der vorherigen Stufe", on-date: "{value} am {date}",
+                open: "Eröffnung", high: "Hoch", low: "Tief", close: "Schluss",
             };
         }
         if language == ChartLanguage.italian {
@@ -146,6 +157,7 @@ export global ChartLocales {
                 less: "Meno", more: "Più", no-data: "Nessun dato",
                 increase: "Aumento", decrease: "Diminuzione", total: "Totale", running-total: "Totale progressivo", change: "Variazione",
                 of-first-stage: "{value} della prima fase", of-previous-stage: "{value} della fase precedente", on-date: "{value} il {date}",
+                open: "Apertura", high: "Massimo", low: "Minimo", close: "Chiusura",
             };
         }
         if language == ChartLanguage.japanese {
@@ -156,6 +168,7 @@ export global ChartLocales {
                 less: "少ない", more: "多い", no-data: "データなし",
                 increase: "増加", decrease: "減少", total: "合計", running-total: "累計", change: "変化",
                 of-first-stage: "最初の段階の{value}", of-previous-stage: "前の段階の{value}", on-date: "{date}：{value}",
+                open: "始値", high: "高値", low: "安値", close: "終値",
             };
         }
         if language == ChartLanguage.norwegian {
@@ -167,6 +180,7 @@ export global ChartLocales {
                 less: "Mindre", more: "Mer", no-data: "Ingen data",
                 increase: "Økning", decrease: "Nedgang", total: "Totalt", running-total: "Løpende total", change: "Endring",
                 of-first-stage: "{value} av første trinn", of-previous-stage: "{value} av forrige trinn", on-date: "{value} den {date}",
+                open: "Åpning", high: "Høy", low: "Lav", close: "Slutt",
             };
         }
         if language == ChartLanguage.polish {
@@ -178,6 +192,7 @@ export global ChartLocales {
                 less: "Mniej", more: "Więcej", no-data: "Brak danych",
                 increase: "Wzrost", decrease: "Spadek", total: "Suma", running-total: "Suma narastająco", change: "Zmiana",
                 of-first-stage: "{value} pierwszego etapu", of-previous-stage: "{value} poprzedniego etapu", on-date: "{date}: {value}",
+                open: "Otwarcie", high: "Maks.", low: "Min.", close: "Zamknięcie",
             };
         }
         if language == ChartLanguage.portuguese {
@@ -189,6 +204,7 @@ export global ChartLocales {
                 less: "Menos", more: "Mais", no-data: "Sem dados",
                 increase: "Aumento", decrease: "Diminuição", total: "Total", running-total: "Total acumulado", change: "Variação",
                 of-first-stage: "{value} da primeira etapa", of-previous-stage: "{value} da etapa anterior", on-date: "{value} em {date}",
+                open: "Abertura", high: "Máxima", low: "Mínima", close: "Fechamento",
             };
         }
         if language == ChartLanguage.spanish {
@@ -200,6 +216,7 @@ export global ChartLocales {
                 less: "Menos", more: "Más", no-data: "Sin datos",
                 increase: "Aumento", decrease: "Disminución", total: "Total", running-total: "Total acumulado", change: "Cambio",
                 of-first-stage: "{value} de la primera etapa", of-previous-stage: "{value} de la etapa anterior", on-date: "{value} el {date}",
+                open: "Apertura", high: "Máximo", low: "Mínimo", close: "Cierre",
             };
         }
         if language == ChartLanguage.swedish {
@@ -211,6 +228,7 @@ export global ChartLocales {
                 less: "Mindre", more: "Mer", no-data: "Inga data",
                 increase: "Ökning", decrease: "Minskning", total: "Totalt", running-total: "Löpande summa", change: "Förändring",
                 of-first-stage: "{value} av första steget", of-previous-stage: "{value} av föregående steg", on-date: "{value} den {date}",
+                open: "Öppning", high: "Högsta", low: "Lägsta", close: "Stängning",
             };
         }
         // English: every field falls back to it.

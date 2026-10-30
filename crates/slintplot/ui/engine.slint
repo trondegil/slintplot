@@ -666,6 +666,59 @@ export struct ChartBulletRequest {
     locale: ChartLocale,
 }
 
+// A period of a candlestick chart: its time, in seconds after `time-origin`,
+// and its first, highest, lowest and last value.
+export struct ChartCandle { x: float, open: float, high: float, low: float, close: float }
+
+// A drawn candle, in pixels: one period, or several merged when there are
+// more candles than room for them.
+export struct ChartCandleBar {
+    // The first and last candle merged into this one.
+    first: int,
+    last: int,
+    // The middle of the candle, and the width of its body.
+    x: float,
+    width: float,
+    open: float,
+    high: float,
+    low: float,
+    close: float,
+    // The values: the first open, highest high, lowest low and last close,
+    // at the first candle's time.
+    value: ChartCandle,
+    // The last merged candle's time.
+    end: float,
+}
+
+export struct ChartCandleLayout {
+    candles: [ChartCandleBar],
+    // The lines over the candles, one per dataset.
+    series: [ChartSeries],
+    x-ticks: [ChartTick],
+    // Width of a candle's slot.
+    slot: float,
+}
+
+export struct ChartCandleRequest {
+    candles: [ChartCandle],
+    // Lines over the candles: their points' x values are times.
+    datasets: [ChartDataset],
+    width: float,
+    height: float,
+    y-min: float,
+    y-max: float,
+    logarithmic: bool,
+    progress: float,
+    view-start: float,
+    view-end: float,
+    decimate: bool,
+    time-origin: ChartDateTime,
+    utc-offset: int,
+    font-size: float,
+    palette: [color],
+    locale: ChartLocale,
+}
+
 export global ChartEngine {
     pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
     // Whether a visible dataset is on the right value axis (`right`), or on
@@ -765,4 +818,17 @@ export global ChartEngine {
     public pure function format-duration(seconds: float) -> string {
         self.format-time-span(seconds, ChartTheme.locale)
     }
+    // Candlestick charts: the lowest and highest value in the zoom window,
+    // of the candles and the visible datasets' points; with `positive`, of
+    // the positive values only. 0 to 1 when there are none.
+    pure callback candle-range(candles: [ChartCandle], datasets: [ChartDataset], view-start: float, view-end: float, positive: bool) -> ChartRange;
+    pure callback candle-layout(request: ChartCandleRequest) -> ChartCandleLayout;
+    // The position in `layout.candles` of the candle closest to `x`, or -1.
+    pure callback candle-hit(layout: ChartCandleLayout, x: float) -> int;
+    // The position in `layout.candles` of the candle that holds the candle
+    // `index`, or -1.
+    pure callback candle-at(layout: ChartCandleLayout, index: int) -> int;
+    // The simple moving average of the closes over `period` candles, as
+    // points for a dataset over the candles.
+    pure callback moving-average(candles: [ChartCandle], period: int) -> [ChartXY];
 }

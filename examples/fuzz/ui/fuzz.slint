@@ -1,6 +1,6 @@
 // Every chart type, fed whatever the fuzzer sets: `cargo run --release -p slintplot-fuzz`.
 import {
-    BarChart, BubbleChart, BulletChart, CalendarHeatmap, ChartBullet, ChartDataset, ChartEngine, ChartGanttTask, ChartGaugeBand, ChartLegendPosition, ChartSlice,
+    BarChart, BubbleChart, BulletChart, CalendarHeatmap, CandlestickChart, ChartBullet, ChartCandle, ChartDataset, ChartEngine, ChartGanttTask, ChartGaugeBand, ChartLegendPosition, ChartSlice,
     ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GanttChart, GaugeChart,
     HeatmapChart, HorizontalBarChart, LineChart, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
     TimeSeriesChart, TreemapChart, WaterfallChart,
@@ -23,6 +23,7 @@ export component Fuzz inherits Window {
     in property <float> value;
     in property <[ChartGanttTask]> gantt-tasks;
     in property <[ChartBullet]> bullets;
+    in property <[ChartCandle]> candles;
 
     // Options.
     in property <bool> stacked;
@@ -247,6 +248,24 @@ export component Fuzz inherits Window {
             max-value: root.max-value;
             show-legend: root.show-values;
             value-decimals: root.decimals;
+        }
+        if root.chart == 20: CandlestickChart {
+            candles: root.candles;
+            datasets <=> root.datasets;
+            time-origin: { year: root.year, month: 13, day: 40 };
+            utc-offset: root.utc-offset;
+            ohlc: root.flag;
+            decimate: root.decimate;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            value-decimals: root.decimals;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+            min-view: root.number;
+            legend-position: root.legend-position;
         }
     }
 }

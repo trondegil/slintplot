@@ -216,6 +216,8 @@ enum Shape {
     Bullet,
     /// Sensors streaming new values.
     Live,
+    /// Daily prices of a made-up stock, with a moving average.
+    Candles,
 }
 
 /// Population in millions (2025 estimates), by continent.
@@ -352,6 +354,14 @@ const SAMPLES: &[Sample] = &[
         "BulletChart: a KPI panel with an axis per row and gray bands, and columns on a shared axis over colored bands.",
         Shape::Bullet,
         &["Randomize"],
+    ),
+    sample(
+        "candlestick",
+        "New",
+        "Candlestick chart",
+        "CandlestickChart: half a year of daily prices of a made-up stock, with a 20-day moving average. Scroll to zoom; zoomed out, candles merge into longer periods.",
+        Shape::Candles,
+        &["Candles", "OHLC", "Randomize"],
     ),
     sample(
         "bar-vertical",
@@ -783,6 +793,7 @@ struct State {
     tree: Rc<VecModel<ChartTreemapItem>>,
     sun: Rc<VecModel<ChartSunburstItem>>,
     steps: Rc<VecModel<ChartWaterfallStep>>,
+    candles: Rc<VecModel<ChartCandle>>,
     /// Whether Randomize was pressed, for samples that start with real data.
     randomized: bool,
     live: Live,
@@ -888,6 +899,50 @@ impl State {
             .collect()
     }
 
+    /// Half a year of trading days of a made-up stock, from Monday 6 April
+    /// 2026: a random walk with some drift, gaps at the open and a range
+    /// around each day's move. Empty for the other samples.
+    fn stock(&mut self) {
+        let mut candles = Vec::new();
+        if self.sample.shape == Shape::Candles {
+            let mut close = 120.0f32;
+            for day in 0..183 {
+                // No trading at weekends.
+                if day % 7 >= 5 {
+                    continue;
+                }
+                let open = close * (1.0 + (self.rng.next() - 0.5) * 0.012);
+                close = open * (1.0 + (self.rng.next() - 0.48) * 0.045);
+                let reach = |rng: &mut Rng| close.max(open) * rng.next() * 0.015;
+                let high = close.max(open) + reach(&mut self.rng);
+                let low = close.min(open) - reach(&mut self.rng);
+                let cents = |v: f32| (v * 100.0).round() / 100.0;
+                candles.push(ChartCandle {
+                    x: day as f32 * 86_400.0,
+                    open: cents(open),
+                    high: cents(high),
+                    low: cents(low),
+                    close: cents(close),
+                });
+            }
+        }
+        self.candles.set_vec(candles);
+    }
+
+    /// The average close of the last `days` candles, from the first day
+    /// that has as many before it.
+    fn moving_average(&self, days: usize) -> Vec<ChartXY> {
+        let candles: Vec<ChartCandle> = self.candles.iter().collect();
+        candles
+            .windows(days)
+            .map(|w| ChartXY {
+                x: w[days - 1].x,
+                y: w.iter().map(|c| c.close).sum::<f32>() / days as f32,
+                r: 0.0,
+            })
+            .collect()
+    }
+
     /// The dataset at `index` of the current sample, with its style.
     fn dataset(&mut self, index: usize) -> ChartDataset {
         let mut ds = ChartDataset {
@@ -963,6 +1018,10 @@ impl State {
                     .map(|row| (row[index % 5] * (0.8 + 0.4 * self.rng.next())).round())
                     .collect();
                 ds.values = floats(values);
+            }
+            Shape::Candles => {
+                ds.label = "20-day average".into();
+                ds.points = ModelRc::new(VecModel::from(self.moving_average(20)));
             }
             Shape::Dumbbell => {
                 ds.label = (if index == 0 { "2000" } else { "2023" }).into();
@@ -1400,8 +1459,10 @@ impl State {
             | Shape::TimeSeries { .. }
             | Shape::Skills
             | Shape::Dumbbell => 2,
+            Shape::Candles => 1,
             _ => 0,
         };
+        self.stock();
         let rows: Vec<ChartDataset> = (0..count).map(|i| self.dataset(i)).collect();
         self.datasets.set_vec(rows);
         self.share_interpolation_values();
@@ -1422,6 +1483,7 @@ impl State {
         ui.set_actions(strings(sample.actions.iter().copied()));
         ui.set_legend_position(ChartLegendPosition::Top);
         ui.set_decimate(true);
+        ui.set_ohlc(false);
         ui.set_status("".into());
         if sample.shape == Shape::Live {
             self.live.paused = false;
@@ -1580,6 +1642,12 @@ impl State {
             return;
         }
         match name {
+            "Candles" | "OHLC" => ui.set_ohlc(name == "OHLC"),
+            "Randomize" if self.sample.shape == Shape::Candles => {
+                self.stock();
+                let average = self.dataset(0);
+                self.update_datasets(|_, ds| ds.points = average.points.clone());
+            }
             "Randomize" if slices => {
                 for row in 0..self.slices.row_count() {
                     let Some(mut s) = self.slices.row_data(row) else {
@@ -1741,6 +1809,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         tree: Rc::new(VecModel::default()),
         sun: Rc::new(VecModel::default()),
         steps: Rc::new(VecModel::default()),
+        candles: Rc::new(VecModel::default()),
         randomized: false,
         live: Live {
             rate: 30,
@@ -1762,6 +1831,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         ui.set_tree(s.tree.clone().into());
         ui.set_sun(s.sun.clone().into());
         ui.set_steps(s.steps.clone().into());
+        ui.set_candles(s.candles.clone().into());
     }
     state.borrow_mut().select(&SAMPLES[0]);
 
@@ -2134,6 +2204,7 @@ fn snapshots(
             (700.0, 300.0),
             &[Key::DownArrow, Key::DownArrow][..],
         ),
+        ("candlestick", (700.0, 400.0), &[Key::RightArrow][..]),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);
@@ -2165,6 +2236,7 @@ fn snapshots(
         ("gauge", (1010.0, 300.0), false, "gauge-hover"),
         ("waterfall", (670.0, 420.0), false, "waterfall-hover"),
         ("axes-two", (1000.0, 420.0), false, "axes-two-hover"),
+        ("candlestick", (700.0, 400.0), false, "candlestick-hover"),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);
@@ -2185,6 +2257,15 @@ fn snapshots(
     snapshot::settle(Duration::from_millis(1100));
     snapshot::scroll(window, 740.0, 400.0, 800.0);
     snapshot::save(window, &dir.join("zoomed.png"))?;
+    // The candlestick sample as OHLC bars, then zoomed in.
+    let candles = SAMPLES.iter().find(|s| s.id == "candlestick").unwrap();
+    state.borrow_mut().select(candles);
+    state.borrow_mut().action(1);
+    snapshot::render(window);
+    snapshot::settle(Duration::from_millis(1100));
+    snapshot::save(window, &dir.join("candlestick-ohlc.png"))?;
+    snapshot::scroll(window, 740.0, 400.0, 800.0);
+    snapshot::save(window, &dir.join("candlestick-zoomed.png"))?;
     // The calendar in GitHub's green, from its own color picker.
     let calendar = SAMPLES.iter().find(|s| s.id == "calendar").unwrap();
     state.borrow_mut().select(calendar);

@@ -1,0 +1,514 @@
+import { ChartAxis, ChartCandle, ChartCandleBar, ChartCandleLayout, ChartDataset, ChartDateTime, ChartEngine, ChartFormat, ChartKind, ChartRange } from "engine.slint";
+import { ChartTexts, ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A candlestick chart: for each period on a time axis, a body from the open
+// to the close, colored by whether the price rose or fell, and a wick from
+// the low to the high. With `ohlc`, bars with ticks for the open and close
+// instead. Candles closer than a few pixels are merged into longer periods.
+export component CandlestickChart {
+    // The periods, in time order: x values are seconds after `time-origin`.
+    in property <[ChartCandle]> candles;
+    // Lines over the candles, such as a moving average: their points' x
+    // values are times, like the candles'. See `ChartEngine.moving-average`.
+    in-out property <[ChartDataset]> datasets;
+    in property <string> title;
+    // Draw OHLC bars: a line from the low to the high, with a tick to the
+    // left at the open and one to the right at the close.
+    in property <bool> ohlc: false;
+    in property <color> rise-color: ChartTheme.dark ? #34d399 : #10b981;
+    in property <color> fall-color: ChartTheme.dark ? #fb7185 : #f43f5e;
+    // Opacity of the candle bodies, whose outline stays solid.
+    in property <float> fill-opacity: 0.85;
+    // The legend shows the datasets, when there are any.
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    in property <bool> show-tooltip: true;
+    // Grow the candles in when the chart appears.
+    in property <bool> animated: true;
+    // When there are more candles than room for them, merge the candles in
+    // each few pixels into one: the first open, highest high, lowest low
+    // and last close. Without it, every candle is drawn.
+    in property <bool> decimate: true;
+
+    // Axis titles.
+    in property <string> x-title;
+    in property <string> y-title;
+    // A fixed value axis from `min-value` to `max-value`, instead of fitting
+    // the candles in view.
+    in property <bool> fixed-range: false;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    // A logarithmic value axis. Values that aren't positive are left out.
+    in property <bool> logarithmic: false;
+    // How values are written on the value axis and in tooltips: a prefix and
+    // suffix, and a fixed number of decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The date of x = 0, and the offset of displayed times from UTC, in minutes.
+    in property <ChartDateTime> time-origin;
+    in property <int> utc-offset: 0;
+
+    // Zoom and pan along the time axis: the mouse wheel zooms around the
+    // mouse, dragging pans, double-clicking resets.
+    in property <bool> zoom-enabled: false;
+    // The visible part of the time axis, as fractions of the full range. Set
+    // them to zoom from code.
+    in-out property <float> view-start: 0;
+    in-out property <float> view-end: 1;
+    // The smallest visible part of the time axis, as a fraction.
+    in property <float> min-view: 0.0005;
+    out property <bool> zoomed: root.view-start > 0 || root.view-end < 1;
+
+    // The candle under the mouse, or selected with the arrow keys; -1 if
+    // none. Of merged candles, the first.
+    out property <int> hovered-index: root.hovered-bar >= 0 ? layout.candles[root.hovered-bar].first : -1;
+
+    callback candle-clicked(index: int);
+    callback legend-toggled(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-bar >= 0 ? root.date-text(layout.candles[root.hovered-bar]) : "";
+
+    // The position in `layout.candles` of the hovered candle.
+    private property <int> hovered-bar: layout.candles.length == 0 ? -1
+        : touch.has-hover ? ChartEngine.candle-hit(layout, touch.mouse-x / 1px)
+        : keys.has-focus && root.key-index >= 0 ? ChartEngine.candle-at(layout, root.key-index)
+        : -1;
+    // The candle selected with the keyboard.
+    private property <int> key-index: -1;
+
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+
+    public function reset-zoom() {
+        root.view-start = 0;
+        root.view-end = 1;
+    }
+
+    // Zooms by `factor` (below 1 zooms in), keeping the point at `anchor`
+    // (a fraction of the plot width) under the mouse.
+    function zoom-around(anchor: float, factor: float) {
+        let span = root.view-end - root.view-start;
+        let new-span = clamp(span * factor, root.min-view, 1);
+        let start = clamp(root.view-start + anchor * (span - new-span), 0, 1 - new-span);
+        root.view-start = start;
+        root.view-end = start + new-span;
+    }
+
+    // The view when a drag started, to pan relative to it.
+    private property <float> drag-view-start;
+    private property <float> drag-view-end;
+
+    private property <ChartRange> range: ChartEngine.candle-range(root.candles, root.datasets, root.view-start, root.view-end, root.logarithmic);
+    private property <ChartAxis> axis: ChartEngine.value-axis({
+        locale: ChartTheme.locale,
+        kind: ChartKind.line,
+        datasets: [{ values: [root.range.min, root.range.max] }],
+        height: plot.height / 1px,
+        font-size: ChartTheme.font-size / 1px,
+        fixed: root.fixed-range,
+        fixed-min: root.min-value,
+        fixed-max: root.max-value,
+        logarithmic: root.logarithmic,
+        format: root.format,
+    });
+    private property <ChartCandleLayout> layout: ChartEngine.candle-layout({
+        locale: ChartTheme.locale,
+        candles: root.candles,
+        datasets: root.datasets,
+        width: plot.width / 1px,
+        height: plot.height / 1px,
+        y-min: axis.min,
+        y-max: axis.max,
+        logarithmic: root.logarithmic,
+        progress: root.progress,
+        view-start: root.view-start,
+        view-end: root.view-end,
+        decimate: root.decimate,
+        time-origin: root.time-origin,
+        utc-offset: root.utc-offset,
+        font-size: ChartTheme.font-size / 1px,
+        palette: ChartTheme.colors,
+    });
+
+    // A candle's date, or the dates of the first and last merged candle.
+    pure function date-text(bar: ChartCandleBar) -> string {
+        ChartEngine.format-time(root.time-origin, root.utc-offset, bar.value.x)
+            + (bar.last > bar.first ? " – " + ChartEngine.format-time(root.time-origin, root.utc-offset, bar.end) : "")
+    }
+
+    pure function candle-color(candle: ChartCandle) -> color {
+        candle.close >= candle.open ? root.rise-color : root.fall-color
+    }
+
+    min-width: 160px;
+    min-height: 120px;
+    preferred-width: 480px;
+    preferred-height: 300px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: ChartEngine.dataset-legend(root.datasets, ChartTheme.colors);
+            show-legend: root.show-legend && root.datasets.length > 0;
+            position: root.legend-position;
+            toggled(index) => {
+                root.datasets[index].hidden = !root.datasets[index].hidden;
+                root.legend-toggled(index);
+            }
+
+            frame := Rectangle {
+                horizontal-stretch: 1;
+
+                property <length> y-title-space: root.y-title != "" ? ChartTheme.font-size * 1.6 : 0px;
+                property <length> x-title-space: root.x-title != "" ? ChartTheme.font-size * 1.8 : 0px;
+
+                plot := Rectangle {
+                    // Tick labels are mostly digits, about 0.6em wide each (the
+                    // axis depends on the plot height, so they can't be measured).
+                    // Whole pixels keep the wicks sharp.
+                    x: ceil((axis.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px) / 1px) * 1px;
+                    y: frame.y-title-space + ChartTheme.font-size * 0.75;
+                    width: max(0px, parent.width - self.x - 12px);
+                    height: max(0px, parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space);
+                    // Candles at the edges are cut, and so are values outside a
+                    // fixed range.
+                    clip: true;
+
+                    for tick in axis.ticks: Rectangle {
+                        y: tick.pos * 1px - 0.5px;
+                        height: 1px;
+                        background: ChartTheme.grid-color;
+                    }
+                    for tick in layout.x-ticks: Rectangle {
+                        x: tick.pos * 1px - 0.5px;
+                        width: 1px;
+                        background: ChartTheme.grid-color;
+                    }
+                    Rectangle {
+                        x: 0;
+                        width: 1px;
+                        background: ChartTheme.axis-color;
+                    }
+                    Rectangle {
+                        y: parent.height - 0.5px;
+                        height: 1px;
+                        background: ChartTheme.axis-color;
+                    }
+
+                    if root.hovered-bar >= 0: Rectangle {
+                        property <float> slot: max(1, layout.slot);
+                        x: (layout.candles[root.hovered-bar].x - self.slot / 2) * 1px;
+                        width: self.slot * 1px;
+                        background: ChartTheme.grid-color;
+                    }
+
+                    // Each candle is three rectangles: the wick above and below
+                    // the body, and the body; or for OHLC bars, the line from
+                    // the low to the high and the ticks at the open and close.
+                    for bar[i] in layout.candles: Rectangle {
+                        property <color> fill: root.candle-color(bar.value);
+                        // Pixel-aligned, with an odd body width so the wick sits
+                        // in its middle.
+                        property <float> center: round(bar.x);
+                        property <float> body: max(1, floor(bar.width / 2) * 2 + 1);
+                        property <float> top: min(bar.open, bar.close);
+                        property <float> bottom: max(bar.open, bar.close);
+                        property <float> stroke: self.body >= 9 ? 2 : 1;
+                        property <float> half: floor(self.body / 2);
+                        property <bool> hovered: i == root.hovered-bar;
+                        Rectangle {
+                            x: (parent.center - (root.ohlc ? floor(parent.stroke / 2) : 0)) * 1px;
+                            y: bar.high * 1px;
+                            width: (root.ohlc ? parent.stroke : 1) * 1px;
+                            height: max(root.ohlc ? 1 : 0, (root.ohlc ? bar.low : parent.top) - bar.high) * 1px;
+                            background: parent.fill;
+                        }
+                        Rectangle {
+                            x: (root.ohlc ? parent.center - parent.half : parent.center) * 1px;
+                            y: (root.ohlc ? bar.open - parent.stroke / 2 : parent.bottom) * 1px;
+                            width: (root.ohlc ? parent.half + 1 : 1) * 1px;
+                            height: (root.ohlc ? parent.stroke : max(0, bar.low - parent.bottom)) * 1px;
+                            background: parent.fill;
+                        }
+                        Rectangle {
+                            x: (root.ohlc ? parent.center : parent.center - parent.half) * 1px;
+                            y: (root.ohlc ? bar.close - parent.stroke / 2 : parent.top) * 1px;
+                            width: (root.ohlc ? parent.half + 1 : parent.body) * 1px;
+                            height: (root.ohlc ? parent.stroke : max(1, parent.bottom - parent.top)) * 1px;
+                            background: root.ohlc ? parent.fill : parent.fill.with-alpha(parent.hovered ? 1 : root.fill-opacity);
+                            border-color: root.ohlc || parent.body < 3 ? transparent : parent.fill;
+                            border-width: root.ohlc || parent.body < 3 ? 0 : 1px;
+                        }
+                    }
+
+                    // Lines. The path is grown by the stroke width on every side
+                    // because Path insets its geometry by half the stroke width;
+                    // this keeps viewbox coordinates equal to plot pixels.
+                    for series in layout.series: Path {
+                        x: -ChartTheme.line-width / 2;
+                        y: -ChartTheme.line-width / 2;
+                        width: parent.width + ChartTheme.line-width;
+                        height: parent.height + ChartTheme.line-width;
+                        viewbox-width: plot.width / 1px;
+                        viewbox-height: plot.height / 1px;
+                        fit: fill;
+                        commands: series.line;
+                        stroke: series.color;
+                        stroke-width: ChartTheme.line-width;
+                        stroke-line-join: round;
+                        stroke-line-cap: round;
+                        opacity: root.progress;
+                    }
+
+                    for series in layout.series: Rectangle {
+                        opacity: root.progress;
+                        for column in series.columns: Rectangle {
+                            x: column.x * 1px - ChartTheme.line-width / 2;
+                            y: column.top * 1px - ChartTheme.line-width / 2;
+                            width: ChartTheme.line-width;
+                            height: (column.bottom - column.top) * 1px + ChartTheme.line-width;
+                            background: series.color;
+                        }
+                    }
+
+                    // Keyboard: the arrow keys move through the candles in view,
+                    // Enter clicks the selected one.
+                    keys := FocusScope {
+                        key-pressed(event) => {
+                            let count = layout.candles.length;
+                            if count == 0 {
+                                return reject;
+                            }
+                            let current = ChartEngine.candle-at(layout, root.key-index);
+                            let to = event.text == Key.RightArrow ? (current < 0 ? 0 : min(count - 1, current + 1))
+                                : event.text == Key.LeftArrow ? (current < 0 ? 0 : max(0, current - 1))
+                                : event.text == Key.Home ? 0
+                                : event.text == Key.End ? count - 1
+                                : -1;
+                            if to >= 0 {
+                                root.key-index = layout.candles[to].first;
+                                return accept;
+                            }
+                            if event.text == Key.Return && root.hovered-index >= 0 {
+                                root.candle-clicked(root.hovered-index);
+                                return accept;
+                            }
+                            reject
+                        }
+
+                        touch := TouchArea {
+                            mouse-cursor: root.zoom-enabled && root.zoomed ? (self.pressed ? MouseCursor.grabbing : MouseCursor.grab) : default;
+                            pointer-event(event) => {
+                                if event.kind == PointerEventKind.down {
+                                    root.drag-view-start = root.view-start;
+                                    root.drag-view-end = root.view-end;
+                                }
+                            }
+                            moved => {
+                                if root.zoom-enabled && self.pressed && plot.width > 0 {
+                                    let span = root.drag-view-end - root.drag-view-start;
+                                    let shift = (self.mouse-x - self.pressed-x) / plot.width * span;
+                                    root.view-start = clamp(root.drag-view-start - shift, 0, 1 - span);
+                                    root.view-end = root.view-start + span;
+                                }
+                            }
+                            scroll-event(event) => {
+                                if !root.zoom-enabled || plot.width <= 0 {
+                                    return reject;
+                                }
+                                root.zoom-around(self.mouse-x / plot.width, pow(1.002, -event.delta-y / 1px));
+                                accept
+                            }
+                            double-clicked => {
+                                if root.zoom-enabled {
+                                    root.reset-zoom();
+                                }
+                            }
+                            clicked => {
+                                keys.focus();
+                                // A drag that panned the chart is not a click.
+                                if abs(self.mouse-x - self.pressed-x) > 3px {
+                                    return;
+                                }
+                                if root.hovered-index >= 0 {
+                                    root.key-index = root.hovered-index;
+                                    root.candle-clicked(root.hovered-index);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    x: plot.x - 3px;
+                    y: plot.y - 3px;
+                    width: plot.width + 6px;
+                    height: plot.height + 6px;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                for tick in axis.ticks: Text {
+                    x: 0;
+                    width: plot.x - 8px;
+                    y: plot.y + tick.pos * 1px - self.height / 2;
+                    text: tick.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    horizontal-alignment: right;
+                }
+
+                for tick in layout.x-ticks: Text {
+                    x: plot.x + tick.pos * 1px - self.width / 2;
+                    y: plot.y + plot.height + 6px;
+                    text: tick.label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                }
+
+                if root.y-title != "": Text {
+                    x: 0;
+                    y: 0;
+                    text: root.y-title;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                }
+
+                if root.x-title != "": Text {
+                    x: plot.x;
+                    width: plot.width;
+                    y: plot.y + plot.height + ChartTheme.font-size * 1.6 + 6px;
+                    text: root.x-title;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                }
+
+                if root.show-tooltip && root.hovered-bar >= 0: Rectangle {
+                    property <ChartCandleBar> bar: layout.candles[root.hovered-bar];
+                    property <length> anchor-x: plot.x + self.bar.x * 1px;
+                    property <length> room: max(self.bar.width * 1px / 2, 4px) + 8px;
+                    x: self.anchor-x + self.room + self.width > frame.width ? max(0px, self.anchor-x - self.room - self.width) : self.anchor-x + self.room;
+                    y: clamp(plot.y + (touch.has-hover ? touch.mouse-y : (self.bar.high + self.bar.low) / 2 * 1px) - self.height / 2, 0px, max(0px, frame.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    VerticalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 4px;
+                        HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 10px;
+                                    height: 10px;
+                                    background: root.candle-color(bar.value);
+                                    border-color: ChartTheme.tooltip-text;
+                                    border-width: 1px;
+                                }
+                            }
+                            Text {
+                                text: root.date-text(bar);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                font-weight: 700;
+                            }
+                        }
+                        GridLayout {
+                            spacing-horizontal: 12px;
+                            spacing-vertical: 2px;
+                            Row {
+                                Text {
+                                    text: ChartTexts.open;
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                }
+                                Text {
+                                    text: ChartEngine.format-value(bar.value.open, root.format);
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                    horizontal-alignment: right;
+                                }
+                            }
+                            Row {
+                                Text {
+                                    text: ChartTexts.high;
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                }
+                                Text {
+                                    text: ChartEngine.format-value(bar.value.high, root.format);
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                    horizontal-alignment: right;
+                                }
+                            }
+                            Row {
+                                Text {
+                                    text: ChartTexts.low;
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                }
+                                Text {
+                                    text: ChartEngine.format-value(bar.value.low, root.format);
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                    horizontal-alignment: right;
+                                }
+                            }
+                            Row {
+                                Text {
+                                    text: ChartTexts.close;
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                }
+                                Text {
+                                    text: ChartEngine.format-value(bar.value.close, root.format);
+                                    color: ChartTheme.tooltip-text;
+                                    font-size: ChartTheme.font-size;
+                                    horizontal-alignment: right;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

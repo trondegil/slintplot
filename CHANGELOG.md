@@ -14,6 +14,14 @@
   over shaded bands such as poor, OK and good. A compact alternative to
   gauges for dashboards. Each row has its own axis, or all share one with
   `shared-axis`; `vertical: true` turns the rows into columns.
+- `CandlestickChart`: open, high, low and close per period on a time axis,
+  as candles or, with `ohlc: true`, OHLC bars. Rising and falling periods
+  have their own colors (`rise-color`, `fall-color`). It zooms and pans like
+  `TimeSeriesChart`, and merges candles closer than a few pixels into longer
+  periods, so large datasets stay fast. `datasets` draws lines over the
+  candles, and `ChartEngine.moving-average` computes a moving average for
+  one. The tooltip texts are translated into the 14 languages
+  (`ChartLocale.open`, `high`, `low`, `close`).
 
 ### Fixed
 
