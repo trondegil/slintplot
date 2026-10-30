@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A time series with `fill: true` lost its fill when it had more than two
+  points per pixel, for example a week of 15-minute values on a phone. The
+  decimated line now keeps its area, like the line chart.
+
 ## 0.2.2
 
 ### Fixed

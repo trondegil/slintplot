@@ -1337,9 +1337,15 @@ fn scatter_layout(req: &LayoutRequest) -> Layout {
             // Time series: a line through the points in order, decimated like
             // a line chart when there are many more points than pixels.
             if req.decimate && points.len() as f32 > req.width * 2.0 {
+                let area = if d.fill {
+                    path::area(&decimate_min_max(&points), 0.0, axis.baseline(), bounds)
+                } else {
+                    String::new()
+                };
                 return Series {
                     kind: req.kind,
                     color,
+                    area,
                     columns: columns(&points),
                     ..Default::default()
                 };
@@ -1963,6 +1969,28 @@ mod tests {
             (l.x_ticks.last().unwrap().pos - 300.0).abs() < 1e-3,
             "the window ends at the last point"
         );
+    }
+
+    #[test]
+    fn decimated_time_series_keeps_the_fill() {
+        let points: Vec<_> = (0..2000)
+            .map(|i| DataPoint {
+                x: i as f64 * 900.0,
+                y: (i % 7) as f64,
+                r: 0.0,
+            })
+            .collect();
+        let data = [Dataset {
+            points: points.into(),
+            fill: true,
+            ..Default::default()
+        }];
+        let mut req = request(Kind::Scatter, &data, NO_LABELS);
+        req.show_lines = true;
+        req.decimate = true;
+        let l = layout(&req);
+        assert!(!l.series[0].columns.is_empty(), "the line was decimated");
+        assert!(l.series[0].area.starts_with('M'), "{}", l.series[0].area);
     }
 
     #[test]
