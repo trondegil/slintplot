@@ -807,6 +807,89 @@ export struct ChartCandleRequest {
     locale: ChartLocale,
 }
 
+// How a matrix chart colors its circles: all in one color, a palette color
+// per row or per column, by sign, or on a color scale.
+export enum ChartMatrixColorMode { single, rows, columns, sign, scale }
+
+// A circle of a matrix chart, centered at (x, y). When the cells are too
+// small to draw one by one, a circle stands for a block of cells, starting
+// at (row, column), and shows the value farthest from zero.
+export struct ChartMatrixDot {
+    row: int,
+    column: int,
+    x: float,
+    y: float,
+    // The radius, growing in with the entry animation, and once grown.
+    r: float,
+    size: float,
+    fill: color,
+    stroke: color,
+    value: float,
+    // The value as written in or under the circle, with `show-values`.
+    label: string,
+    // A label inside the circle is light, on a dark fill.
+    light-label: bool,
+}
+
+// A circle of a matrix chart's size legend.
+export struct ChartMatrixSize { value: float, label: string, r: float, fill: color, stroke: color }
+
+export struct ChartMatrixLayout {
+    dots: [ChartMatrixDot],
+    // The cells fill `grid-width` by `grid-height`; the totals, if any, are
+    // right of and below them.
+    cell-width: float,
+    cell-height: float,
+    grid-width: float,
+    grid-height: float,
+    // Cells merged into each circle, across and down; 1 unless crowded.
+    block-columns: int,
+    block-rows: int,
+    // Lines between the cells.
+    separators: string,
+    row-totals: [string],
+    column-totals: [string],
+    grand-total: string,
+    total-width: float,
+    total-height: float,
+    // The size legend, smallest first, and a circle for negative values.
+    sizes: [ChartMatrixSize],
+    negative: ChartMatrixSize,
+    has-negative: bool,
+    // The color scale's range and its colors at the low end, the middle
+    // and the high end, for its legend.
+    scale-min-label: string,
+    scale-max-label: string,
+    scale-low: color,
+    scale-middle: color,
+    scale-high: color,
+}
+
+export struct ChartMatrixRequest {
+    values: [float],
+    color-values: [float],
+    rows: int,
+    columns: int,
+    width: float,
+    height: float,
+    color-mode: ChartMatrixColorMode,
+    color: color,
+    negative-color: color,
+    palette: [color],
+    // The color a scale fades towards for small values.
+    base: color,
+    fixed: bool,
+    max-value: float,
+    progress: float,
+    font-size: float,
+    show-values: bool,
+    show-totals: bool,
+    legend-radius: float,
+    format: ChartFormat,
+    color-format: ChartFormat,
+    locale: ChartLocale,
+}
+
 export global ChartEngine {
     pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
     // Whether a visible dataset is on the right value axis (`right`), or on
@@ -935,4 +1018,5 @@ export global ChartEngine {
     pure callback radial-bar-value(layout: ChartRadialBarLayout, ring: ChartRadialBarRing, end: float, width: float, height: float) -> ChartRadialBarValue;
     // The item at (x, y), on its ring or its label, or -1.
     pure callback radial-bar-hit(layout: ChartRadialBarLayout, x: float, y: float, label-width: float, label-height: float) -> int;
+    pure callback matrix-layout(request: ChartMatrixRequest) -> ChartMatrixLayout;
 }

@@ -2,7 +2,7 @@
 import {
     BarChart, BubbleChart, BulletChart, CalendarHeatmap, CandlestickChart, ChartBullet, ChartCandle, ChartDataset, ChartEngine, ChartGanttTask, ChartGaugeBand, ChartLegendPosition, ChartSlice,
     ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GanttChart, GaugeChart,
-    HeatmapChart, HorizontalBarChart, LineChart, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
+    HeatmapChart, HorizontalBarChart, LineChart, MatrixChart, ChartMatrixColorMode, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
     RadialBarChart, TimeSeriesChart, TreemapChart, WaterfallChart,
 } from "@slintplot";
 export { ChartEngine }
@@ -286,6 +286,26 @@ export component Fuzz inherits Window {
             show-legend: root.begin-at-zero;
             value-decimals: root.decimals;
             legend-position: root.legend-position;
+        }
+        if root.chart == 22: MatrixChart {
+            x-labels: root.labels;
+            y-labels: root.row-labels;
+            values: root.values;
+            // The values again, as a color measure.
+            color-values: root.stacked ? root.values : [];
+            color-mode: mod(abs(root.decimals), 5) == 0 ? ChartMatrixColorMode.single
+                : mod(abs(root.decimals), 5) == 1 ? ChartMatrixColorMode.rows
+                : mod(abs(root.decimals), 5) == 2 ? ChartMatrixColorMode.columns
+                : mod(abs(root.decimals), 5) == 3 ? ChartMatrixColorMode.sign
+                : ChartMatrixColorMode.scale;
+            fixed-range: root.fixed-range;
+            max-value: root.max-value;
+            show-values: root.show-values;
+            show-totals: root.flag;
+            show-legend: !root.logarithmic;
+            x-labels-top: root.begin-at-zero;
+            value-decimals: root.decimals;
+            color-value-decimals: root.decimals;
         }
     }
 }
