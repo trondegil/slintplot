@@ -226,15 +226,6 @@ export component GanttChart {
                     background: ChartTheme.axis-color;
                 }
 
-                for bar in gantt.summaries: Rectangle {
-                    x: bar.x * 1px;
-                    y: bar.y * 1px;
-                    width: bar.width * 1px;
-                    height: bar.height * 1px;
-                    border-radius: min(self.height, self.width) / 2;
-                    background: bar.color.with-alpha(0.8);
-                }
-
                 for bar in gantt.bars: Rectangle {
                     property <bool> hovered: bar.index == root.hovered-index;
                     x: bar.x * 1px;

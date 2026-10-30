@@ -154,8 +154,6 @@ pub struct VisibleRow {
 pub struct Gantt {
     pub rows: Vec<VisibleRow>,
     pub bars: Vec<Bar>,
-    /// The groups' spans, on their headings.
-    pub summaries: Vec<Bar>,
     pub ticks: Vec<Tick>,
     /// The position of the "now" line, if it is in view.
     pub now: Option<f32>,
@@ -193,15 +191,15 @@ pub fn layout(req: &GanttRequest) -> Gantt {
     if !(step > 0.0 && step.is_finite()) || width <= 0.0 || x1.partial_cmp(&x0).is_none() {
         return out;
     }
-    let x_of = |t: f64| {
-        let f = (t - x0) / (x1 - x0);
-        if f.is_finite() {
-            // Bars far outside the window are cut a little past its edges.
-            ((f * width as f64) as f32).clamp(-step, width + step)
-        } else {
-            width / 2.0
-        }
+    // Positions are worked out uncut, so a bar's progress and growth stay
+    // true to its times when it reaches past the window, and only the drawn
+    // edges are cut, a little past the window's edges.
+    let pos = |t: f64| {
+        let f = (t - x0) / (x1 - x0) * width as f64;
+        if f.is_finite() { f } else { width as f64 / 2.0 }
     };
+    let cut = |x: f64| (x as f32).clamp(-step, width + step);
+    let x_of = |t: f64| cut(pos(t));
     let scroll = if req.scroll.is_finite() {
         req.scroll.max(0.0)
     } else {
@@ -227,12 +225,14 @@ pub fn layout(req: &GanttRequest) -> Gantt {
                 milestone: true,
             });
         }
-        let full = (right - left).max(0.0);
         // Out of view on either side.
         if right < 0.0 || left > width {
             return None;
         }
-        let shown = full * grow;
+        let (start, end) = (pos(a), pos(b));
+        let grown = start + (end - start).max(0.0) * grow as f64;
+        let done = start + (end - start).max(0.0) * done;
+        let shown = (cut(grown) - left).max(0.0);
         Some(Bar {
             index,
             row,
@@ -240,7 +240,7 @@ pub fn layout(req: &GanttRequest) -> Gantt {
             y,
             width: shown,
             height: thickness,
-            done: shown * done as f32,
+            done: (cut(done.min(grown)) - left).clamp(0.0, shown),
             milestone: false,
         })
     };
@@ -260,14 +260,7 @@ pub fn layout(req: &GanttRequest) -> Gantt {
                     out.bars.push(bar);
                 }
             }
-            Row::Heading(group) => {
-                if let Some(span) = req.rows.spans[group]
-                    && span.1 > span.0
-                    && let Some(bar) = bar(group, row, span, thickness * 0.35, 0.0)
-                {
-                    out.summaries.push(bar);
-                }
-            }
+            Row::Heading(_) => {}
         }
     }
     // Room for labels like "Oct 25" between ticks, so a plan of a few months
@@ -405,8 +398,6 @@ mod tests {
         let milestone = gantt.bars[1];
         assert!(milestone.milestone);
         assert_eq!(milestone.x + milestone.width / 2.0, 100.0);
-        assert_eq!(gantt.summaries.len(), 1, "the group's span on its heading");
-        assert_eq!(gantt.summaries[0].width, 100.0);
     }
 
     #[test]
@@ -428,6 +419,25 @@ mod tests {
             layout(&req).bars.is_empty(),
             "the rows in view end before the window"
         );
+    }
+
+    #[test]
+    fn progress_stays_at_its_time_when_zoomed() {
+        let mut tasks = [task(0.0, 100.0, "")];
+        tasks[0].progress = 0.5;
+        let rows = rows(&tasks);
+        let locale = Locale::default();
+        // Halfway is t = 50, wherever the window cuts the bar.
+        for window in [(0.0, 60.0), (40.0, 100.0), (45.0, 55.0)] {
+            let mut req = request(&tasks, &rows, &locale);
+            req.window = window;
+            let bar = layout(&req).bars[0];
+            let half = ((50.0 - window.0) / (window.1 - window.0) * 200.0) as f32;
+            assert!(
+                (bar.x + bar.done - half).abs() < 1e-3,
+                "{window:?}: {bar:?}"
+            );
+        }
     }
 
     #[test]
@@ -472,7 +482,7 @@ mod tests {
             req.progress = progress;
             req.now = Some(f64::NAN);
             let gantt = layout(&req);
-            for b in gantt.bars.iter().chain(&gantt.summaries) {
+            for b in &gantt.bars {
                 for v in [b.x, b.y, b.width, b.height, b.done] {
                     assert!(v.is_finite(), "{b:?}");
                 }
