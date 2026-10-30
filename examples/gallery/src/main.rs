@@ -340,30 +340,6 @@ const MONTHLY: Shape = Shape::Months {
 
 const SAMPLES: &[Sample] = &[
     sample(
-        "gantt",
-        "New",
-        "Gantt",
-        "GanttChart: a release plan in four groups, with progress written after each bar, milestones and a line at today. Scroll to zoom, drag to pan.",
-        Shape::Gantt,
-        &["Reset zoom"],
-    ),
-    sample(
-        "bullet",
-        "New",
-        "Bullet charts",
-        "BulletChart: a KPI panel with an axis per row, columns on one axis, and rows without a target. Bands are shades of gray; bars take the theme's colors, and rows below target its decrease color.",
-        Shape::Bullet,
-        &["Randomize"],
-    ),
-    sample(
-        "candlestick",
-        "New",
-        "Candlestick chart",
-        "CandlestickChart: half a year of daily prices and volumes of a made-up stock, with a 20-day moving average and the last price. Weekends and holidays are skipped; Linear time shows them as gaps. Scroll to zoom; on a narrow screen, candles merge into longer periods.",
-        Shape::Candles,
-        &["Candles", "OHLC", "Skip gaps", "Linear time", "Randomize"],
-    ),
-    sample(
         "bar-vertical",
         "Bar charts",
         "Vertical bar chart",
@@ -630,6 +606,14 @@ const SAMPLES: &[Sample] = &[
         &["Randomize"],
     ),
     sample(
+        "candlestick",
+        "Time series",
+        "Candlestick chart",
+        "CandlestickChart: half a year of daily prices and volumes of a made-up stock, with a 20-day moving average and the last price. Weekends and holidays are skipped; Linear time shows them as gaps. Scroll to zoom; on a narrow screen, candles merge into longer periods.",
+        Shape::Candles,
+        &["Candles", "OHLC", "Skip gaps", "Linear time", "Randomize"],
+    ),
+    sample(
         "live",
         "Time series",
         "Live data",
@@ -708,6 +692,22 @@ const SAMPLES: &[Sample] = &[
         "GaugeChart: a filled arc with rounded ends, the same with a ring of bands, and a needle with ticks over the bands.",
         Shape::Gauge,
         &["Randomize"],
+    ),
+    sample(
+        "bullet",
+        "Business charts",
+        "Bullet charts",
+        "BulletChart: a KPI panel with an axis per row, columns on one axis, and rows without a target. Bands are shades of gray; bars take the theme's colors, and rows below target its decrease color.",
+        Shape::Bullet,
+        &["Randomize"],
+    ),
+    sample(
+        "gantt",
+        "Business charts",
+        "Gantt",
+        "GanttChart: a release plan in four groups, with progress written after each bar, milestones and a line at today. Scroll to zoom, drag to pan.",
+        Shape::Gantt,
+        &["Reset zoom"],
     ),
     sample(
         "pie-labels",
