@@ -3,9 +3,8 @@ import { ChartTheme } from "theme.slint";
 
 // A Gantt chart: one row per task, with a bar from its start to its end on a
 // time axis. Tasks with the same `group` are placed together under the
-// group's heading, which shows the group's span. Tasks that end where they
-// start are milestones, drawn as diamonds. Rows share the height; when they
-// don't fit, they scroll.
+// group's heading. Tasks that end where they start are milestones, drawn as
+// diamonds. Rows share the height; when they don't fit, they scroll.
 export component GanttChart {
     in property <[ChartGanttTask]> tasks;
     in property <string> title;
@@ -18,7 +17,9 @@ export component GanttChart {
     // today. Hidden outside the view.
     in property <bool> show-now: false;
     in property <float> now: 0;
-    in property <color> now-color: ChartTheme.dark ? #f87171 : #dc2626;
+    in property <color> now-color: ChartTheme.dark ? #f5f5f5 : #000000;
+    // Write each task's progress after its bar.
+    in property <bool> show-values: false;
     in property <bool> show-tooltip: true;
     // Grow the bars in when the chart appears.
     in property <bool> animated: true;
@@ -256,6 +257,17 @@ export component GanttChart {
                         fill: bar.color;
                         stroke: hovered ? ChartTheme.text-color : ChartTheme.background;
                         stroke-width: 1px;
+                    }
+                    // After the bar, or before it when there's no room after it.
+                    if root.show-values && !bar.milestone: Text {
+                        x: parent.x + parent.width + 6px + self.preferred-width <= plot.width
+                            ? parent.width + 6px : -self.preferred-width - 6px;
+                        text: ChartEngine.format-percent(clamp(root.tasks[bar.index].progress, 0, 1) * 100, 0);
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        vertical-alignment: center;
+                        opacity: root.progress >= 1 ? 1 : 0;
+                        animate opacity { duration: 200ms; }
                     }
                 }
 

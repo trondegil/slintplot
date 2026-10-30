@@ -967,7 +967,7 @@ GanttChart {
     tasks: [
         { label: "Research", group: "Design", start: 0, end: 10 * day, progress: 1 },
         { label: "Wireframes", group: "Design", start: 7 * day, end: 21 * day, progress: 1 },
-        { label: "Visual design", group: "Design", start: 17 * day, end: 31 * day, progress: 1 },
+        { label: "Visual design", group: "Design", start: 17 * day, end: 31 * day, progress: 0.6 },
         { label: "Backend API", group: "Build", start: 21 * day, end: 56 * day, progress: 0.9 },
         { label: "Web app", group: "Build", start: 28 * day, end: 63 * day, progress: 0.7 },
         { label: "Mobile app", group: "Build", start: 35 * day, end: 70 * day, progress: 0.5 },
@@ -980,6 +980,7 @@ GanttChart {
     ];
     show-now: true;
     now: 53 * day;
+    show-values: true;
     zoom-enabled: true;
 }</code></pre>
 <table>
@@ -990,7 +991,8 @@ GanttChart {
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>show-now</code></td><td><code>bool</code></td><td><code>false</code></td><td>A vertical line at <code>now</code>, when it is in view</td></tr>
   <tr><td><code>now</code></td><td><code>float</code></td><td><code>0</code></td><td>The time of the line, in seconds after <code>time-origin</code></td></tr>
-  <tr><td><code>now-color</code></td><td><code>color</code></td><td>red</td><td>The color of the line</td></tr>
+  <tr><td><code>now-color</code></td><td><code>color</code></td><td>black, white in dark mode</td><td>The color of the line</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each task's progress after its bar</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the task's dates, duration and progress</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the bars in when the chart appears</td></tr>
   <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td>theme's</td><td>The opacity of the part of a bar not yet done; the part done is solid</td></tr>
