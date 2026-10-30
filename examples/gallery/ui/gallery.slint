@@ -13,6 +13,8 @@ import {
     SunburstChart,
     TreemapChart,
     WaterfallChart,
+    CandlestickChart,
+    ChartCandle,
     ChartDataset,
     ChartEngine,
     ChartLanguage,
@@ -696,6 +698,9 @@ export component Gallery inherits Window {
     in-out property <[ChartTreemapItem]> tree;
     in-out property <[ChartSunburstItem]> sun;
     in property <[ChartWaterfallStep]> steps;
+    in property <[ChartCandle]> candles;
+    // The candlestick sample draws OHLC bars.
+    in property <bool> ohlc;
     in property <float> gauge-value;
     in-out property <ChartLegendPosition> legend-position;
     in-out property <bool> decimate: true;
@@ -1115,6 +1120,16 @@ export component Gallery inherits Window {
                         time-origin: { year: 2025, month: 10, day: 26 };
                         value-suffix: " °C";
                         value-decimals: 1;
+                        zoom-enabled: true;
+                    }
+                    if root.sample == "candlestick": CandlestickChart {
+                        title: "Acme Robotics, daily";
+                        candles: root.candles;
+                        datasets <=> root.datasets;
+                        ohlc: root.ohlc;
+                        time-origin: { year: 2026, month: 4, day: 6 };
+                        value-prefix: "$";
+                        value-decimals: 2;
                         zoom-enabled: true;
                     }
                     if root.sample == "heatmap": HeatmapChart {

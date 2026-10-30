@@ -133,6 +133,7 @@ example and its properties.
 | [`PolarAreaChart`](https://slintplot.dev/#polar-area-chart) | Slices of equal angle whose radius shows the value |
 | [`RadarChart`](https://slintplot.dev/#radar-chart) | One spoke per label and one closed polygon per dataset |
 | [`TimeSeriesChart`](https://slintplot.dev/#time-series) | Lines over a time axis with calendar-aligned ticks |
+| [`CandlestickChart`](https://slintplot.dev/#candlestick) | Open, high, low and close per period, as candles or OHLC bars, on a zoomable time axis |
 | [`HeatmapChart`](https://slintplot.dev/#heatmap) | A matrix of colored cells, sequential or diverging |
 | [`CalendarHeatmap`](https://slintplot.dev/#calendar-heatmap) | Daily values over a year, like GitHub's contribution graph |
 | [`TreemapChart`](https://slintplot.dev/#treemap) | Squarified rectangles sized by value, optionally in groups |

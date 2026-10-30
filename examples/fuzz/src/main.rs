@@ -14,7 +14,7 @@ use slint::{Color, LogicalPosition, ModelRc, PhysicalSize, SharedString, VecMode
 
 slint::include_modules!();
 
-const CHARTS: i32 = 18;
+const CHARTS: i32 = 19;
 
 /// More memory than any chart should need: past it the fuzzer stops, rather
 /// than fill the machine's RAM and swap.
@@ -235,6 +235,43 @@ fn datasets(rng: &mut Rng, decimate: bool) -> Vec<ChartDataset> {
         .collect()
 }
 
+/// Candles, mostly in time order and plausible, often not.
+fn candles(rng: &mut Rng, decimate: bool) -> Vec<ChartCandle> {
+    let n = rng.len().min(if decimate { usize::MAX } else { 2_000 });
+    let sorted = rng.chance(70);
+    let plausible = rng.chance(50);
+    let (mut x, mut price) = (0.0, 50.0);
+    (0..n)
+        .map(|_| {
+            x = if sorted {
+                x + rng.unit() * 10.0
+            } else {
+                rng.number()
+            };
+            if plausible {
+                let open = price;
+                price += rng.unit() * 2.0 - 1.0;
+                let (lo, hi) = (open.min(price), open.max(price));
+                ChartCandle {
+                    x,
+                    open,
+                    high: hi + rng.unit(),
+                    low: lo - rng.unit(),
+                    close: price,
+                }
+            } else {
+                ChartCandle {
+                    x,
+                    open: rng.number(),
+                    high: rng.number(),
+                    low: rng.number(),
+                    close: rng.number(),
+                }
+            }
+        })
+        .collect()
+}
+
 fn fill(ui: &Fuzz, rng: &mut Rng) {
     let decimate = rng.chance(70);
     ui.set_decimate(decimate);
@@ -299,6 +336,7 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
         .collect();
     ui.set_bands(model(bands));
     ui.set_value(rng.number());
+    ui.set_candles(model(candles(rng, decimate)));
 
     ui.set_stacked(rng.chance(40));
     ui.set_stacked_percent(rng.chance(25));

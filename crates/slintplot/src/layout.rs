@@ -1598,7 +1598,7 @@ fn decimate_min_max(points: &[Point]) -> Vec<(f32, f32)> {
 /// Reduces a dense line to the span it covers in every pixel column. Each
 /// span also reaches the previous column's last point, so the line stays
 /// connected across columns.
-fn columns(points: &[Point]) -> Vec<Column> {
+pub(crate) fn columns(points: &[Point]) -> Vec<Column> {
     let mut out = Vec::with_capacity(points.len().min(4096));
     let mut previous: Option<f32> = None;
     for group in points.chunk_by(|a, b| a.x.floor() == b.x.floor()) {

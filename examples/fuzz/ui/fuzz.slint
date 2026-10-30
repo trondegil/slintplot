@@ -5,6 +5,7 @@ import {
     HeatmapChart, HorizontalBarChart, LineChart, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
     TimeSeriesChart, TreemapChart, WaterfallChart,
 } from "@slintplot";
+import { CandlestickChart, ChartCandle } from "@slintplot";
 export { ChartEngine }
 
 export component Fuzz inherits Window {
@@ -21,6 +22,7 @@ export component Fuzz inherits Window {
     in property <[ChartWaterfallStep]> steps;
     in property <[ChartGaugeBand]> bands;
     in property <float> value;
+    in property <[ChartCandle]> candles;
 
     // Options.
     in property <bool> stacked;
@@ -219,6 +221,24 @@ export component Fuzz inherits Window {
             cutout: root.number;
             value-decimals: root.decimals;
             value-font-size: root.size;
+        }
+        if root.chart == 18: CandlestickChart {
+            candles: root.candles;
+            datasets <=> root.datasets;
+            time-origin: { year: root.year, month: 13, day: 40 };
+            utc-offset: root.utc-offset;
+            ohlc: root.flag;
+            decimate: root.decimate;
+            logarithmic: root.logarithmic;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            value-decimals: root.decimals;
+            zoom-enabled: true;
+            view-start <=> root.view-start;
+            view-end <=> root.view-end;
+            min-view: root.number;
+            legend-position: root.legend-position;
         }
     }
 }
