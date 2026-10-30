@@ -1,0 +1,273 @@
+import { ChartEngine, ChartFormat, ChartLegendItem, ChartRadialBarLayout, ChartRadialBarRing, ChartRadialBarValue, ChartSlice } from "engine.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+import { TooltipFrame, TooltipLine } from "tooltip.slint";
+
+// A radial bar chart: one ring per bar, the first outermost, each filled
+// along its arc in proportion to its value, over a faint track, like
+// activity rings. The rings cover `sweep` degrees from `start-angle`, and
+// the labels go in the opening before their start.
+export component RadialBarChart {
+    in-out property <[ChartSlice]> bars;
+    in property <string> title;
+    // Where the rings start, in degrees clockwise from 12 o'clock, and the
+    // angle a full ring covers.
+    in property <float> start-angle: 0;
+    in property <float> sweep: 270;
+    // The value of a full ring; 0 for the largest value. Larger values fill
+    // the ring.
+    in property <float> max-value: 0;
+    // The empty middle, as a share of the radius.
+    in property <float> cutout: 0.25;
+    // The gap between the rings, as a share of their width.
+    in property <float> ring-gap: 0.25;
+    // Round the ends of the bars and tracks.
+    in property <bool> rounded: true;
+    // One color for every bar without its own; leave unset (transparent)
+    // for the theme's colors in turn.
+    in property <color> color;
+    // Each bar's label before the start of its ring.
+    in property <bool> show-labels: true;
+    // Each value just past the end of its bar, or inside it when the bar
+    // is nearly full.
+    in property <bool> show-values: true;
+    in property <bool> show-legend: false;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
+    in property <bool> show-tooltip: true;
+    // Grow the bars in when the chart appears, and move them when the
+    // values change.
+    in property <bool> animated: true;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The bar under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: radial.visible.length == 0 ? -1
+        : touch.has-hover ? ChartEngine.radial-bar-hit(radial, touch.mouse-x / 1px, touch.mouse-y / 1px, root.label-width / 1px, root.label-height / 1px)
+        : keys.has-focus && root.key-position >= 0 ? radial.visible[min(root.key-position, radial.visible.length - 1)]
+        : -1;
+
+    callback bar-clicked(index: int);
+    callback legend-toggled(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-index >= 0 ? root.describe(root.hovered-index) : "";
+
+    // The selected bar's place among the visible ones.
+    private property <int> key-position: -1;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    // A bar's value, and whether it is past a fixed maximum.
+    pure function value-text(index: int) -> string {
+        ChartEngine.format-value(root.bars[index].value, root.format)
+            + (root.max-value > 0 && root.bars[index].value > root.max-value ? " (" + ChartTexts.off-scale + ")" : "")
+    }
+    pure function describe(index: int) -> string {
+        root.bars[index].label + ": " + root.value-text(index)
+    }
+    // Text on a bar: white on dark colors, near black on light ones.
+    pure function ink(fill: color) -> color {
+        fill.red * 0.299 + fill.green * 0.587 + fill.blue * 0.114 < 150 ? #ffffff : #1f2328
+    }
+
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+    private property <length> value-size: ChartTheme.font-size * 0.95;
+    // The tracks: a faint gray from the theme's text color.
+    private property <color> track-color: ChartTheme.text-color.with-alpha(ChartTheme.dark ? 0.14 : 0.1);
+    private property <[color]> palette: root.color.alpha > 0 ? [root.color] : ChartTheme.colors;
+    private property <[ChartLegendItem]> legend: ChartEngine.slice-legend(root.bars, root.palette);
+    private property <length> label-width: root.show-labels && root.bars.length > 0 ? label-measure.preferred-width : 0px;
+    private property <length> label-height: label-measure.preferred-height;
+    private property <ChartRadialBarLayout> radial: ChartEngine.radial-bar-layout({
+        bars: root.bars,
+        width: area.width / 1px,
+        height: area.height / 1px,
+        start-angle: root.start-angle,
+        sweep: root.sweep,
+        max: root.max-value,
+        cutout: root.cutout,
+        ring-gap: root.ring-gap,
+        label-width: root.label-width / 1px,
+        label-height: root.label-height / 1px,
+        palette: root.palette,
+    });
+
+    min-width: 120px;
+    min-height: 120px;
+    preferred-width: 400px;
+    preferred-height: 320px;
+
+    // Measures the labels, which don't depend on the chart size.
+    label-measure := Text {
+        visible: false;
+        text: ChartEngine.widest-label(ChartEngine.slice-labels(root.bars));
+        font-size: ChartTheme.font-size;
+        font-weight: 600;
+    }
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend;
+            position: root.legend-position;
+            toggled(index) => {
+                root.bars[index].hidden = !root.bars[index].hidden;
+                root.legend-toggled(index);
+            }
+
+            area := Rectangle {
+                horizontal-stretch: 1;
+
+                // Repeated over the bars themselves, so that a bar keeps its
+                // element, and animates, when its value changes.
+                for bar[i] in root.bars: Rectangle {
+                    property <ChartRadialBarRing> ring: i < radial.rings.length ? radial.rings[i] : { position: -1 };
+                    property <bool> hovered: root.hovered-index == i;
+                    property <bool> dimmed: root.hovered-index >= 0 && !self.hovered;
+                    // The angle of the value, which moves to new values, and
+                    // the angle the bar reaches as it grows in.
+                    property <float> target: self.ring.end;
+                    animate target {
+                        duration: root.animated ? 500ms : 0ms;
+                        easing: ease-in-out;
+                    }
+                    property <float> end: radial.start + (self.target - radial.start) * root.progress;
+                    property <ChartRadialBarValue> spot: ChartEngine.radial-bar-value(radial, self.ring, self.end, value-label.preferred-width / 1px, value-label.preferred-height / 1px);
+                    x: 0;
+                    y: 0;
+                    width: area.width;
+                    height: area.height;
+                    visible: self.ring.visible;
+
+                    Path {
+                        viewbox-width: area.width / 1px;
+                        viewbox-height: area.height / 1px;
+                        width: area.width;
+                        height: area.height;
+                        fit: fill;
+                        commands: ChartEngine.radial-bar-path(radial, ring, radial.end, root.rounded);
+                        fill: root.track-color;
+                    }
+                    Path {
+                        viewbox-width: area.width / 1px;
+                        viewbox-height: area.height / 1px;
+                        width: area.width;
+                        height: area.height;
+                        fit: fill;
+                        commands: ChartEngine.radial-bar-path(radial, ring, end, root.rounded);
+                        fill: ring.color;
+                        opacity: dimmed ? 0.45 : 1;
+                        animate opacity { duration: 120ms; }
+                    }
+                    if root.show-labels: Text {
+                        x: ring.label.x * 1px - self.preferred-width * ring.label.align;
+                        y: ring.label.y * 1px - self.preferred-height * ring.label.valign;
+                        text: bar.label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        font-weight: hovered ? 700 : 600;
+                        opacity: dimmed ? 0.6 : 1;
+                    }
+                    value-label := Text {
+                        visible: root.show-values && spot.visible;
+                        x: spot.x * 1px - self.preferred-width / 2;
+                        y: spot.y * 1px - self.preferred-height / 2;
+                        text: ChartEngine.format-value(bar.value, root.format);
+                        color: spot.inside ? root.ink(ring.color) : ChartTheme.text-color;
+                        font-size: root.value-size;
+                        font-weight: 600;
+                        opacity: root.progress * (dimmed ? 0.6 : 1);
+                    }
+                }
+
+                // Keyboard: the arrow keys move through the bars, Enter
+                // clicks the selected one.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        let count = radial.visible.length;
+                        if count == 0 {
+                            return reject;
+                        }
+                        let current = root.key-position < 0 ? 0 : min(root.key-position, count - 1);
+                        if event.text == Key.DownArrow || event.text == Key.RightArrow {
+                            root.key-position = root.key-position < 0 ? 0 : mod(current + 1, count);
+                        } else if event.text == Key.UpArrow || event.text == Key.LeftArrow {
+                            root.key-position = mod(current - 1 + count, count);
+                        } else if event.text == Key.Home {
+                            root.key-position = 0;
+                        } else if event.text == Key.End {
+                            root.key-position = count - 1;
+                        } else if event.text == Key.Return && root.key-position >= 0 {
+                            root.bar-clicked(radial.visible[current]);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-index >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-index >= 0 {
+                                root.key-position = radial.rings[root.hovered-index].position;
+                                root.bar-clicked(root.hovered-index);
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.show-tooltip && root.hovered-index >= 0 && root.hovered-index < radial.rings.length: TooltipFrame {
+                    property <int> index: root.hovered-index;
+                    property <ChartRadialBarRing> ring: radial.rings[self.index];
+                    // The mouse, or the end of the selected bar.
+                    property <float> mid: (self.ring.outer + self.ring.inner) / 2;
+                    property <length> anchor-x: touch.has-hover ? touch.mouse-x : (radial.center-x + self.mid * sin(self.ring.end * 1rad)) * 1px;
+                    property <length> anchor-y: touch.has-hover ? touch.mouse-y : (radial.center-y - self.mid * cos(self.ring.end * 1rad)) * 1px;
+                    x: self.anchor-x + 14px + self.width > area.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
+                    y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, area.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    title: root.bars[self.index].label;
+
+                    TooltipLine {
+                        swatch: ring.color;
+                        text: root.value-text(index);
+                        bold: true;
+                    }
+                }
+            }
+        }
+    }
+}

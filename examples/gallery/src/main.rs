@@ -116,6 +116,24 @@ const SKILLS: [&str; 7] = [
     "Cycling",
     "Running",
 ];
+/// The radial bar sample: daily goals reached, in percent.
+const GOALS: [(&str, f32); 5] = [
+    ("Steps", 86.0),
+    ("Active minutes", 64.0),
+    ("Sleep", 92.0),
+    ("Water", 45.0),
+    ("Reading", 30.0),
+];
+/// The radial bar sample: how customers contacted support, in percent of
+/// those asked.
+const CHANNELS: [(&str, f32); 6] = [
+    ("Email", 34.0),
+    ("Live chat", 27.0),
+    ("Phone", 19.0),
+    ("Help center", 12.0),
+    ("Social media", 5.0),
+    ("Forum", 3.0),
+];
 const SLICE_NAMES: [&str; 8] = [
     "Red", "Orange", "Green", "Blue", "Purple", "Teal", "Pink", "Grey",
 ];
@@ -218,6 +236,8 @@ enum Shape {
     Live,
     /// Daily prices of a made-up stock, with a moving average.
     Candles,
+    /// Goals reached, and survey shares, as radial bars.
+    RadialBar,
 }
 
 /// Population in millions (2025 estimates), by continent.
@@ -339,6 +359,14 @@ const MONTHLY: Shape = Shape::Months {
 };
 
 const SAMPLES: &[Sample] = &[
+    sample(
+        "radial-bar",
+        "New",
+        "Radial bar charts",
+        "RadialBarChart: one ring per bar, filled in proportion to its value, with the labels in the opening. Daily goals against a fixed maximum of 100%, and survey answers against the largest share. Randomize moves the bars to new values.",
+        Shape::RadialBar,
+        &["Randomize"],
+    ),
     sample(
         "bar-vertical",
         "Bar charts",
@@ -787,6 +815,8 @@ struct State {
     labels: Rc<VecModel<SharedString>>,
     datasets: Rc<VecModel<ChartDataset>>,
     slices: Rc<VecModel<ChartSlice>>,
+    /// The second radial bar chart's bars.
+    channels: Rc<VecModel<ChartSlice>>,
     /// Heatmap rows, and heatmap or calendar values.
     row_labels: Rc<VecModel<SharedString>>,
     grid: Rc<VecModel<f32>>,
@@ -1454,12 +1484,27 @@ impl State {
         let rows: Vec<ChartDataset> = (0..count).map(|i| self.dataset(i)).collect();
         self.datasets.set_vec(rows);
         self.share_interpolation_values();
-        let slices: Vec<ChartSlice> = if sample.shape == Shape::Slices {
-            (0..5).map(|i| self.slice(i)).collect()
-        } else {
-            Vec::new()
+        let bars = |items: &[(&str, f32)]| -> Vec<ChartSlice> {
+            items
+                .iter()
+                .map(|&(label, value)| ChartSlice {
+                    label: label.into(),
+                    value,
+                    ..Default::default()
+                })
+                .collect()
+        };
+        let slices: Vec<ChartSlice> = match sample.shape {
+            Shape::Slices => (0..5).map(|i| self.slice(i)).collect(),
+            Shape::RadialBar => bars(&GOALS),
+            _ => Vec::new(),
         };
         self.slices.set_vec(slices);
+        self.channels.set_vec(if sample.shape == Shape::RadialBar {
+            bars(&CHANNELS)
+        } else {
+            Vec::new()
+        });
         self.grid_values();
         self.tree_items(false);
         self.business_data(false);
@@ -1644,6 +1689,21 @@ impl State {
                 }
             }
             "Randomize" if self.sample.shape == Shape::Treemap => self.tree_items(true),
+            // New values in place, so that the bars move to them.
+            "Randomize" if self.sample.shape == Shape::RadialBar => {
+                for row in 0..self.slices.row_count() {
+                    if let Some(mut s) = self.slices.row_data(row) {
+                        s.value = self.rng.range(15.0, 100.0);
+                        self.slices.set_row_data(row, s);
+                    }
+                }
+                for row in 0..self.channels.row_count() {
+                    if let Some(mut s) = self.channels.row_data(row) {
+                        s.value = self.rng.range(2.0, 40.0);
+                        self.channels.set_row_data(row, s);
+                    }
+                }
+            }
             "Randomize"
                 if matches!(
                     self.sample.shape,
@@ -1790,6 +1850,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         labels: Rc::new(VecModel::default()),
         datasets: Rc::new(VecModel::default()),
         slices: Rc::new(VecModel::default()),
+        channels: Rc::new(VecModel::default()),
         row_labels: Rc::new(VecModel::default()),
         grid: Rc::new(VecModel::default()),
         tree: Rc::new(VecModel::default()),
@@ -1812,6 +1873,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         ui.set_labels(s.labels.clone().into());
         ui.set_datasets(s.datasets.clone().into());
         ui.set_slices(s.slices.clone().into());
+        ui.set_channels(s.channels.clone().into());
         ui.set_row_labels(s.row_labels.clone().into());
         ui.set_grid(s.grid.clone().into());
         ui.set_tree(s.tree.clone().into());
@@ -2191,6 +2253,7 @@ fn snapshots(
             &[Key::DownArrow, Key::DownArrow][..],
         ),
         ("candlestick", (700.0, 400.0), &[Key::RightArrow][..]),
+        ("radial-bar", (660.0, 432.0), &[Key::DownArrow][..]),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);
@@ -2223,6 +2286,7 @@ fn snapshots(
         ("waterfall", (670.0, 420.0), false, "waterfall-hover"),
         ("axes-two", (1000.0, 420.0), false, "axes-two-hover"),
         ("candlestick", (700.0, 400.0), false, "candlestick-hover"),
+        ("radial-bar", (660.0, 432.0), false, "radial-bar-hover"),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);
