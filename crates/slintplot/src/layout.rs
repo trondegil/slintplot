@@ -831,6 +831,19 @@ impl ValueScale {
     pub fn pos(&self, v: f64, length: f32) -> f32 {
         length - self.fraction(v) as f32 * length
     }
+
+    /// The value at `pos` on an axis of `length` pixels: the inverse of
+    /// `pos`, or NaN for an empty range.
+    pub fn value_at(&self, pos: f32, length: f32) -> f64 {
+        let f = f64::from((length - pos) / length);
+        if self.logarithmic && self.min > 0.0 && self.max > self.min {
+            (self.min.ln() + f * (self.max.ln() - self.min.ln())).exp()
+        } else if !self.logarithmic && self.max > self.min {
+            self.min + f * (self.max - self.min)
+        } else {
+            f64::NAN
+        }
+    }
 }
 
 /// Category labels, read on demand so that huge label lists aren't copied for
@@ -1923,6 +1936,17 @@ mod tests {
             logarithmic: true,
         };
         assert!((scale.pos(10.0, 300.0) - 200.0).abs() < 1e-3);
+        assert!((scale.value_at(200.0, 300.0) - 10.0).abs() < 1e-3);
+        let linear = ValueScale {
+            logarithmic: false,
+            ..scale
+        };
+        assert_eq!(linear.value_at(150.0, 300.0), 500.5);
+        assert!(
+            ValueScale { max: 1.0, ..scale }
+                .value_at(1.0, 300.0)
+                .is_nan()
+        );
     }
 
     #[test]

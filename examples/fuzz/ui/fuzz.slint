@@ -257,6 +257,9 @@ export component Fuzz inherits Window {
             time-origin: { year: root.year, month: 13, day: 40 };
             utc-offset: root.utc-offset;
             ohlc: root.flag;
+            skip-gaps: root.stacked;
+            show-volume: root.show-values;
+            show-last-price: root.begin-at-zero;
             decimate: root.decimate;
             logarithmic: root.logarithmic;
             fixed-range: root.fixed-range;

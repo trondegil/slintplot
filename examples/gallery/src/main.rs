@@ -359,9 +359,9 @@ const SAMPLES: &[Sample] = &[
         "candlestick",
         "New",
         "Candlestick chart",
-        "CandlestickChart: half a year of daily prices of a made-up stock, with a 20-day moving average. Scroll to zoom; zoomed out, candles merge into longer periods.",
+        "CandlestickChart: half a year of daily prices and volumes of a made-up stock, with a 20-day moving average and the last price. Weekends and holidays are skipped; Linear time shows them as gaps. Scroll to zoom; on a narrow screen, candles merge into longer periods.",
         Shape::Candles,
-        &["Candles", "OHLC", "Randomize"],
+        &["Candles", "OHLC", "Skip gaps", "Linear time", "Randomize"],
     ),
     sample(
         "bar-vertical",
@@ -900,15 +900,18 @@ impl State {
     }
 
     /// Half a year of trading days of a made-up stock, from Monday 6 April
-    /// 2026: a random walk with some drift, gaps at the open and a range
-    /// around each day's move. Empty for the other samples.
+    /// 2026: a random walk with some drift, gaps at the open, a range around
+    /// each day's move, and more shares traded on bigger moves. No trading
+    /// at weekends and on the US market holidays. Empty for the other
+    /// samples.
     fn stock(&mut self) {
+        // Memorial Day, Juneteenth, Independence Day (observed), Labor Day.
+        const HOLIDAYS: [usize; 4] = [49, 74, 88, 154];
         let mut candles = Vec::new();
         if self.sample.shape == Shape::Candles {
             let mut close = 120.0f32;
             for day in 0..183 {
-                // No trading at weekends.
-                if day % 7 >= 5 {
+                if day % 7 >= 5 || HOLIDAYS.contains(&day) {
                     continue;
                 }
                 let open = close * (1.0 + (self.rng.next() - 0.5) * 0.012);
@@ -917,30 +920,19 @@ impl State {
                 let high = close.max(open) + reach(&mut self.rng);
                 let low = close.min(open) - reach(&mut self.rng);
                 let cents = |v: f32| (v * 100.0).round() / 100.0;
+                let range = (high - low) / open;
+                let volume = 2.0e6 * (0.6 + self.rng.next() * 0.5 + range * 40.0);
                 candles.push(ChartCandle {
                     x: day as f32 * 86_400.0,
                     open: cents(open),
                     high: cents(high),
                     low: cents(low),
                     close: cents(close),
+                    volume: (volume / 100.0).round() * 100.0,
                 });
             }
         }
         self.candles.set_vec(candles);
-    }
-
-    /// The average close of the last `days` candles, from the first day
-    /// that has as many before it.
-    fn moving_average(&self, days: usize) -> Vec<ChartXY> {
-        let candles: Vec<ChartCandle> = self.candles.iter().collect();
-        candles
-            .windows(days)
-            .map(|w| ChartXY {
-                x: w[days - 1].x,
-                y: w.iter().map(|c| c.close).sum::<f32>() / days as f32,
-                r: 0.0,
-            })
-            .collect()
     }
 
     /// The dataset at `index` of the current sample, with its style.
@@ -1018,10 +1010,6 @@ impl State {
                     .map(|row| (row[index % 5] * (0.8 + 0.4 * self.rng.next())).round())
                     .collect();
                 ds.values = floats(values);
-            }
-            Shape::Candles => {
-                ds.label = "20-day average".into();
-                ds.points = ModelRc::new(VecModel::from(self.moving_average(20)));
             }
             Shape::Dumbbell => {
                 ds.label = (if index == 0 { "2000" } else { "2023" }).into();
@@ -1460,7 +1448,6 @@ impl State {
             | Shape::TimeSeries { .. }
             | Shape::Skills
             | Shape::Dumbbell => 2,
-            Shape::Candles => 1,
             _ => 0,
         };
         self.stock();
@@ -1485,6 +1472,7 @@ impl State {
         ui.set_legend_position(ChartLegendPosition::Top);
         ui.set_decimate(true);
         ui.set_ohlc(false);
+        ui.set_skip_gaps(true);
         ui.set_status("".into());
         if sample.shape == Shape::Live {
             self.live.paused = false;
@@ -1644,11 +1632,8 @@ impl State {
         }
         match name {
             "Candles" | "OHLC" => ui.set_ohlc(name == "OHLC"),
-            "Randomize" if self.sample.shape == Shape::Candles => {
-                self.stock();
-                let average = self.dataset(0);
-                self.update_datasets(|_, ds| ds.points = average.points.clone());
-            }
+            "Skip gaps" | "Linear time" => ui.set_skip_gaps(name == "Skip gaps"),
+            "Randomize" if self.sample.shape == Shape::Candles => self.stock(),
             "Randomize" if slices => {
                 for row in 0..self.slices.row_count() {
                     let Some(mut s) = self.slices.row_data(row) else {
