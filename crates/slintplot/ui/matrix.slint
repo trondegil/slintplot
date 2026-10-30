@@ -32,6 +32,9 @@ export component MatrixChart {
     in property <float> max-value: 100;
     // Write each value in its circle, or under it when it doesn't fit.
     in property <bool> show-values: false;
+    // A short dash in each cell without a value (NaN, or past the end of
+    // `values`), so that it differs from a cell of 0, which stays blank.
+    in property <bool> show-empty: false;
     // A column of row totals and a row of column totals, when the cells
     // have room for them.
     in property <bool> show-totals: false;
@@ -126,6 +129,7 @@ export component MatrixChart {
         progress: root.progress,
         font-size: root.small-size / 1px,
         show-values: root.show-values,
+        show-empty: root.show-empty,
         show-totals: root.show-totals,
         legend-radius: root.legend-radius / 1px,
         format: root.format,
@@ -239,6 +243,16 @@ export component MatrixChart {
                     commands: root.matrix.separators;
                     stroke: ChartTheme.grid-color;
                     stroke-width: 1px;
+                }
+                if root.matrix.empty != "": Path {
+                    viewbox-width: plot.width / 1px;
+                    viewbox-height: plot.height / 1px;
+                    width: plot.width;
+                    height: plot.height;
+                    fit: fill;
+                    commands: root.matrix.empty;
+                    stroke: ChartTheme.axis-color;
+                    stroke-width: 1.5px;
                 }
                 Rectangle {
                     x: 0;

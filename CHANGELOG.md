@@ -36,7 +36,8 @@
   languages (`ChartLocale.open`, `high`, `low`, `close`, `volume`).
 - `MatrixChart`: rows by columns of circles whose area is proportional to
   the value, like `HeatmapChart`'s `x-labels`, `y-labels` and `values`. Zero
-  and missing values draw nothing; negative values are hollow, or filled in
+  draws nothing, and a missing value nothing too, or a short dash with
+  `show-empty`, to tell the two apart; negative values are hollow, or filled in
   `negative-color` with `color-mode: sign`. The circles take one theme
   color, a theme color per row or column, or a color scale over a second
   measure (`color-values`), diverging at zero. A size legend shows round

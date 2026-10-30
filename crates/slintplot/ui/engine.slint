@@ -794,6 +794,8 @@ export struct ChartMatrixLayout {
     block-rows: int,
     // Lines between the cells.
     separators: string,
+    // The dashes in cells without a value, with `show-empty`.
+    empty: string,
     row-totals: [string],
     column-totals: [string],
     grand-total: string,
@@ -830,6 +832,7 @@ export struct ChartMatrixRequest {
     progress: float,
     font-size: float,
     show-values: bool,
+    show-empty: bool,
     show-totals: bool,
     legend-radius: float,
     format: ChartFormat,

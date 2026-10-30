@@ -1169,7 +1169,7 @@ HeatmapChart {
 <p>A dot matrix: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order like a
 <a href="#heatmap">HeatmapChart</a>, but each cell holds a circle whose <em>area</em> is proportional to its value. Sizes compare more
 precisely than shades, so it suits sales by product and region, feature scores across tools, or survey answers by group. Zero and
-missing values draw nothing; negative values are hollow circles, or with <code>color-mode: sign</code> filled in
+missing values draw nothing, or a short dash with <code>show-empty</code>; negative values are hollow circles, or with <code>color-mode: sign</code> filled in
 <code>negative-color</code>. A size legend under the chart shows round values at the chart's scale, and the circles grow in when the chart
 appears and resize when the values change.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/matrix.webp" alt="MatrixChart: coffee sold by drink and hour, as circles in a color per drink" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/matrix-dark.webp" alt="MatrixChart: coffee sold by drink and hour, as circles in a color per drink" loading="lazy"></figure>
@@ -1205,6 +1205,7 @@ MatrixChart {
   <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Size the circles against <code>max-value</code> instead of the largest value, so that charts compare</td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>With <code>fixed-range</code>, the value of a circle that fills its cell; larger values do too</td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value in its circle, or under it when it doesn't fit</td></tr>
+  <tr><td><code>show-empty</code></td><td><code>bool</code></td><td><code>false</code></td><td>A short dash in each cell without a value (NaN, or past the end of <code>values</code>), so that it differs from a cell of 0, which stays blank</td></tr>
   <tr><td><code>show-totals</code></td><td><code>bool</code></td><td><code>false</code></td><td>A column of row totals and a row of column totals, when the cells have room for them</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The size legend, and with <code>color-mode: scale</code> the color scale</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the row, column and value under the mouse</td></tr>
