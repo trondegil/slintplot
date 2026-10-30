@@ -1,11 +1,10 @@
 // Every chart type, fed whatever the fuzzer sets: `cargo run --release -p slintplot-fuzz`.
 import {
-    BarChart, BubbleChart, CalendarHeatmap, ChartDataset, ChartEngine, ChartGaugeBand, ChartLegendPosition, ChartSlice,
-    ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GaugeChart,
+    BarChart, BubbleChart, BulletChart, CalendarHeatmap, ChartBullet, ChartDataset, ChartEngine, ChartGanttTask, ChartGaugeBand, ChartLegendPosition, ChartSlice,
+    ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GanttChart, GaugeChart,
     HeatmapChart, HorizontalBarChart, LineChart, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
     TimeSeriesChart, TreemapChart, WaterfallChart,
 } from "@slintplot";
-import { ChartGanttTask, GanttChart } from "@slintplot";
 export { ChartEngine }
 
 export component Fuzz inherits Window {
@@ -23,6 +22,7 @@ export component Fuzz inherits Window {
     in property <[ChartGaugeBand]> bands;
     in property <float> value;
     in property <[ChartGanttTask]> gantt-tasks;
+    in property <[ChartBullet]> bullets;
 
     // Options.
     in property <bool> stacked;
@@ -236,6 +236,17 @@ export component Fuzz inherits Window {
             view-end <=> root.view-end;
             min-view: root.number;
             scroll-y: root.size * 20;
+        }
+        if root.chart == 19: BulletChart {
+            rows: root.bullets;
+            bands: root.bands;
+            vertical: root.flag;
+            shared-axis: root.stacked;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            show-legend: root.show-values;
+            value-decimals: root.decimals;
         }
     }
 }

@@ -2,6 +2,7 @@ import { Button, ComboBox, Palette, ScrollView } from "std-widgets.slint";
 import {
     BarChart,
     BubbleChart,
+    BulletChart,
     CalendarHeatmap,
     ChartGaugeBand,
     ChartSunburstItem,
@@ -256,7 +257,6 @@ component ThemePicker inherits Rectangle {
                             colors: Look.dark ? option.dark : option.light;
                         }
                         Text {
-                            horizontal-stretch: 1;
                             text: option.name;
                             color: index == root.current ? Look.accent : Look.text;
                             font-size: 13px;
@@ -501,7 +501,6 @@ component LanguagePicker inherits Rectangle {
                         padding-right: 8px;
                         spacing: 8px;
                         Text {
-                            horizontal-stretch: 1;
                             text: name;
                             color: index == root.current ? Look.accent : Look.text;
                             font-size: 13px;
@@ -698,6 +697,7 @@ export component Gallery inherits Window {
     in-out property <[ChartSunburstItem]> sun;
     in property <[ChartWaterfallStep]> steps;
     in property <float> gauge-value;
+    in property <[float]> bullet-values: [270, 22.5, 320, 1650, 4.5, 104, 87, 72, 95, 118];
     in-out property <ChartLegendPosition> legend-position;
     in-out property <bool> decimate: true;
 
@@ -1240,6 +1240,48 @@ export component Gallery inherits Window {
                             ];
                         }
                     }
+                    if root.sample == "bullet": GridLayout {
+                        spacing: 8px;
+                        BulletChart {
+                            row: 0;
+                            col: 0;
+                            colspan: root.narrow ? 1 : 2;
+                            title: "Sales, year to date";
+                            rows: [
+                                { label: "Revenue", sublabel: "US$ (1,000s)", value: root.bullet-values[0], target: 250, prefix: "$",
+                                  bands: [{ to: 150, label: "Poor" }, { to: 225, label: "OK" }, { to: 300, label: "Good" }] },
+                                { label: "Profit", sublabel: "%", value: root.bullet-values[1], target: 26, suffix: "%",
+                                  bands: [{ to: 20, label: "Poor" }, { to: 25, label: "OK" }, { to: 30, label: "Good" }] },
+                                { label: "Order size", sublabel: "US$, average", value: root.bullet-values[2], target: 550, prefix: "$",
+                                  bands: [{ to: 350, label: "Poor" }, { to: 500, label: "OK" }, { to: 600, label: "Good" }] },
+                                { label: "New customers", sublabel: "count", value: root.bullet-values[3], target: 2100,
+                                  bands: [{ to: 1400, label: "Poor" }, { to: 2000, label: "OK" }, { to: 2500, label: "Good" }] },
+                                { label: "Satisfaction", sublabel: "of 5", value: root.bullet-values[4], target: 4.2,
+                                  bands: [{ to: 3.5, label: "Poor" }, { to: 4.25, label: "OK" }, { to: 5, label: "Good" }] },
+                            ];
+                        }
+                        BulletChart {
+                            row: root.narrow ? 1 : 0;
+                            col: root.narrow ? 0 : 2;
+                            title: "Sales target reached, by region";
+                            vertical: true;
+                            shared-axis: true;
+                            show-legend: true;
+                            value-suffix: ChartTexts.percent;
+                            rows: [
+                                { label: "North", value: root.bullet-values[5], target: 100 },
+                                { label: "South", value: root.bullet-values[6], target: 100 },
+                                { label: "East", value: root.bullet-values[7], target: 100 },
+                                { label: "West", value: root.bullet-values[8], target: 100 },
+                                { label: "Online", value: root.bullet-values[9], target: 100 },
+                            ];
+                            bands: [
+                                { to: 70, label: "Behind", color: ChartTheme.dark ? #fb718566 : #f43f5e4d },
+                                { to: 90, label: "Close", color: ChartTheme.dark ? #fbbf2466 : #f59e0b4d },
+                                { to: 130, label: "Ahead", color: ChartTheme.dark ? #34d39966 : #10b9814d },
+                            ];
+                        }
+                    }
                     if root.sample == "calendar": CalendarHeatmap {
                         title: "Contributions in the last year";
                         start-date: { year: 2025, month: 10, day: 26 };
@@ -1301,7 +1343,6 @@ export component Gallery inherits Window {
                             }
                         }
                         Text {
-                            horizontal-stretch: 1;
                             text: root.status;
                             color: Look.secondary;
                             font-size: 12px;

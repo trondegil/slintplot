@@ -601,6 +601,71 @@ export struct ChartGanttRequest {
     locale: ChartLocale,
 }
 
+// A row of a bullet chart: a value against a target, over shaded bands.
+export struct ChartBullet {
+    label: string,
+    // A second, smaller line under the label, such as the unit.
+    sublabel: string,
+    value: float,
+    // Where the target mark goes.
+    target: float,
+    // The row's own bands; empty to use the chart's.
+    bands: [ChartGaugeBand],
+    // How the row's values are written; empty to use the chart's
+    // `value-prefix` and `value-suffix`.
+    prefix: string,
+    suffix: string,
+}
+
+export struct ChartBulletRect { x: float, y: float, width: float, height: float }
+
+export struct ChartBulletRow {
+    index: int,
+    // The row's part of the plot, the shaded track in it, and the value bar.
+    cell: ChartBulletRect,
+    track: ChartBulletRect,
+    bar: ChartBulletRect,
+    // The target mark, when the row has one on its axis.
+    target: ChartBulletRect,
+    has-target: bool,
+    // The band that holds the value, or -1, with its label and color.
+    value-band: int,
+    value-band-label: string,
+    value-band-color: color,
+}
+
+export struct ChartBulletBand { row: int, index: int, x: float, y: float, width: float, height: float, color: color }
+
+export struct ChartBulletLayout {
+    rows: [ChartBulletRow],
+    bands: [ChartBulletBand],
+    // The tick labels, and short marks at the ticks.
+    ticks: [ChartLabel],
+    tick-marks: string,
+    // The size of a row: its height, or a column's width.
+    step: float,
+}
+
+export struct ChartBulletRequest {
+    rows: [ChartBullet],
+    // The bands of rows without their own.
+    bands: [ChartGaugeBand],
+    width: float,
+    height: float,
+    vertical: bool,
+    // One axis for all rows, instead of one each.
+    shared-axis: bool,
+    fixed: bool,
+    fixed-min: float,
+    fixed-max: float,
+    format: ChartFormat,
+    font-size: float,
+    progress: float,
+    // Bands without a color are shades of this one.
+    shade: color,
+    locale: ChartLocale,
+}
+
 export global ChartEngine {
     pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
     // Whether a visible dataset is on the right value axis (`right`), or on
@@ -683,6 +748,12 @@ export global ChartEngine {
     // The smallest and largest value of the visible datasets at a category.
     pure callback dumbbell-extent(datasets: [ChartDataset], index: int) -> ChartRange;
     pure callback dumbbell-layout(request: ChartDumbbellRequest) -> ChartDumbbellLayout;
+    pure callback bullet-layout(request: ChartBulletRequest) -> ChartBulletLayout;
+    // The rows' labels, or their sublabels.
+    pure callback bullet-labels(rows: [ChartBullet], sublabels: bool) -> [string];
+    // The legend of a bullet chart's bands; bands without a color are
+    // shades of `shade`.
+    pure callback bullet-legend(bands: [ChartGaugeBand], shade: color, locale: ChartLocale) -> [ChartLegendItem];
     // The value at which a data point is drawn: itself, or its stacked total.
     pure callback plotted-value(datasets: [ChartDataset], chart: ChartKind, stacked: bool, dataset: int, index: int) -> float;
     // Gantt charts: the rows, which don't depend on the chart size, and the

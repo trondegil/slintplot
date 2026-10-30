@@ -212,6 +212,8 @@ enum Shape {
     Gauge,
     /// A project plan, written in the gallery's .slint file.
     Gantt,
+    /// Measures against their targets.
+    Bullet,
     /// Sensors streaming new values.
     Live,
 }
@@ -335,6 +337,22 @@ const MONTHLY: Shape = Shape::Months {
 };
 
 const SAMPLES: &[Sample] = &[
+    sample(
+        "gantt",
+        "New",
+        "Gantt",
+        "GanttChart: a release plan in four groups, with progress, milestones and a line at today. Scroll to zoom, drag to pan.",
+        Shape::Gantt,
+        &["Reset zoom"],
+    ),
+    sample(
+        "bullet",
+        "New",
+        "Bullet charts",
+        "BulletChart: a KPI panel with an axis per row and gray bands, and columns on a shared axis over colored bands.",
+        Shape::Bullet,
+        &["Randomize"],
+    ),
     sample(
         "bar-vertical",
         "Bar charts",
@@ -680,14 +698,6 @@ const SAMPLES: &[Sample] = &[
         "GaugeChart: a filled arc with rounded ends, the same with a ring of bands, and a needle with ticks over the bands.",
         Shape::Gauge,
         &["Randomize"],
-    ),
-    sample(
-        "gantt",
-        "Business charts",
-        "Gantt",
-        "GanttChart: a release plan in four groups, with progress, milestones and a line at today. Scroll to zoom, drag to pan.",
-        Shape::Gantt,
-        &["Reset zoom"],
     ),
     sample(
         "pie-labels",
@@ -1222,6 +1232,26 @@ impl State {
             } else {
                 72.0
             });
+            // The bullet charts: a KPI panel, then sales by region in
+            // percent of target.
+            const BULLET: [f32; 10] = [
+                270.0, 22.5, 320.0, 1650.0, 4.5, 104.0, 87.0, 72.0, 95.0, 118.0,
+            ];
+            let values: Vec<f32> = BULLET
+                .iter()
+                .enumerate()
+                .map(|(i, &v)| {
+                    if !randomize {
+                        v
+                    } else if i == 4 {
+                        // Satisfaction, out of 5.
+                        (v * (0.7 + 0.4 * self.rng.next()) * 10.0).round().min(50.0) / 10.0
+                    } else {
+                        vary(&mut self.rng, v, 0.3)
+                    }
+                })
+                .collect();
+            ui.set_bullet_values(ModelRc::new(VecModel::from(values)));
         }
     }
 
@@ -1563,7 +1593,11 @@ impl State {
             "Randomize"
                 if matches!(
                     self.sample.shape,
-                    Shape::Sunburst | Shape::Funnel | Shape::Waterfall | Shape::Gauge
+                    Shape::Sunburst
+                        | Shape::Funnel
+                        | Shape::Waterfall
+                        | Shape::Gauge
+                        | Shape::Bullet
                 ) =>
             {
                 self.business_data(true);
@@ -2037,7 +2071,8 @@ fn snapshots(
     snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
     snapshot::save(window, &dir.join("legend-left.png"))?;
-    state.borrow_mut().select(&SAMPLES[0]);
+    let bars = SAMPLES.iter().find(|s| s.id == "bar-vertical").unwrap();
+    state.borrow_mut().select(bars);
     snapshot::render(window);
     snapshot::settle(Duration::from_millis(1100));
     snapshot::hover(window, 640.0, 400.0);

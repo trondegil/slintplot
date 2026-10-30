@@ -315,6 +315,7 @@
   <a href="#waterfall">WaterfallChart</a>
   <a href="#dumbbell">DumbbellChart</a>
   <a href="#gauge">GaugeChart</a>
+  <a href="#bullet">BulletChart</a>
   <p class="group">Reference</p>
   <a href="#axes">Axes and formatting</a>
   <a href="#data-labels">Data labels</a>
@@ -1399,6 +1400,53 @@ GaugeChart {
   <tr><td><code>hovered-band</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The band under the mouse, or -1</td></tr>
 </table>
 
+<h2 id="bullet">BulletChart</h2>
+<p>Rows of a thin bar for a value and a mark for its target, over shaded bands such as poor, OK and good, after Stephen Few's
+bullet graphs: a compact alternative to a row of gauges, for dashboards and small screens. Each row has its own value axis, so
+measures in different units fit in one panel; <code>shared-axis: true</code> puts them all on one. Bands are <code>ChartGaugeBand</code>s,
+the row's own or the chart's, and those without a color are shades of gray, the first the darkest. <code>vertical: true</code> turns
+the rows into columns. The tooltip shows the value, the target and the band the value is in.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bullet.webp" alt="BulletChart of five sales measures against their targets" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bullet-dark.webp" alt="BulletChart of five sales measures against their targets" loading="lazy"></figure>
+<pre data-shot="bullet"><code>import { BulletChart } from "@slintplot";
+
+BulletChart {
+    title: "Sales, year to date";
+    rows: [
+        { label: "Revenue", sublabel: "US$ (1,000s)", value: 270, target: 250, prefix: "$",
+          bands: [{ to: 150, label: "Poor" }, { to: 225, label: "OK" }, { to: 300, label: "Good" }] },
+        { label: "Profit", sublabel: "%", value: 22.5, target: 26, suffix: "%",
+          bands: [{ to: 20, label: "Poor" }, { to: 25, label: "OK" }, { to: 30, label: "Good" }] },
+        { label: "Order size", sublabel: "US$, average", value: 320, target: 550, prefix: "$",
+          bands: [{ to: 350, label: "Poor" }, { to: 500, label: "OK" }, { to: 600, label: "Good" }] },
+        { label: "New customers", sublabel: "count", value: 1650, target: 2100,
+          bands: [{ to: 1400, label: "Poor" }, { to: 2000, label: "OK" }, { to: 2500, label: "Good" }] },
+        { label: "Satisfaction", sublabel: "of 5", value: 4.5, target: 4.2,
+          bands: [{ to: 3.5, label: "Poor" }, { to: 4.25, label: "OK" }, { to: 5, label: "Good" }] },
+    ];
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>rows</code></td><td><code>[ChartBullet]</code></td><td></td><td>One entry per row: <code>label</code>, <code>sublabel</code>, <code>value</code>, <code>target</code>, <code>bands</code>, <code>prefix</code>, <code>suffix</code>. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>bands</code></td><td><code>[ChartGaugeBand]</code></td><td></td><td>The bands of rows without their own: <code>to</code>, <code>label</code>, <code>color</code>; each band starts where the previous one ends</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>vertical</code></td><td><code>bool</code></td><td><code>false</code></td><td>Columns that grow upwards, with the labels below them</td></tr>
+  <tr><td><code>shared-axis</code></td><td><code>bool</code></td><td><code>false</code></td><td>One value axis for all rows, for measures in the same unit, instead of one per row</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The value bar</td></tr>
+  <tr><td><code>target-color</code></td><td><code>color</code></td><td>dark gray, light gray in dark mode</td><td>The target mark</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>A legend of the chart's <code>bands</code></td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the row under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the bars in when the chart appears</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> for every axis instead of fitting each row</td></tr>
+  <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axes, with <code>fixed-range</code></td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axes, with <code>fixed-range</code></td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code>, in rows without their own <code>prefix</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code>, in rows without their own <code>suffix</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The row under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>row-clicked(index)</code></td><td>callback</td><td></td><td>A row was clicked, or chosen with Enter</td></tr>
+</table>
+
 <h2 id="axes">Axes and formatting</h2>
 <p>Cartesian charts and <code>HorizontalBarChart</code> share these axis options:</p>
 <ul>
@@ -1551,6 +1599,11 @@ unset to use the group's color. <code>progress</code> is the share done, from 0 
 <h3><code>ChartGaugeBand</code></h3>
 <p><code>{ to: float, label: string, color: color }</code>. A gauge band, from where the previous one ends (or <code>min-value</code>) to <code>to</code>.
 Leave <code>color</code> unset for the theme's next color.</p>
+<h3><code>ChartBullet</code></h3>
+<p><code>{ label: string, sublabel: string, value: float, target: float, bands: [ChartGaugeBand], prefix: string, suffix: string }</code>.
+A row of a bullet chart. <code>sublabel</code> is a smaller line under the label, such as the unit. Leave <code>bands</code> empty to use the
+chart's, and <code>prefix</code> and <code>suffix</code> empty to use its <code>value-prefix</code> and <code>value-suffix</code>. Bands start at the
+start of the row's axis; those without a color are shades of gray, the first the darkest.</p>
 <h3><code>ChartHit</code></h3>
 <p><code>{ dataset: int, index: int, x: float, y: float, r: float }</code>. The point under the mouse in a scatter or bubble chart, with its position in pixels. <code>dataset</code> is -1 when there is none.</p>
 <h3><code>ChartDateTime</code></h3>
@@ -1694,7 +1747,7 @@ and dataset names itself; everything else comes from the library.</p>
 
 <h2 id="interaction">Interaction</h2>
 <ul>
-  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, and gauges the band under the mouse.</li>
+  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, gauges the band under the mouse, and bullet charts the value, target and band of a row.</li>
   <li><strong>Legend.</strong> Clicking an entry toggles the dataset's or slice's <code>hidden</code> flag; the axes rescale to the visible data. In a treemap, it hides or shows a group, and in a sunburst a top-level item.</li>
   <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code>, <code>step-clicked</code> and <code>task-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
   <li><strong>Keyboard.</strong> Every chart can be used without a mouse. Click a chart (or tab to it) and a focus ring appears; the arrow
@@ -1708,7 +1761,7 @@ and dataset names itself; everything else comes from the library.</p>
       <tr><td>Calendar heatmap</td><td>Left and Right move a week, Up and Down a day</td></tr>
       <tr><td>Treemap</td><td>Move through the items, group by group and largest first</td></tr>
       <tr><td>Sunburst</td><td>Move through the items, each parent before its children; Enter also zooms into an item with children, and Escape or Backspace zooms out</td></tr>
-      <tr><td>Funnel, dumbbell</td><td>Move through the stages or rows</td></tr>
+      <tr><td>Funnel, dumbbell, bullet</td><td>Move through the stages or rows</td></tr>
       <tr><td>Waterfall</td><td>Move through the steps</td></tr>
       <tr><td>Gantt</td><td>Up and Down move through the tasks, scrolling them into view; with <code>zoom-enabled</code>, Left and Right pan</td></tr>
       <tr><td>Gauge</td><td>None: a gauge shows one value, which its accessibility description reads out</td></tr>
@@ -1923,6 +1976,7 @@ axes are computed from the remaining values.</p>
   <tr><td>Funnel</td><td>A stage of 0.</td></tr>
   <tr><td>Waterfall</td><td>The step adds nothing; the running total carries on.</td></tr>
   <tr><td>Gauge</td><td>The needle or fill stays at <code>min-value</code>.</td></tr>
+  <tr><td>Bullet</td><td>No bar, or no target mark; the row stays.</td></tr>
 </table>
 <p>Values outside a fixed range (<code>fixed-range: true</code>) lie off the plot, which is then clipped: lines towards them
 end at its edge. On a logarithmic axis, zero and negative values lie below the bottom of the axis.</p>
@@ -1975,7 +2029,7 @@ let labels: Vec&lt;String&gt; = scale.ticks().iter().map(|&amp;v| format_tick(v,
   <code>ChartEngine</code> is the Slint global that the chart components call to compute their geometry. You don't call it yourself,
   but it has to be exported from your root <code>.slint</code> file so that <code>register!</code> can connect it.
   Its pure callbacks include <code>layout</code>, <code>value-axis</code>, <code>pie-layout</code>, <code>radar-layout</code>, <code>treemap-layout</code>,
-  <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gantt-layout</code>, <code>gauge-layout</code>,
+  <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gantt-layout</code>, <code>gauge-layout</code>, <code>bullet-layout</code>,
   the hit tests and <code>format-value</code>.
 </p>
 

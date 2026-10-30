@@ -10,6 +10,10 @@
   optional line at `now`. It zooms and pans along time like the time series,
   scrolls rows that don't fit and lays out only the rows in view. Tasks are
   `ChartGanttTask`s.
+- `BulletChart`: rows of a thin bar for a value and a mark for its target,
+  over shaded bands such as poor, OK and good. A compact alternative to
+  gauges for dashboards. Each row has its own axis, or all share one with
+  `shared-axis`; `vertical: true` turns the rows into columns.
 
 ### Fixed
 
