@@ -326,16 +326,16 @@ const SALES_REGIONS: [&str; 6] = [
 ];
 
 /// Sales per product and region in millions of dollars (made up), in the
-/// order of `SALES_REGIONS`.
+/// order of `SALES_REGIONS`; NaN where a product isn't sold.
 const SALES: [(&str, [f32; 6]); 8] = [
     ("Phones", [610.0, 540.0, 890.0, 210.0, 160.0, 120.0]),
     ("Laptops", [420.0, 360.0, 510.0, 95.0, 70.0, 38.0]),
     ("Accessories", [240.0, 210.0, 300.0, 80.0, 55.0, 45.0]),
     ("Headphones", [210.0, 190.0, 260.0, 60.0, 45.0, 30.0]),
     ("Tablets", [180.0, 150.0, 220.0, 40.0, 35.0, 18.0]),
-    ("Smartwatches", [160.0, 120.0, 180.0, 35.0, 40.0, 14.0]),
+    ("Smartwatches", [160.0, 120.0, 180.0, 35.0, 40.0, f32::NAN]),
     ("Monitors", [150.0, 140.0, 190.0, 30.0, 25.0, 12.0]),
-    ("Cameras", [90.0, 85.0, 140.0, 15.0, 12.0, 6.0]),
+    ("Cameras", [90.0, 85.0, 140.0, 15.0, f32::NAN, f32::NAN]),
 ];
 
 /// Life expectancy at birth in years, in 2000 and 2023 (rounded estimates).
@@ -384,22 +384,6 @@ const MONTHLY: Shape = Shape::Months {
 };
 
 const SAMPLES: &[Sample] = &[
-    sample(
-        "radial-bar",
-        "New",
-        "Radial bar charts",
-        "RadialBarChart: one ring per bar, filled in proportion to its value, with the labels in the opening. Daily goals against a fixed maximum of 100%, and survey answers against the largest share. Randomize moves the bars to new values.",
-        Shape::RadialBar,
-        &["Randomize"],
-    ),
-    sample(
-        "matrix",
-        "New",
-        "Matrix",
-        "MatrixChart: sales by product and region as circles, their area proportional to the value, colored by growth on last year: blue for growth, red for decline. Totals at the edges; Randomize changes the numbers.",
-        Shape::Sales,
-        &["Randomize"],
-    ),
     sample(
         "bar-vertical",
         "Bar charts",
@@ -515,6 +499,14 @@ const SAMPLES: &[Sample] = &[
         "Equal angles; the radius shows the value.",
         Shape::Slices,
         DATA_ACTIONS,
+    ),
+    sample(
+        "radial-bar",
+        "Other charts",
+        "Radial bar charts",
+        "RadialBarChart: one ring per bar, filled in proportion to its value, with the labels in the opening. Daily goals against a fixed maximum of 100%, and survey answers against the largest share. Randomize moves the bars to new values.",
+        Shape::RadialBar,
+        &["Randomize"],
     ),
     sample(
         "radar",
@@ -696,6 +688,14 @@ const SAMPLES: &[Sample] = &[
         "Diverging heatmap",
         "A correlation matrix: diverging around 0, with a fixed range of -1 to 1 and values in the cells.",
         Shape::Correlation,
+        &["Randomize"],
+    ),
+    sample(
+        "matrix",
+        "Heatmaps",
+        "Matrix",
+        "MatrixChart: sales by product and region as circles, their area proportional to the value, colored by growth on last year: blue for growth, red for decline. Totals at the edges; a dash where a product isn't sold (show-empty). Randomize changes the numbers.",
+        Shape::Sales,
         &["Randomize"],
     ),
     sample(
@@ -1228,7 +1228,8 @@ impl State {
                     .map(|(region, &v)| {
                         // Faster growth in the smaller markets.
                         let trend = [2.0, -1.0, 6.0, 9.0, 11.0, 14.0][region];
-                        growth.push((trend + (self.rng.next() - 0.45) * 30.0).round());
+                        let change = (trend + (self.rng.next() - 0.45) * 30.0).round();
+                        growth.push(if v.is_nan() { f32::NAN } else { change });
                         if randomize {
                             (v * (0.55 + self.rng.next() * 0.9)).round()
                         } else {

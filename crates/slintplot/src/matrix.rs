@@ -45,6 +45,9 @@ pub struct MatrixRequest<'a> {
     pub progress: f32,
     pub font_size: f32,
     pub show_values: bool,
+    /// A short dash in each cell without a value, so that it differs from
+    /// a cell of 0.
+    pub show_empty: bool,
     /// A column of row totals and a row of column totals.
     pub show_totals: bool,
     /// The largest circle of the size legend.
@@ -99,6 +102,9 @@ pub struct Matrix {
     pub block_rows: usize,
     /// Lines between the cells, as path commands.
     pub separators: String,
+    /// The dashes in cells without a value, with `show_empty`, as path
+    /// commands.
+    pub empty: String,
     /// The totals, when shown and there is room: one per row and column,
     /// and all together.
     pub row_totals: Vec<String>,
@@ -281,6 +287,19 @@ pub fn layout(req: &MatrixRequest) -> Matrix {
     out.block_rows = block_rows;
     let step_w = cell_w * block_columns as f32;
     let step_h = cell_h * block_rows as f32;
+    // A dash in each cell without a value, where cells are drawn one by one.
+    if req.show_empty && block_columns == 1 && block_rows == 1 && cell_w > 0.0 && cell_h > 0.0 {
+        let half = (cell_w.min(cell_h) * 0.12).clamp(2.0, font * 0.5);
+        let mut path = String::new();
+        for index in 0..rows * columns {
+            if !value_at(values, index).is_finite() {
+                let x = (index % columns) as f32 * cell_w + cell_w / 2.0;
+                let y = (index / columns) as f32 * cell_h + cell_h / 2.0;
+                let _ = write!(path, "M {} {y} L {} {y} ", x - half, x + half);
+            }
+        }
+        out.empty = path;
+    }
     // A little room around the largest circle.
     let max_r = (step_w.min(step_h) / 2.0 - (step_w.min(step_h) * 0.06).max(1.0)).max(0.0);
 
@@ -532,11 +551,31 @@ mod tests {
             progress: 1.0,
             font_size: 12.0,
             show_values: false,
+            show_empty: false,
             show_totals: false,
             legend_radius: 14.0,
             format,
             color_format: format,
         }
+    }
+
+    #[test]
+    fn empty_cells_get_a_dash_but_zero_stays_blank() {
+        let format = Format::default();
+        // A missing value, a zero, and two cells past the end of `values`.
+        let values = [1.0, f64::NAN, 0.0, 2.0];
+        let m = layout(&request(&values, &format));
+        assert!(m.empty.is_empty(), "off by default");
+        let m = layout(&MatrixRequest {
+            show_empty: true,
+            ..request(&values, &format)
+        });
+        assert_eq!(m.empty.matches('M').count(), 3, "{}", m.empty);
+        let all_missing = layout(&MatrixRequest {
+            show_empty: true,
+            ..request(&[], &format)
+        });
+        assert_eq!(all_missing.empty.matches('M').count(), 6);
     }
 
     #[test]
