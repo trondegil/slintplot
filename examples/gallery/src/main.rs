@@ -17,6 +17,15 @@ use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use stream_model::StreamModel;
 
 slint::include_modules!();
+include!(concat!(env!("OUT_DIR"), "/sample_code.rs"));
+
+/// The Slint code of the sample `id`, for the code panel.
+fn sample_code(id: &str) -> &'static str {
+    SAMPLE_CODE
+        .iter()
+        .find(|(sample, _)| *sample == id)
+        .map_or("", |(_, code)| code)
+}
 
 const MONTHS: [&str; 12] = [
     "January",
@@ -187,6 +196,8 @@ struct Live {
     /// Updates since `since`, for the measured rate.
     updates: u32,
     since: f64,
+    /// A click's readout in the status, and when the stats first found it.
+    clicked: Option<(SharedString, f64)>,
 }
 
 /// How a sample's data looks.
@@ -1578,6 +1589,7 @@ impl State {
         ui.set_ohlc(false);
         ui.set_skip_gaps(true);
         ui.set_status("".into());
+        ui.set_code(sample_code(sample.id).into());
         if sample.shape == Shape::Live {
             self.live.paused = false;
             self.live_reset();
@@ -1650,8 +1662,23 @@ impl State {
     }
 
     /// The point count, update rate and layout time under the chart.
-    fn show_live_stats(&self, measured: Option<f64>) {
+    fn show_live_stats(&mut self, measured: Option<f64>) {
         let Some(ui) = self.ui.upgrade() else { return };
+        // A clicked point's readout stays for three seconds.
+        let status = ui.get_status();
+        if status.contains("-clicked: ") {
+            match &self.live.clicked {
+                Some((text, since)) if *text == status => {
+                    if now() - since < 3.0 {
+                        return;
+                    }
+                }
+                _ => {
+                    self.live.clicked = Some((status, now()));
+                    return;
+                }
+            }
+        }
         let points = self
             .live
             .models
@@ -1877,6 +1904,17 @@ impl State {
 fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     let ui = Gallery::new()?;
     slintplot::register!(ui);
+    // A monospace font for the code panel.
+    ui.set_code_font(
+        if cfg!(windows) {
+            "Consolas"
+        } else if cfg!(target_os = "macos") {
+            "Menlo"
+        } else {
+            "DejaVu Sans Mono"
+        }
+        .into(),
+    );
 
     // The sample list, with a header row per category, in the order the
     // categories first appear.
@@ -1927,6 +1965,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
             models: Vec::new(),
             updates: 0,
             since: 0.0,
+            clicked: None,
         },
     }));
     {
@@ -2146,6 +2185,22 @@ fn open_page(url: &str) {
     }
 }
 
+/// In the browser: copies `text` with the page's clipboard API, as Slint's
+/// own copy doesn't reach the system clipboard there.
+#[cfg(target_arch = "wasm32")]
+fn copy_to_clipboard(text: &str) {
+    use js_sys::{Function, Reflect};
+    use wasm_bindgen::JsCast;
+    let get = |object: &wasm_bindgen::JsValue, name: &str| Reflect::get(object, &name.into()).ok();
+    let Some(clipboard) = get(&js_sys::global(), "navigator").and_then(|n| get(&n, "clipboard"))
+    else {
+        return;
+    };
+    if let Some(write) = get(&clipboard, "writeText").and_then(|f| f.dyn_into::<Function>().ok()) {
+        let _ = write.call1(&clipboard, &text.into());
+    }
+}
+
 /// In the browser: the gallery in the page's `<canvas id="canvas">`.
 #[cfg(target_arch = "wasm32")]
 fn main() {
@@ -2154,6 +2209,7 @@ fn main() {
     // The browser has no fonts for Japanese and Chinese.
     ui.set_cjk_fonts(false);
     ui.on_open_url(|url| open_page(url.as_str()));
+    ui.on_copy_text(|text| copy_to_clipboard(text.as_str()));
     ui.run().expect("the event loop");
 }
 
@@ -2411,5 +2467,37 @@ fn snapshots(
         snapshot::save(window, &dir.join(format!("languages-{name}.png")))?;
     }
     ui.set_language(0);
+    // A click's readout in the footer, and the code panel.
+    for (dark, suffix) in [(false, ""), (true, "-dark")] {
+        ui.set_dark_mode(dark);
+        state.borrow_mut().rng = Rng(SEED);
+        let matrix = SAMPLES.iter().find(|s| s.id == "matrix").unwrap();
+        state.borrow_mut().select(matrix);
+        snapshot::render(window);
+        snapshot::settle(Duration::from_millis(1100));
+        snapshot::click(window, 640.0, 330.0);
+        snapshot::leave(window);
+        snapshot::render(window);
+        snapshot::settle(Duration::from_millis(300));
+        snapshot::save(window, &dir.join(format!("click-status{suffix}.png")))?;
+        ui.set_code_open(true);
+        snapshot::render(window);
+        snapshot::settle(Duration::from_millis(300));
+        snapshot::save(window, &dir.join(format!("code-panel{suffix}.png")))?;
+        ui.set_code_open(false);
+    }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_sample_has_code() {
+        for sample in SAMPLES {
+            let code = sample_code(sample.id);
+            assert!(code.contains("from \"@slintplot\";"), "{}", sample.id);
+        }
+    }
 }

@@ -12,7 +12,10 @@ slintplot-gallery --snapshot <dir>   # render every sample to PNG, without a win
 
 ![The gallery app](https://slintplot.dev/screenshots/light.png)
 
-`ui/gallery.slint` has a working example of every chart.
+`ui/gallery.slint` has a working example of every chart. The code button
+(`</>`) at the top right shows the sample's code, taken from that file at build
+time, with a Copy button. Clicking a chart shows the click callback and what
+was clicked, such as `slice-clicked: Safari, 19`, at the bottom right.
 
 On Linux, Slint needs the fontconfig and xkbcommon development packages first
 (`libfontconfig-dev` and `libxkbcommon-dev` on Debian and Ubuntu).

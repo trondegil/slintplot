@@ -1,4 +1,4 @@
-import { Button, ComboBox, Palette, ScrollView } from "std-widgets.slint";
+import { ComboBox, Palette, ScrollView } from "std-widgets.slint";
 import {
     BarChart,
     BubbleChart,
@@ -663,6 +663,148 @@ component DarkModeButton inherits Rectangle {
     }
 }
 
+// Opens the code of the current sample: angle brackets and a slash.
+component CodeButton inherits Rectangle {
+    callback clicked();
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: touch.has-hover || touch.pressed ? Look.hover : transparent;
+    accessible-role: button;
+    accessible-label: "Code";
+    accessible-action-default => {
+        root.clicked();
+    }
+    Path {
+        width: 20px;
+        height: 20px;
+        viewbox-width: 20;
+        viewbox-height: 20;
+        commands: "M 6.5 5.5 L 2 10 L 6.5 14.5 M 13.5 5.5 L 18 10 L 13.5 14.5 M 11.5 3.5 L 8.5 16.5";
+        stroke: Look.text;
+        stroke-width: 1.5px;
+        fill: transparent;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// The Slint code of the current sample, over the gallery, with a button that
+// copies it. Closes with Escape, the close button or a click beside it.
+component CodePanel inherits Rectangle {
+    in property <string> title;
+    in property <string> code;
+    // Smaller margins on phone-sized windows.
+    in property <bool> narrow;
+    // A monospace font of the system.
+    in property <string> font-family;
+    callback close();
+    // Also called with the code on Copy: the browser copies it from Rust.
+    callback copy-text(text: string);
+    // "Copied" on the button for a moment after copying.
+    private property <bool> copied;
+
+    background: #00000066;
+    TouchArea {
+        clicked => {
+            root.close();
+        }
+    }
+    Rectangle {
+        width: min(880px, root.width - (root.narrow ? 24px : 96px));
+        // As tall as the code, with room for the header and a scroll bar.
+        height: min(root.height - (root.narrow ? 24px : 96px), code-text.preferred-height + 96px);
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: Look.border;
+        background: Look.surface;
+        drop-shadow-blur: 24px;
+        drop-shadow-offset-y: 8px;
+        drop-shadow-color: #00000040;
+        // Clicks on the panel don't close it.
+        TouchArea { }
+        keys := FocusScope {
+            init => {
+                self.focus();
+            }
+            key-pressed(event) => {
+                if event.text == Key.Escape {
+                    root.close();
+                    return accept;
+                }
+                reject
+            }
+            VerticalLayout {
+                HorizontalLayout {
+                    padding: 12px;
+                    padding-left: 16px;
+                    spacing: 8px;
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.title;
+                        color: Look.text;
+                        font-size: 15px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    ActionButton {
+                        width: 84px;
+                        text: root.copied ? "Copied" : "Copy";
+                        clicked => {
+                            code-text.select-all();
+                            code-text.copy();
+                            code-text.clear-selection();
+                            root.copy-text(root.code);
+                            root.copied = true;
+                        }
+                    }
+                    ActionButton {
+                        text: "Close";
+                        clicked => {
+                            root.close();
+                        }
+                    }
+                }
+                Rectangle {
+                    height: 1px;
+                    background: Look.border;
+                }
+                ScrollView {
+                    content-width: max(self.visible-width, code-text.preferred-width + 32px);
+                    content-height: max(self.visible-height, code-text.preferred-height + 24px);
+                    // Read-only, but selectable: the Copy button selects all of it.
+                    code-text := TextInput {
+                        x: 16px;
+                        y: 12px;
+                        width: self.preferred-width;
+                        height: self.preferred-height;
+                        text: root.code;
+                        read-only: true;
+                        single-line: false;
+                        wrap: no-wrap;
+                        font-family: root.font-family;
+                        font-size: 12px;
+                        color: Look.text;
+                        selection-background-color: Look.accent.with-alpha(0.3);
+                    }
+                }
+            }
+        }
+    }
+    Timer {
+        interval: 1.5s;
+        running: root.copied;
+        triggered => {
+            root.copied = false;
+        }
+    }
+}
+
 // A sample browser: pick a sample on
 // the left, and change its data with the buttons below the chart.
 export component Gallery inherits Window {
@@ -693,6 +835,12 @@ export component Gallery inherits Window {
     // Buttons for the current sample.
     in property <[string]> actions;
     in-out property <string> status;
+    // The Slint code of the current sample's charts, for the code panel.
+    in property <string> code;
+    in-out property <bool> code-open;
+    // A monospace font for the code, set per system from Rust; the browser
+    // only has Inter.
+    in property <string> code-font: "Menlo";
 
     // The data of the current sample.
     in property <[string]> labels;
@@ -744,6 +892,8 @@ export component Gallery inherits Window {
     callback action(index: int);
     // Opens the website or GitHub in the browser.
     callback open-url(url: string);
+    // The code panel's Copy button: the browser copies the code from Rust.
+    callback copy-text(text: string);
     // Samples with their own light and dark colors update them.
     callback dark-mode-changed();
     // The "languages" sample sets the chart language and translates its texts.
@@ -882,6 +1032,11 @@ export component Gallery inherits Window {
                     alignment: start;
                     HorizontalLayout {
                         spacing: 2px;
+                        CodeButton {
+                            clicked => {
+                                root.code-open = true;
+                            }
+                        }
                         // The documentation: an open book.
                         LinkButton {
                             label: "Documentation";
@@ -957,6 +1112,9 @@ export component Gallery inherits Window {
                         title: "Vertical bar chart";
                         labels: root.labels;
                         datasets <=> root.datasets;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "bar-horizontal": HorizontalBarChart {
                         title: "Horizontal bar chart";
@@ -964,12 +1122,18 @@ export component Gallery inherits Window {
                         datasets <=> root.datasets;
                         // Beside the chart there's no room for it on narrow windows.
                         legend-position: root.narrow ? ChartLegendPosition.top : ChartLegendPosition.right;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "bar-stacked": BarChart {
                         title: "Stacked bar chart";
                         labels: root.labels;
                         datasets <=> root.datasets;
                         stacked: true;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "bar-border-radius": BarChart {
                         title: "Bar chart border radius";
@@ -977,68 +1141,111 @@ export component Gallery inherits Window {
                         datasets <=> root.datasets;
                         bar-radius: 6px;
                         bar-border-width: 2px;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "line" || root.sample == "line-interpolation" || root.sample == "line-stepped" || root.sample == "area-line": LineChart {
                         title: root.sample-title;
                         labels: root.labels;
                         datasets <=> root.datasets;
                         begin-at-zero: false;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "line-points": LineChart {
                         title: "Line chart without point markers";
                         labels: root.labels;
                         datasets <=> root.datasets;
                         show-points: false;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "combo-bar-line": BarChart {
                         title: "Combo bar and line chart";
                         labels: root.labels;
                         datasets <=> root.datasets;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "stacked-bar-line": BarChart {
                         title: "Stacked bar and line chart";
                         labels: root.labels;
                         datasets <=> root.datasets;
                         stacked: true;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "area-stacked": LineChart {
                         title: "Stacked area chart";
                         labels: root.labels;
                         datasets <=> root.datasets;
                         stacked: true;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "pie": PieChart {
                         title: "Pie chart";
                         slices <=> root.slices;
+                        slice-clicked(index) => {
+                            root.status = "slice-clicked: " + self.slices[index].label + ", " + ChartEngine.format-value(self.slices[index].value, { decimals: -1 });
+                        }
                     }
                     if root.sample == "doughnut": DoughnutChart {
                         title: "Doughnut chart";
                         slices <=> root.slices;
+                        slice-clicked(index) => {
+                            root.status = "slice-clicked: " + self.slices[index].label + ", " + ChartEngine.format-value(self.slices[index].value, { decimals: -1 });
+                        }
                     }
                     if root.sample == "polar-area": PolarAreaChart {
                         title: "Polar area chart";
                         slices <=> root.slices;
+                        slice-clicked(index) => {
+                            root.status = "slice-clicked: " + self.slices[index].label + ", " + ChartEngine.format-value(self.slices[index].value, { decimals: -1 });
+                        }
                     }
                     if root.sample == "radar" || root.sample == "area-radar": RadarChart {
                         title: root.sample-title;
                         labels: root.labels;
                         datasets <=> root.datasets;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "scatter": ScatterChart {
                         title: "Scatter chart";
                         datasets <=> root.datasets;
                         zoom-enabled: true;
+                        point-clicked(dataset, index) => {
+                            root.status = "point-clicked: " + self.datasets[dataset].label + " ("
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].x, { decimals: -1 }) + ", "
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].y, { decimals: -1 }) + ")";
+                        }
                     }
                     if root.sample == "bubble": BubbleChart {
                         title: "Bubble chart";
                         datasets <=> root.datasets;
                         zoom-enabled: true;
+                        point-clicked(dataset, index) => {
+                            root.status = "point-clicked: " + self.datasets[dataset].label + " ("
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].x, { decimals: -1 }) + ", "
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].y, { decimals: -1 }) + ")";
+                        }
                     }
                     if root.sample == "legend-position": LineChart {
                         title: "Legend position";
                         labels: root.labels;
                         datasets <=> root.datasets;
                         legend-position: root.legend-position;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "axes-format": BarChart {
                         title: "Revenue";
@@ -1049,6 +1256,9 @@ export component Gallery inherits Window {
                         value-prefix: "$";
                         value-decimals: 0;
                         show-values: true;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "axes-fixed": LineChart {
                         title: "Fixed range: -150 to 150";
@@ -1058,6 +1268,9 @@ export component Gallery inherits Window {
                         min-value: -150;
                         max-value: 150;
                         y-title: "Value";
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "axes-two": BarChart {
                         title: "Temperature and rainfall";
@@ -1068,6 +1281,9 @@ export component Gallery inherits Window {
                         y2-title: "Rainfall";
                         y2-value-suffix: " mm";
                         show-values: false;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "languages": BarChart {
                         title: root.language-title;
@@ -1077,6 +1293,9 @@ export component Gallery inherits Window {
                         y2-title: root.language-y2-title;
                         y2-value-suffix: ChartTexts.percent;
                         y2-value-decimals: 1;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "axes-log": LineChart {
                         title: "Users";
@@ -1084,6 +1303,9 @@ export component Gallery inherits Window {
                         datasets <=> root.datasets;
                         logarithmic: true;
                         y-title: "Users (log scale)";
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "survey": HorizontalBarChart {
                         title: "How often do you work from home?";
@@ -1093,6 +1315,9 @@ export component Gallery inherits Window {
                         show-values: true;
                         bar-border-width: 0;
                         fill-opacity: 1;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "time-hourly": TimeSeriesChart {
                         title: "Temperature, hourly";
@@ -1102,6 +1327,11 @@ export component Gallery inherits Window {
                         value-decimals: 1;
                         y-title: "Temperature";
                         zoom-enabled: true;
+                        point-clicked(dataset, index) => {
+                            root.status = "point-clicked: " + self.datasets[dataset].label + ", "
+                                + ChartEngine.format-time(self.time-origin, self.utc-offset, self.datasets[dataset].points[index].x) + ", "
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].y, { suffix: " °C", decimals: 1 });
+                        }
                     }
                     if root.sample == "live": TimeSeriesChart {
                         title: "Live sensor data, last minute";
@@ -1109,6 +1339,11 @@ export component Gallery inherits Window {
                         time-origin: { year: 2026, month: 10, day: 27, hour: 12 };
                         y-title: "Reading";
                         animated: false;
+                        point-clicked(dataset, index) => {
+                            root.status = "point-clicked: " + self.datasets[dataset].label + ", "
+                                + ChartEngine.format-time(self.time-origin, self.utc-offset, self.datasets[dataset].points[index].x) + ", "
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].y, { decimals: 1 });
+                        }
                     }
                     if root.sample == "time-week": TimeSeriesChart {
                         title: "Electricity use, one week";
@@ -1122,6 +1357,11 @@ export component Gallery inherits Window {
                         zoom-enabled: true;
                         view-start <=> root.view-start;
                         view-end <=> root.view-end;
+                        point-clicked(dataset, index) => {
+                            root.status = "point-clicked: " + self.datasets[dataset].label + ", "
+                                + ChartEngine.format-time(self.time-origin, self.utc-offset, self.datasets[dataset].points[index].x) + ", "
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].y, { suffix: " kW", decimals: -1 });
+                        }
                     }
                     if root.sample == "time-daily": TimeSeriesChart {
                         title: "Temperature, daily";
@@ -1130,6 +1370,11 @@ export component Gallery inherits Window {
                         value-suffix: " °C";
                         value-decimals: 1;
                         zoom-enabled: true;
+                        point-clicked(dataset, index) => {
+                            root.status = "point-clicked: " + self.datasets[dataset].label + ", "
+                                + ChartEngine.format-time(self.time-origin, self.utc-offset, self.datasets[dataset].points[index].x) + ", "
+                                + ChartEngine.format-value(self.datasets[dataset].points[index].y, { suffix: " °C", decimals: 1 });
+                        }
                     }
                     if root.sample == "candlestick": CandlestickChart {
                         title: "Acme Robotics, daily";
@@ -1143,6 +1388,12 @@ export component Gallery inherits Window {
                         value-prefix: "$";
                         value-decimals: 2;
                         zoom-enabled: true;
+                        // Zoomed out, a candle can stand for several days.
+                        candle-clicked(first, last) => {
+                            root.status = "candle-clicked: " + ChartEngine.format-time(self.time-origin, self.utc-offset, self.candles[first].x)
+                                + (last > first ? " – " + ChartEngine.format-time(self.time-origin, self.utc-offset, self.candles[last].x) : "")
+                                + " (close " + ChartEngine.format-value(self.candles[last].close, { prefix: "$", decimals: 2 }) + ")";
+                        }
                     }
                     if root.sample == "heatmap": HeatmapChart {
                         title: "Visits by weekday and hour";
@@ -1150,6 +1401,10 @@ export component Gallery inherits Window {
                         y-labels: root.row-labels;
                         values: root.grid;
                         value-suffix: " visits";
+                        cell-clicked(row, column) => {
+                            root.status = "cell-clicked: " + self.y-labels[row] + " " + self.x-labels[column] + ":00, "
+                                + ChartEngine.format-value(self.values[row * self.x-labels.length + column], { suffix: " visits", decimals: -1 });
+                        }
                     }
                     if root.sample == "heatmap-diverging": HeatmapChart {
                         title: "Correlation";
@@ -1162,6 +1417,10 @@ export component Gallery inherits Window {
                         max-value: 1;
                         show-values: true;
                         value-decimals: 2;
+                        cell-clicked(row, column) => {
+                            root.status = "cell-clicked: " + self.y-labels[row] + " × " + self.x-labels[column] + ", "
+                                + ChartEngine.format-value(self.values[row * self.x-labels.length + column], { decimals: 2 });
+                        }
                     }
                     if root.sample == "matrix": MatrixChart {
                         title: "Sales by product and region";
@@ -1179,20 +1438,38 @@ export component Gallery inherits Window {
                         show-empty: true;
                         show-totals: true;
                         x-labels-top: true;
+                        cell-clicked(row, column) => {
+                            let value = self.values[row * self.x-labels.length + column];
+                            // Empty cells hold NaN, which is not equal to itself.
+                            root.status = "cell-clicked: " + self.y-labels[row] + " × " + self.x-labels[column] + ", "
+                                + (value == value ? ChartEngine.format-value(value, { prefix: "$", suffix: "M", decimals: -1 }) : "no sales");
+                        }
                     }
                     if root.sample == "treemap": TreemapChart {
                         title: "World population by country (millions)";
                         items <=> root.tree;
                         value-suffix: " M";
+                        item-clicked(index) => {
+                            root.status = "item-clicked: " + self.items[index].label + ", "
+                                + ChartEngine.format-value(self.items[index].value, { suffix: " M", decimals: -1 });
+                        }
                     }
                     if root.sample == "sunburst": SunburstChart {
                         title: "World population by region (millions)";
                         items <=> root.sun;
                         value-suffix: " M";
+                        // Parents have no value of their own: their children add up to it.
+                        item-clicked(index) => {
+                            root.status = "item-clicked: " + ChartEngine.sunburst-path(self.items, index)
+                                + (self.items[index].value > 0 ? ", " + ChartEngine.format-value(self.items[index].value, { suffix: " M", decimals: -1 }) : "");
+                        }
                     }
                     if root.sample == "funnel": FunnelChart {
                         title: "Visitors to purchases, last 30 days";
                         stages <=> root.slices;
+                        stage-clicked(index) => {
+                            root.status = "stage-clicked: " + self.stages[index].label + ", " + ChartEngine.format-value(self.stages[index].value, { decimals: -1 });
+                        }
                     }
                     if root.sample == "waterfall": WaterfallChart {
                         title: "Profit and loss";
@@ -1200,12 +1477,23 @@ export component Gallery inherits Window {
                         show-values: true;
                         value-prefix: "$";
                         value-suffix: "k";
+                        // Totals show the running total; the other steps their change.
+                        step-clicked(index) => {
+                            root.status = "step-clicked: " + self.steps[index].label + ", "
+                                + (self.steps[index].total ? ChartEngine.format-value(ChartEngine.waterfall-totals(self.steps)[index], { prefix: "$", suffix: "k", decimals: -1 })
+                                    : (self.steps[index].value > 0 ? "+" : "") + ChartEngine.format-value(self.steps[index].value, { prefix: "$", suffix: "k", decimals: -1 }));
+                        }
                     }
                     if root.sample == "dumbbell": DumbbellChart {
                         title: "Life expectancy at birth (years)";
                         labels: root.labels;
                         datasets <=> root.datasets;
                         show-values: true;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index] + ", "
+                                + ChartEngine.format-value(self.datasets[0].values[index], { decimals: 1 }) + " → "
+                                + ChartEngine.format-value(self.datasets[1].values[index], { decimals: 1 });
+                        }
                     }
                     if root.sample == "gantt": GanttChart {
                         property <float> day: 86400;
@@ -1298,7 +1586,8 @@ export component Gallery inherits Window {
                             value-suffix: ChartTexts.percent;
                             value-decimals: 0;
                             bar-clicked(index) => {
-                                root.status = "bar-clicked: " + self.bars[index].label;
+                                root.status = "bar-clicked: " + self.bars[index].label + ", "
+                                    + ChartEngine.format-value(self.bars[index].value, { suffix: ChartTexts.percent, decimals: 0 });
                             }
                         }
                         RadialBarChart {
@@ -1309,7 +1598,8 @@ export component Gallery inherits Window {
                             value-suffix: ChartTexts.percent;
                             value-decimals: 0;
                             bar-clicked(index) => {
-                                root.status = "bar-clicked: " + self.bars[index].label;
+                                root.status = "bar-clicked: " + self.bars[index].label + ", "
+                                    + ChartEngine.format-value(self.bars[index].value, { suffix: ChartTexts.percent, decimals: 0 });
                             }
                         }
                     }
@@ -1334,6 +1624,11 @@ export component Gallery inherits Window {
                                 { label: "Satisfaction", sublabel: "of 5", value: root.bullet-values[4], target: 4.2,
                                   bands: [{ to: 3.5, label: "Poor" }, { to: 4.25, label: "OK" }, { to: 5, label: "Good" }] },
                             ];
+                            // Each row has its own prefix or suffix.
+                            row-clicked(index) => {
+                                root.status = "row-clicked: " + self.rows[index].label + ", " + self.rows[index].prefix
+                                    + ChartEngine.format-value(self.rows[index].value, { decimals: -1 }) + self.rows[index].suffix;
+                            }
                         }
                         // Soft tints for the bands, under a dark bar.
                         BulletChart {
@@ -1360,6 +1655,10 @@ export component Gallery inherits Window {
                                 { to: 100, label: "Close" },
                                 { to: 120, label: "Ahead" },
                             ];
+                            row-clicked(index) => {
+                                root.status = "row-clicked: " + self.rows[index].label + ", "
+                                    + ChartEngine.format-value(self.rows[index].value, { suffix: ChartTexts.percent, decimals: -1 });
+                            }
                         }
                         // Rows without a target, on one axis.
                         BulletChart {
@@ -1376,6 +1675,10 @@ export component Gallery inherits Window {
                                 { label: "Ads", value: root.bullet-values[14], target: 25 },
                             ];
                             bands: [{ to: 20 }, { to: 40 }, { to: 60 }];
+                            row-clicked(index) => {
+                                root.status = "row-clicked: " + self.rows[index].label + ", "
+                                    + ChartEngine.format-value(self.rows[index].value, { decimals: -1 });
+                            }
                         }
                     }
                     if root.sample == "calendar": CalendarHeatmap {
@@ -1390,11 +1693,18 @@ export component Gallery inherits Window {
                             : root.calendar-colors == 4 ? (ChartTheme.dark ? #a78bfa : #6d28d9)
                             : root.calendar-colors == 5 ? (ChartTheme.dark ? #f87171 : #b91c1c)
                             : ChartTheme.colors[0];
+                        day-clicked(index) => {
+                            root.status = "day-clicked: " + ChartEngine.format-time(self.start-date, 0, index * 86400) + ", "
+                                + ChartEngine.format-value(self.values[index], { suffix: " contributions", decimals: -1 });
+                        }
                     }
                     if root.sample == "pie-labels": PieChart {
                         title: "Pie chart with data labels";
                         slices <=> root.slices;
                         show-percentages: true;
+                        slice-clicked(index) => {
+                            root.status = "slice-clicked: " + self.slices[index].label + ", " + ChartEngine.format-value(self.slices[index].value, { decimals: -1 });
+                        }
                     }
                     if root.sample == "zoom": LineChart {
                         title: "Zoom and pan: scroll to zoom, drag to pan, double-click to reset";
@@ -1403,6 +1713,9 @@ export component Gallery inherits Window {
                         begin-at-zero: false;
                         show-points: false;
                         zoom-enabled: true;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     if root.sample == "decimation": LineChart {
                         title: "Data decimation (scroll to zoom)";
@@ -1413,6 +1726,9 @@ export component Gallery inherits Window {
                         decimate: root.decimate;
                         zoom-enabled: true;
                         animated: false;
+                        category-clicked(index) => {
+                            root.status = "category-clicked: " + self.labels[index];
+                        }
                     }
                     }
 
@@ -1438,8 +1754,11 @@ export component Gallery inherits Window {
                                 }
                             }
                         }
+                        // Click readouts and notes, at the right; long ones are cut
+                        // short rather than pushing the buttons.
                         Text {
                             horizontal-stretch: 1;
+                            min-width: 0px;
                             text: root.status;
                             color: Look.secondary;
                             font-size: 12px;
@@ -1478,6 +1797,19 @@ export component Gallery inherits Window {
                 root.samples-open = false;
                 root.select(id);
             }
+        }
+    }
+
+    if root.code-open && !root.chart-only: CodePanel {
+        title: "Code: " + root.sample-title;
+        code: root.code;
+        narrow: root.narrow;
+        font-family: root.code-font;
+        close => {
+            root.code-open = false;
+        }
+        copy-text(text) => {
+            root.copy-text(text);
         }
     }
 
