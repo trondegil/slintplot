@@ -699,8 +699,9 @@ export component Gallery inherits Window {
     in-out property <[ChartSunburstItem]> sun;
     in property <[ChartWaterfallStep]> steps;
     in property <[ChartCandle]> candles;
-    // The candlestick sample draws OHLC bars.
+    // The candlestick sample draws OHLC bars, and skips gaps in time.
     in property <bool> ohlc;
+    in property <bool> skip-gaps: true;
     in property <float> gauge-value;
     in-out property <ChartLegendPosition> legend-position;
     in-out property <bool> decimate: true;
@@ -1125,8 +1126,11 @@ export component Gallery inherits Window {
                     if root.sample == "candlestick": CandlestickChart {
                         title: "Acme Robotics, daily";
                         candles: root.candles;
-                        datasets <=> root.datasets;
+                        datasets: [{ label: "20-day average", points: ChartEngine.moving-average(root.candles, 20) }];
                         ohlc: root.ohlc;
+                        skip-gaps: root.skip-gaps;
+                        show-volume: true;
+                        show-last-price: true;
                         time-origin: { year: 2026, month: 4, day: 6 };
                         value-prefix: "$";
                         value-decimals: 2;

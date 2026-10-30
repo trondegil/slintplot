@@ -1,6 +1,34 @@
-import { ChartAxis, ChartCandle, ChartCandleBar, ChartCandleLayout, ChartDataset, ChartDateTime, ChartEngine, ChartFormat, ChartKind, ChartRange } from "engine.slint";
+import { ChartAxis, ChartCandle, ChartCandleBar, ChartCandleLayout, ChartDataset, ChartDateTime, ChartEngine, ChartFormat, ChartKind, ChartLegendItem, ChartRange, ChartXY } from "engine.slint";
 import { ChartTexts, ChartTheme } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A dashed line, one pixel thick, across its parent: horizontal, or
+// vertical with `vertical`.
+component DashedLine {
+    in property <bool> vertical;
+    in property <color> color;
+    for i in ceil((self.vertical ? self.height : self.width) / 6px): Rectangle {
+        x: root.vertical ? 0 : i * 6px;
+        y: root.vertical ? i * 6px : 0;
+        width: root.vertical ? 1px : 3px;
+        height: root.vertical ? 3px : 1px;
+        background: root.color;
+    }
+}
+
+// A value on an axis, such as the price under the mouse.
+component AxisLabel inherits Rectangle {
+    in property <string> text;
+    in property <color> text-color: ChartTheme.tooltip-text;
+    width: label.preferred-width + 8px;
+    height: label.preferred-height + 4px;
+    border-radius: 3px;
+    label := Text {
+        text: root.text;
+        color: root.text-color;
+        font-size: ChartTheme.font-size;
+    }
+}
 
 // A candlestick chart: for each period on a time axis, a body from the open
 // to the close, colored by whether the price rose or fell, and a wick from
@@ -16,19 +44,32 @@ export component CandlestickChart {
     // Draw OHLC bars: a line from the low to the high, with a tick to the
     // left at the open and one to the right at the close.
     in property <bool> ohlc: false;
-    in property <color> rise-color: ChartTheme.dark ? #34d399 : #10b981;
-    in property <color> fall-color: ChartTheme.dark ? #fb7185 : #f43f5e;
-    // Opacity of the candle bodies, whose outline stays solid.
-    in property <float> fill-opacity: 0.85;
+    // Place the candles side by side, skipping gaps in time such as nights,
+    // weekends and holidays. Without it, the time axis is linear and gaps
+    // stay empty.
+    in property <bool> skip-gaps: true;
+    // Volume bars in a strip below the candles, on their own scale.
+    in property <bool> show-volume: false;
+    // A dashed line at the last close, labeled on the value axis.
+    in property <bool> show-last-price: false;
+    // Dashed lines through the mouse, labeled on both axes.
+    in property <bool> show-crosshair: true;
+    in property <color> increase-color: ChartTheme.dark ? #34d399 : #10b981;
+    in property <color> decrease-color: ChartTheme.dark ? #fb7185 : #f43f5e;
+    // Opacity of the candle bodies, whose outline stays solid; the theme's
+    // `fill-opacity` by default.
+    in property <float> fill-opacity: ChartTheme.fill-opacity;
     // The legend shows the datasets, when there are any.
     in property <bool> show-legend: true;
     in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
     in property <bool> show-tooltip: true;
     // Grow the candles in when the chart appears.
     in property <bool> animated: true;
-    // When there are more candles than room for them, merge the candles in
-    // each few pixels into one: the first open, highest high, lowest low
-    // and last close. Without it, every candle is drawn.
+    // When there are more candles than room for them, merge them into
+    // longer periods: the first open, highest high, lowest low and last
+    // close. On a linear time axis the periods are hours, days, weeks,
+    // months and so on, in local time; with `skip-gaps`, a few candles each.
+    // Without it, every candle is drawn.
     in property <bool> decimate: true;
 
     // Axis titles.
@@ -63,10 +104,13 @@ export component CandlestickChart {
     out property <bool> zoomed: root.view-start > 0 || root.view-end < 1;
 
     // The candle under the mouse, or selected with the arrow keys; -1 if
-    // none. Of merged candles, the first.
+    // none. Of merged candles, the first and the last.
     out property <int> hovered-index: root.hovered-bar >= 0 ? layout.candles[root.hovered-bar].first : -1;
+    out property <int> hovered-last: root.hovered-bar >= 0 ? layout.candles[root.hovered-bar].last : -1;
 
-    callback candle-clicked(index: int);
+    // A candle was clicked, or chosen with Enter: of merged candles, the
+    // first and the last; otherwise both are the candle's index.
+    callback candle-clicked(first: int, last: int);
     callback legend-toggled(index: int);
 
     accessible-role: image;
@@ -115,12 +159,30 @@ export component CandlestickChart {
     private property <float> drag-view-start;
     private property <float> drag-view-end;
 
-    private property <ChartRange> range: ChartEngine.candle-range(root.candles, root.datasets, root.view-start, root.view-end, root.logarithmic);
+    // The plot is split into the price area, and below it the volume strip,
+    // in pixels.
+    private property <float> volume-height: root.show-volume ? round(plot.height / 1px * 0.2) : 0;
+    private property <float> price-height: max(0, plot.height / 1px - root.volume-height - (root.show-volume ? 8 : 0));
+
+    // The plot's width depends on the value axis' labels, so the range,
+    // which merges candles as the plot does, uses an estimate of it.
+    private property <ChartRange> range: ChartEngine.candle-range({
+        candles: root.candles,
+        datasets: root.datasets,
+        width: max(0, (frame.width - 12px - ChartTheme.font-size * 4) / 1px),
+        logarithmic: root.logarithmic,
+        view-start: root.view-start,
+        view-end: root.view-end,
+        decimate: root.decimate,
+        skip-gaps: root.skip-gaps,
+        time-origin: root.time-origin,
+        utc-offset: root.utc-offset,
+    });
     private property <ChartAxis> axis: ChartEngine.value-axis({
         locale: ChartTheme.locale,
         kind: ChartKind.line,
         datasets: [{ values: [root.range.min, root.range.max] }],
-        height: plot.height / 1px,
+        height: root.price-height,
         font-size: ChartTheme.font-size / 1px,
         fixed: root.fixed-range,
         fixed-min: root.min-value,
@@ -133,7 +195,8 @@ export component CandlestickChart {
         candles: root.candles,
         datasets: root.datasets,
         width: plot.width / 1px,
-        height: plot.height / 1px,
+        height: root.price-height,
+        volume-height: root.volume-height,
         y-min: axis.min,
         y-max: axis.max,
         logarithmic: root.logarithmic,
@@ -141,11 +204,13 @@ export component CandlestickChart {
         view-start: root.view-start,
         view-end: root.view-end,
         decimate: root.decimate,
+        skip-gaps: root.skip-gaps,
         time-origin: root.time-origin,
         utc-offset: root.utc-offset,
         font-size: ChartTheme.font-size / 1px,
         palette: ChartTheme.colors,
     });
+    private property <[ChartLegendItem]> legend: ChartEngine.dataset-legend(root.datasets, ChartTheme.colors);
 
     // A candle's date, or the dates of the first and last merged candle.
     pure function date-text(bar: ChartCandleBar) -> string {
@@ -154,7 +219,23 @@ export component CandlestickChart {
     }
 
     pure function candle-color(candle: ChartCandle) -> color {
-        candle.close >= candle.open ? root.rise-color : root.fall-color
+        candle.close >= candle.open ? root.increase-color : root.decrease-color
+    }
+
+    // The change from the previous close, such as "+$1.20 (+0.95%)".
+    pure function change-text(bar: ChartCandleBar) -> string {
+        let change = bar.value.close - bar.previous-close;
+        let sign = change > 0 ? "+" : "";
+        sign + ChartEngine.format-value(change, root.format)
+            + (bar.previous-close != 0 ? " (" + sign + ChartEngine.format-percent(change / abs(bar.previous-close) * 100, 2) + ")" : "")
+    }
+
+    // The value under the mouse at `y` in the plot: a price, or a volume in
+    // the volume strip.
+    pure function value-text(y: float) -> string {
+        y <= root.price-height
+            ? ChartEngine.format-value(ChartEngine.axis-value(y, root.price-height, axis.min, axis.max, root.logarithmic), root.format)
+            : ChartEngine.format-value((plot.height / 1px - y) / max(1, root.volume-height) * layout.volume-max, { decimals: -1 })
     }
 
     min-width: 160px;
@@ -176,7 +257,7 @@ export component CandlestickChart {
 
         LegendFrame {
             vertical-stretch: 1;
-            items: ChartEngine.dataset-legend(root.datasets, ChartTheme.colors);
+            items: root.legend;
             show-legend: root.show-legend && root.datasets.length > 0;
             position: root.legend-position;
             toggled(index) => {
@@ -189,15 +270,17 @@ export component CandlestickChart {
 
                 property <length> y-title-space: root.y-title != "" ? ChartTheme.font-size * 1.6 : 0px;
                 property <length> x-title-space: root.x-title != "" ? ChartTheme.font-size * 1.8 : 0px;
+                // The mouse is over the plot, for the crosshair.
+                property <bool> crosshair: root.show-crosshair && touch.has-hover && root.hovered-bar >= 0 && !touch.pressed;
 
                 plot := Rectangle {
                     // Tick labels are mostly digits, about 0.6em wide each (the
                     // axis depends on the plot height, so they can't be measured).
                     // Whole pixels keep the wicks sharp.
                     x: ceil((axis.widest-label.character-count * ChartTheme.font-size * 0.62 + 8px) / 1px) * 1px;
-                    y: frame.y-title-space + ChartTheme.font-size * 0.75;
+                    y: round((frame.y-title-space + ChartTheme.font-size * 0.75) / 1px) * 1px;
                     width: max(0px, parent.width - self.x - 12px);
-                    height: max(0px, parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space);
+                    height: max(0px, round((parent.height - self.y - ChartTheme.font-size * 2 - frame.x-title-space) / 1px) * 1px);
                     // Candles at the edges are cut, and so are values outside a
                     // fixed range.
                     clip: true;
@@ -222,12 +305,23 @@ export component CandlestickChart {
                         height: 1px;
                         background: ChartTheme.axis-color;
                     }
-
                     if root.hovered-bar >= 0: Rectangle {
-                        property <float> slot: max(1, layout.slot);
-                        x: (layout.candles[root.hovered-bar].x - self.slot / 2) * 1px;
+                        property <ChartCandleBar> bar: layout.candles[root.hovered-bar];
+                        property <float> slot: max(1, min(layout.slot, self.bar.width + 12));
+                        x: (round(self.bar.x) - self.slot / 2 + 0.5) * 1px;
                         width: self.slot * 1px;
                         background: ChartTheme.grid-color;
+                    }
+
+                    // Volume bars, below the candles.
+                    if root.show-volume: Rectangle {
+                        for bar[i] in layout.candles: Rectangle {
+                            x: (round(bar.x) - floor(bar.width / 2)) * 1px;
+                            y: parent.height - bar.volume * 1px;
+                            width: bar.width * 1px;
+                            height: bar.volume * 1px;
+                            background: root.candle-color(bar.value).with-alpha(i == root.hovered-bar ? 0.7 : 0.4);
+                        }
                     }
 
                     // Each candle is three rectangles: the wick above and below
@@ -253,14 +347,14 @@ export component CandlestickChart {
                         }
                         Rectangle {
                             x: (root.ohlc ? parent.center - parent.half : parent.center) * 1px;
-                            y: (root.ohlc ? bar.open - parent.stroke / 2 : parent.bottom) * 1px;
+                            y: (root.ohlc ? bar.open - floor(parent.stroke / 2) : parent.bottom) * 1px;
                             width: (root.ohlc ? parent.half + 1 : 1) * 1px;
                             height: (root.ohlc ? parent.stroke : max(0, bar.low - parent.bottom)) * 1px;
                             background: parent.fill;
                         }
                         Rectangle {
                             x: (root.ohlc ? parent.center : parent.center - parent.half) * 1px;
-                            y: (root.ohlc ? bar.close - parent.stroke / 2 : parent.top) * 1px;
+                            y: (root.ohlc ? bar.close - floor(parent.stroke / 2) : parent.top) * 1px;
                             width: (root.ohlc ? parent.half + 1 : parent.body) * 1px;
                             height: (root.ohlc ? parent.stroke : max(1, parent.bottom - parent.top)) * 1px;
                             background: root.ohlc ? parent.fill : parent.fill.with-alpha(parent.hovered ? 1 : root.fill-opacity);
@@ -299,6 +393,27 @@ export component CandlestickChart {
                         }
                     }
 
+                    if root.show-last-price && layout.has-last && layout.last-y >= 0 && layout.last-y <= root.price-height: DashedLine {
+                        y: layout.last-y * 1px;
+                        width: parent.width;
+                        height: 1px;
+                        color: root.candle-color(layout.last);
+                    }
+
+                    if frame.crosshair: DashedLine {
+                        y: round(touch.mouse-y / 1px) * 1px;
+                        width: parent.width;
+                        height: 1px;
+                        color: ChartTheme.text-color;
+                    }
+                    if frame.crosshair: DashedLine {
+                        vertical: true;
+                        x: round(layout.candles[root.hovered-bar].x) * 1px;
+                        width: 1px;
+                        height: parent.height;
+                        color: ChartTheme.text-color;
+                    }
+
                     // Keyboard: the arrow keys move through the candles in view,
                     // Enter clicks the selected one.
                     keys := FocusScope {
@@ -318,7 +433,7 @@ export component CandlestickChart {
                                 return accept;
                             }
                             if event.text == Key.Return && root.hovered-index >= 0 {
-                                root.candle-clicked(root.hovered-index);
+                                root.candle-clicked(root.hovered-index, root.hovered-last);
                                 return accept;
                             }
                             reject
@@ -360,7 +475,7 @@ export component CandlestickChart {
                                 }
                                 if root.hovered-index >= 0 {
                                     root.key-index = root.hovered-index;
-                                    root.candle-clicked(root.hovered-index);
+                                    root.candle-clicked(root.hovered-index, root.hovered-last);
                                 }
                             }
                         }
@@ -415,8 +530,30 @@ export component CandlestickChart {
                     horizontal-alignment: center;
                 }
 
+                // Labels on the axes: the last price, then the crosshair's.
+                if root.show-last-price && layout.has-last && layout.last-y >= 0 && layout.last-y <= root.price-height: AxisLabel {
+                    x: max(0px, plot.x - self.width - 2px);
+                    y: plot.y + layout.last-y * 1px - self.height / 2;
+                    background: root.candle-color(layout.last);
+                    text: ChartEngine.format-value(layout.last.close, root.format);
+                }
+                if frame.crosshair && (touch.mouse-y / 1px <= root.price-height || (root.show-volume && touch.mouse-y / 1px >= plot.height / 1px - root.volume-height)): AxisLabel {
+                    x: max(0px, plot.x - self.width - 2px);
+                    y: plot.y + touch.mouse-y - self.height / 2;
+                    background: ChartTheme.tooltip-background;
+                    text: root.value-text(touch.mouse-y / 1px);
+                }
+                if frame.crosshair: AxisLabel {
+                    x: clamp(plot.x + round(layout.candles[root.hovered-bar].x) * 1px - self.width / 2, 0px, max(0px, frame.width - self.width));
+                    y: plot.y + plot.height + 3px;
+                    background: ChartTheme.tooltip-background;
+                    text: root.date-text(layout.candles[root.hovered-bar]);
+                }
+
                 if root.show-tooltip && root.hovered-bar >= 0: Rectangle {
                     property <ChartCandleBar> bar: layout.candles[root.hovered-bar];
+                    // The lines' values at the candle's close.
+                    property <[ChartXY]> line-values: ChartEngine.candle-values(root.datasets, self.bar.end);
                     property <length> anchor-x: plot.x + self.bar.x * 1px;
                     property <length> room: max(self.bar.width * 1px / 2, 4px) + 8px;
                     x: self.anchor-x + self.room + self.width > frame.width ? max(0px, self.anchor-x - self.room - self.width) : self.anchor-x + self.room;
@@ -430,7 +567,7 @@ export component CandlestickChart {
                         padding: 6px;
                         padding-left: 8px;
                         padding-right: 8px;
-                        spacing: 4px;
+                        spacing: 2px;
                         HorizontalLayout {
                             spacing: 6px;
                             VerticalLayout {
@@ -450,60 +587,119 @@ export component CandlestickChart {
                                 font-weight: 700;
                             }
                         }
-                        GridLayout {
-                            spacing-horizontal: 12px;
-                            spacing-vertical: 2px;
-                            Row {
-                                Text {
-                                    text: ChartTexts.open;
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                }
-                                Text {
-                                    text: ChartEngine.format-value(bar.value.open, root.format);
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                    horizontal-alignment: right;
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Text {
+                                text: ChartTexts.open;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: ChartEngine.format-value(bar.value.open, root.format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-alignment: right;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Text {
+                                text: ChartTexts.high;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: ChartEngine.format-value(bar.value.high, root.format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-alignment: right;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Text {
+                                text: ChartTexts.low;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: ChartEngine.format-value(bar.value.low, root.format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-alignment: right;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Text {
+                                text: ChartTexts.close;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: ChartEngine.format-value(bar.value.close, root.format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-alignment: right;
+                            }
+                        }
+                        // The change from the close before.
+                        if bar.has-previous: HorizontalLayout {
+                            spacing: 12px;
+                            Text {
+                                text: ChartTexts.change;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: root.change-text(bar);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-alignment: right;
+                            }
+                        }
+                        if root.show-volume: HorizontalLayout {
+                            spacing: 12px;
+                            Text {
+                                text: ChartTexts.volume;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: ChartEngine.format-value(bar.value.volume, { decimals: -1 });
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-alignment: right;
+                            }
+                        }
+                        // The lines, such as "20-day average $136.20".
+                        for value in line-values: HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 10px;
+                                    height: 2px;
+                                    background: root.legend[value.x].color;
                                 }
                             }
-                            Row {
-                                Text {
-                                    text: ChartTexts.high;
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                }
-                                Text {
-                                    text: ChartEngine.format-value(bar.value.high, root.format);
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                    horizontal-alignment: right;
-                                }
+                            Text {
+                                text: root.legend[value.x].label;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-stretch: 1;
                             }
-                            Row {
-                                Text {
-                                    text: ChartTexts.low;
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                }
-                                Text {
-                                    text: ChartEngine.format-value(bar.value.low, root.format);
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                    horizontal-alignment: right;
-                                }
-                            }
-                            Row {
-                                Text {
-                                    text: ChartTexts.close;
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                }
-                                Text {
-                                    text: ChartEngine.format-value(bar.value.close, root.format);
-                                    color: ChartTheme.tooltip-text;
-                                    font-size: ChartTheme.font-size;
-                                    horizontal-alignment: right;
-                                }
+                            Text {
+                                text: ChartEngine.format-value(value.y, root.format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                horizontal-alignment: right;
                             }
                         }
                     }

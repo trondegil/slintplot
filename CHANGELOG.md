@@ -6,12 +6,20 @@
 
 - `CandlestickChart`: open, high, low and close per period on a time axis,
   as candles or, with `ohlc: true`, OHLC bars. Rising and falling periods
-  have their own colors (`rise-color`, `fall-color`). It zooms and pans like
-  `TimeSeriesChart`, and merges candles closer than a few pixels into longer
-  periods, so large datasets stay fast. `datasets` draws lines over the
-  candles, and `ChartEngine.moving-average` computes a moving average for
-  one. The tooltip texts are translated into the 14 languages
-  (`ChartLocale.open`, `high`, `low`, `close`).
+  have their own colors (`increase-color`, `decrease-color`). By default the
+  candles sit side by side, skipping nights, weekends and holidays
+  (`skip-gaps`); `skip-gaps: false` gives a linear time axis. It zooms and
+  pans like `TimeSeriesChart`, and merges candles closer than a few pixels:
+  into hours, days, weeks, months, quarters or years in local time, or with
+  `skip-gaps` into a few candles each, so large datasets stay fast.
+  `ChartCandle.volume` and `show-volume` draw volume bars below the candles,
+  and `show-last-price` a line at the last close. Hovering shows a crosshair
+  and a tooltip with the change from the close before and the lines' values.
+  `datasets` draws lines over the candles, and `ChartEngine.moving-average`
+  (or `slintplot::candle::moving_average`) computes a moving average for
+  one. `candle-clicked(first, last)` and `hovered-last` give the candles a
+  merged candle holds. The tooltip texts are translated into the 14
+  languages (`ChartLocale.open`, `high`, `low`, `close`, `volume`).
 
 ### Fixed
 

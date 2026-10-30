@@ -258,6 +258,7 @@ fn candles(rng: &mut Rng, decimate: bool) -> Vec<ChartCandle> {
                     high: hi + rng.unit(),
                     low: lo - rng.unit(),
                     close: price,
+                    volume: rng.unit() * 1e6,
                 }
             } else {
                 ChartCandle {
@@ -266,6 +267,7 @@ fn candles(rng: &mut Rng, decimate: bool) -> Vec<ChartCandle> {
                     high: rng.number(),
                     low: rng.number(),
                     close: rng.number(),
+                    volume: rng.number(),
                 }
             }
         })

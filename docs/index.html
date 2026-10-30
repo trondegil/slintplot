@@ -952,68 +952,81 @@ TimeSeriesChart {
 <h2 id="candlestick">CandlestickChart</h2>
 <p>Prices over a time axis: for each period, a body from the open to the close, green when the price rose and red when it fell, and
 a wick from the low to the high. With <code>ohlc: true</code>, each period is a bar from the low to the high with a tick to the left at
-the open and one to the right at the close. The time axis works like <a href="#time-series">TimeSeriesChart</a>'s: <code>x</code> is the
-number of seconds after <code>time-origin</code>, ticks fall on round times, and the chart zooms and pans. Gaps in time, such as
-weekends, stay gaps. The value axis fits the candles in view, and the tooltip shows the date, open, high, low and close.</p>
-<p>When there are more candles than room for them, the candles in each few pixels are merged into one: the first open, the highest
-high, the lowest low and the last close, and the tooltip shows the dates it spans. The groups are counted from the time origin, so they
-stay the same while panning, and zooming in shows the single candles again. <code>datasets</code> draws lines over the candles, such as a moving average:
-<code>ChartEngine.moving-average(candles, period)</code> computes one as points.</p>
-<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/candlestick.webp" alt="CandlestickChart of five weeks of daily stock prices" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/candlestick-dark.webp" alt="CandlestickChart of five weeks of daily stock prices" loading="lazy"></figure>
+the open and one to the right at the close. <code>x</code> is the number of seconds after <code>time-origin</code>, ticks fall on round
+times, and the chart zooms and pans like <a href="#time-series">TimeSeriesChart</a>. The value axis fits the candles in view.</p>
+<p>By default the candles sit side by side, skipping the gaps between them such as nights, weekends and holidays; the ticks are at the
+candles where their dates fall. With <code>skip-gaps: false</code>, the time axis is linear and gaps stay empty.</p>
+<p>When there are more candles than room for them, they are merged: the first open, the highest high, the lowest low and the last close,
+and the tooltip shows the dates they span. On a linear time axis they are merged into hours, days, weeks (from Monday), months, quarters
+or years in local time; with <code>skip-gaps</code>, into a few candles each, counted from the first. A merged candle at the edge always
+holds all its candles, so its values don't change while panning, and zooming in shows the single candles again.</p>
+<p><code>show-volume</code> adds a strip of volume bars below the candles, on their own scale; <code>show-last-price</code> draws a dashed
+line at the last close, labeled on the value axis. Hovering shows a crosshair, labeled with the price and date, and a tooltip with the
+open, high, low and close, the change from the close before, the volume, and the lines' values. <code>datasets</code> draws lines over the
+candles, such as a moving average: <code>ChartEngine.moving-average(candles, period)</code> computes one as points, and so does
+<code>slintplot::candle::moving_average</code> in Rust.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/candlestick.webp" alt="CandlestickChart of five weeks of daily stock prices with volume bars" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/candlestick-dark.webp" alt="CandlestickChart of five weeks of daily stock prices with volume bars" loading="lazy"></figure>
 <pre data-shot="candlestick"><code>import { CandlestickChart, ChartEngine } from "@slintplot";
 
 CandlestickChart {
     title: "Acme Robotics";
     candles: [  // One candle per trading day: x is seconds after the time origin.
-        { x:       0, open: 119.75, high: 120.68, low: 117.84, close: 117.94 },
-        { x:   86400, open: 117.99, high: 118.08, low: 116.67, close: 117.38 },
-        { x:  172800, open: 116.73, high: 116.83, low: 116.36, close: 116.49 },
-        { x:  259200, open: 116.39, high: 118.43, low: 116.07, close: 118.25 },
-        { x:  345600, open: 118.43, high: 121.83, low: 117.87, close: 120.99 },
-        { x:  604800, open: 121.68, high: 122.94, low: 118.85, close: 119.27 },
-        { x:  691200, open: 118.76, high: 119.20, low: 115.64, close: 116.79 },
-        { x:  777600, open: 116.34, high: 117.79, low: 115.82, close: 116.89 },
-        { x:  864000, open: 116.96, high: 117.04, low: 114.44, close: 114.72 },
-        { x:  950400, open: 114.97, high: 115.41, low: 113.90, close: 114.71 },
-        { x: 1209600, open: 114.64, high: 115.73, low: 112.75, close: 113.70 },
-        { x: 1296000, open: 113.35, high: 114.57, low: 112.16, close: 113.85 },
-        { x: 1382400, open: 114.17, high: 115.51, low: 113.01, close: 113.17 },
-        { x: 1468800, open: 113.05, high: 114.71, low: 112.39, close: 114.50 },
-        { x: 1555200, open: 113.87, high: 115.92, low: 113.09, close: 114.87 },
-        { x: 1814400, open: 115.38, high: 116.35, low: 113.69, close: 114.51 },
-        { x: 1900800, open: 114.62, high: 115.78, low: 113.21, close: 114.50 },
-        { x: 1987200, open: 114.47, high: 115.53, low: 113.51, close: 115.45 },
-        { x: 2073600, open: 115.65, high: 119.56, low: 115.26, close: 118.39 },
-        { x: 2160000, open: 118.23, high: 119.30, low: 117.57, close: 119.26 },
-        { x: 2419200, open: 118.79, high: 118.87, low: 115.74, close: 116.82 },
-        { x: 2505600, open: 116.30, high: 116.84, low: 113.86, close: 115.06 },
-        { x: 2592000, open: 114.48, high: 115.24, low: 113.12, close: 114.33 },
-        { x: 2678400, open: 114.77, high: 117.19, low: 114.20, close: 116.80 },
-        { x: 2764800, open: 116.61, high: 120.15, low: 116.39, close: 118.78 },
+        { x:       0, open: 119.75, high: 120.68, low: 117.84, close: 117.94, volume: 3420000 },
+        { x:   86400, open: 117.99, high: 118.08, low: 116.67, close: 117.38, volume: 2310000 },
+        { x:  172800, open: 116.73, high: 116.83, low: 116.36, close: 116.49, volume: 2170000 },
+        { x:  259200, open: 116.39, high: 118.43, low: 116.07, close: 118.25, volume: 2890000 },
+        { x:  345600, open: 118.43, high: 121.83, low: 117.87, close: 120.99, volume: 4410000 },
+        { x:  604800, open: 121.68, high: 122.94, low: 118.85, close: 119.27, volume: 4250000 },
+        { x:  691200, open: 118.76, high: 119.20, low: 115.64, close: 116.79, volume: 3660000 },
+        { x:  777600, open: 116.34, high: 117.79, low: 115.82, close: 116.89, volume: 3060000 },
+        { x:  864000, open: 116.96, high: 117.04, low: 114.44, close: 114.72, volume: 3020000 },
+        { x:  950400, open: 114.97, high: 115.41, low: 113.90, close: 114.71, volume: 2680000 },
+        { x: 1209600, open: 114.64, high: 115.73, low: 112.75, close: 113.70, volume: 3350000 },
+        { x: 1296000, open: 113.35, high: 114.57, low: 112.16, close: 113.85, volume: 2990000 },
+        { x: 1382400, open: 114.17, high: 115.51, low: 113.01, close: 113.17, volume: 3380000 },
+        { x: 1468800, open: 113.05, high: 114.71, low: 112.39, close: 114.50, volume: 3670000 },
+        { x: 1555200, open: 113.87, high: 115.92, low: 113.09, close: 114.87, volume: 3310000 },
+        { x: 1814400, open: 115.38, high: 116.35, low: 113.69, close: 114.51, volume: 3270000 },
+        { x: 1900800, open: 114.62, high: 115.78, low: 113.21, close: 114.50, volume: 3620000 },
+        { x: 1987200, open: 114.47, high: 115.53, low: 113.51, close: 115.45, volume: 3560000 },
+        { x: 2073600, open: 115.65, high: 119.56, low: 115.26, close: 118.39, volume: 4750000 },
+        { x: 2160000, open: 118.23, high: 119.30, low: 117.57, close: 119.26, volume: 2770000 },
+        { x: 2419200, open: 118.79, high: 118.87, low: 115.74, close: 116.82, volume: 4280000 },
+        { x: 2505600, open: 116.30, high: 116.84, low: 113.86, close: 115.06, volume: 3300000 },
+        { x: 2592000, open: 114.48, high: 115.24, low: 113.12, close: 114.33, volume: 3540000 },
+        { x: 2678400, open: 114.77, high: 117.19, low: 114.20, close: 116.80, volume: 3570000 },
+        { x: 2764800, open: 116.61, high: 120.15, low: 116.39, close: 118.78, volume: 3920000 },
     ];
     datasets: [{ label: "5-day average", points: ChartEngine.moving-average(self.candles, 5) }];
     time-origin: { year: 2026, month: 9, day: 7 };
     value-prefix: "$";
     value-decimals: 2;
+    show-volume: true;
+    show-last-price: true;
     zoom-enabled: true;
+    // skip-gaps: true;                              // false: a linear time axis, with gaps at weekends
     // ohlc: false;                                  // true: OHLC bars instead of candles
-    // rise-color: #10b981;                          // default: green, lighter in dark mode
-    // fall-color: #f43f5e;                          // default: red, lighter in dark mode
+    // increase-color: #10b981;                      // default: green, lighter in dark mode
+    // decrease-color: #f43f5e;                      // default: red, lighter in dark mode
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>candles</code></td><td><code>[ChartCandle]</code></td><td></td><td>One entry per period: <code>x</code>, <code>open</code>, <code>high</code>, <code>low</code>, <code>close</code>, with <code>x</code> in seconds after <code>time-origin</code>; candles must be sorted by <code>x</code>. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>candles</code></td><td><code>[ChartCandle]</code></td><td></td><td>One entry per period: <code>x</code>, <code>open</code>, <code>high</code>, <code>low</code>, <code>close</code>, <code>volume</code>, with <code>x</code> in seconds after <code>time-origin</code>; candles must be sorted by <code>x</code>. See <a href="#data-types">Data types</a></td></tr>
   <tr><td><code>datasets</code> <span class="tag">in-out</span></td><td><code>[ChartDataset]</code></td><td><code>[]</code></td><td>Lines over the candles: <code>label</code>, <code>points</code>, <code>color</code>, <code>hidden</code>, <code>tension</code>, <code>stepped</code>, with <code>x</code> in seconds like the candles'</td></tr>
   <tr><td><code>time-origin</code></td><td><code>ChartDateTime</code></td><td><code>1970-01-01</code></td><td>The time of <code>x: 0</code>, in UTC</td></tr>
-  <tr><td><code>utc-offset</code></td><td><code>int</code></td><td><code>0</code></td><td>Minutes added to UTC for the times on the axis and in the tooltip</td></tr>
+  <tr><td><code>utc-offset</code></td><td><code>int</code></td><td><code>0</code></td><td>Minutes added to UTC for the times on the axis and in the tooltip, and for the periods candles are merged into</td></tr>
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>skip-gaps</code></td><td><code>bool</code></td><td><code>true</code></td><td>Place the candles side by side, skipping gaps in time such as nights, weekends and holidays; <code>false</code> for a linear time axis</td></tr>
   <tr><td><code>ohlc</code></td><td><code>bool</code></td><td><code>false</code></td><td>OHLC bars instead of candles: a line from the low to the high, with ticks at the open (left) and close (right)</td></tr>
-  <tr><td><code>rise-color</code></td><td><code>color</code></td><td>green</td><td>The color of periods that closed at or above their open</td></tr>
-  <tr><td><code>fall-color</code></td><td><code>color</code></td><td>red</td><td>The color of periods that closed below their open</td></tr>
-  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>0.85</code></td><td>The opacity of the candle bodies, whose outline stays solid</td></tr>
+  <tr><td><code>show-volume</code></td><td><code>bool</code></td><td><code>false</code></td><td>Volume bars in a strip below the candles, a fifth of the plot high, on their own scale</td></tr>
+  <tr><td><code>show-last-price</code></td><td><code>bool</code></td><td><code>false</code></td><td>A dashed line at the last candle's close, labeled on the value axis in its color</td></tr>
+  <tr><td><code>show-crosshair</code></td><td><code>bool</code></td><td><code>true</code></td><td>Dashed lines through the mouse, with the price and the date labeled on the axes</td></tr>
+  <tr><td><code>increase-color</code></td><td><code>color</code></td><td>green</td><td>The color of periods that closed at or above their open</td></tr>
+  <tr><td><code>decrease-color</code></td><td><code>color</code></td><td>red</td><td>The color of periods that closed below their open</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of the candle bodies, whose outline stays solid</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets, when there are any; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
-  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the date, open, high, low and close of the candle under the mouse</td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the date, open, high, low and close of the candle under the mouse, the change from the close before, the volume (with <code>show-volume</code>) and the visible lines' values</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the candles in when the chart appears</td></tr>
   <tr><td><code>decimate</code></td><td><code>bool</code></td><td><code>true</code></td><td>Merge candles closer than a few pixels into longer periods; turn off to draw every candle</td></tr>
   <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the horizontal axis</td></tr>
@@ -1031,7 +1044,8 @@ CandlestickChart {
   <tr><td><code>min-view</code></td><td><code>float</code></td><td><code>0.0005</code></td><td>The smallest part of the time axis a zoom can show</td></tr>
   <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The candle under the mouse or selected with the keyboard (of merged candles, the first), or -1</td></tr>
-  <tr><td><code>candle-clicked(index)</code></td><td>callback</td><td></td><td>A candle was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>hovered-last</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The last of the merged candles under the mouse; the same as <code>hovered-index</code> for a single candle</td></tr>
+  <tr><td><code>candle-clicked(first, last)</code></td><td>callback</td><td></td><td>A candle was clicked, or chosen with Enter: the first and last of the candles it merges, or its index twice</td></tr>
   <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
 </table>
 
@@ -1567,8 +1581,9 @@ unset for the theme's color (top level) or a lighter shade of the parent's.</p>
 <h3><code>ChartWaterfallStep</code></h3>
 <p><code>{ label: string, value: float, total: bool }</code>. A waterfall step: a change, or with <code>total: true</code>, the running total so far.</p>
 <h3><code>ChartCandle</code></h3>
-<p><code>{ x: float, open: float, high: float, low: float, close: float }</code>. A period of a candlestick chart: its time, in seconds
-after <code>time-origin</code>, and its first, highest, lowest and last value. A missing open or close takes the other's value.</p>
+<p><code>{ x: float, open: float, high: float, low: float, close: float, volume: float }</code>. A period of a candlestick chart: its time,
+in seconds after <code>time-origin</code>, its first, highest, lowest and last value, and the volume traded in it (0 when unknown). A
+missing open or close takes the other's value.</p>
 <h3><code>ChartGaugeBand</code></h3>
 <p><code>{ to: float, label: string, color: color }</code>. A gauge band, from where the previous one ends (or <code>min-value</code>) to <code>to</code>.
 Leave <code>color</code> unset for the theme's next color.</p>
@@ -1595,10 +1610,10 @@ Charts build it from their <code>value-prefix</code>, <code>value-suffix</code> 
   <tr><td><code>no-data</code></td><td><code>string</code></td><td>A missing value in heatmap tooltips: "No data"</td></tr>
   <tr><td><code>increase</code>, <code>decrease</code>, <code>total</code></td><td><code>string</code></td><td>A waterfall chart's default legend, and the center of a sunburst: "Increase", "Decrease", "Total"</td></tr>
   <tr><td><code>running-total</code></td><td><code>string</code></td><td>Waterfall tooltips: "Running total"</td></tr>
-  <tr><td><code>change</code></td><td><code>string</code></td><td>Dumbbell tooltips: "Change"</td></tr>
+  <tr><td><code>change</code></td><td><code>string</code></td><td>Dumbbell and candlestick tooltips: "Change"</td></tr>
   <tr><td><code>of-first-stage</code>, <code>of-previous-stage</code></td><td><code>string</code></td><td>Funnel tooltips, with <code>{value}</code> for the percentage: "{value} of the first stage", "{value} of the previous stage"</td></tr>
   <tr><td><code>on-date</code></td><td><code>string</code></td><td>Calendar heatmap tooltips: "{value} on {date}"</td></tr>
-  <tr><td><code>open</code>, <code>high</code>, <code>low</code>, <code>close</code></td><td><code>string</code></td><td>Candlestick tooltips: "Open", "High", "Low", "Close"</td></tr>
+  <tr><td><code>open</code>, <code>high</code>, <code>low</code>, <code>close</code>, <code>volume</code></td><td><code>string</code></td><td>Candlestick tooltips: "Open", "High", "Low", "Close", "Volume"</td></tr>
 </table>
 <h3>Enums</h3>
 <table>
@@ -1997,7 +2012,8 @@ let labels: Vec&lt;String&gt; = scale.ticks().iter().map(|&amp;v| format_tick(v,
   Its pure callbacks include <code>layout</code>, <code>value-axis</code>, <code>pie-layout</code>, <code>radar-layout</code>, <code>treemap-layout</code>,
   <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gauge-layout</code>,
   <code>candle-layout</code>, the hit tests and <code>format-value</code>. <code>moving-average(candles, period)</code> is for you: the simple
-  moving average of the closes, as points for a line over a <a href="#candlestick">CandlestickChart</a>.
+  moving average of the closes, as points for a line over a <a href="#candlestick">CandlestickChart</a>; in Rust,
+  <code>slintplot::candle::moving_average</code> computes the same.
 </p>
 
 <h2 id="examples">Example apps</h2>

@@ -1253,6 +1253,7 @@ macro_rules! register {
                             high: f64::NAN,
                             low: f64::NAN,
                             close: f64::NAN,
+                            volume: f64::NAN,
                         },
                         |c| $crate::candle::Candle {
                             x: c.x.into(),
@@ -1260,41 +1261,37 @@ macro_rules! register {
                             high: c.high.into(),
                             low: c.low.into(),
                             close: c.close.into(),
+                            volume: c.volume.into(),
                         },
                     )
                 }),
             )
         }
+        fn chart_candle(c: $crate::candle::Candle) -> ChartCandle {
+            ChartCandle {
+                x: c.x as f32,
+                open: c.open as f32,
+                high: c.high as f32,
+                low: c.low as f32,
+                close: c.close as f32,
+                volume: c.volume as f32,
+            }
+        }
         fn candle_bars(layout: &ChartCandleLayout) -> Vec<f32> {
             layout.candles.iter().map(|c| c.x).collect()
         }
-        engine.on_candle_range(
-            |data: ::slint::ModelRc<ChartCandle>,
-             lines: ::slint::ModelRc<ChartDataset>,
-             start: f32,
-             end: f32,
-             positive: bool| {
-                let (min, max) = $crate::candle::value_extent(
-                    &candles(&data),
-                    &datasets(&lines),
-                    (start, end),
-                    positive,
-                )
-                .unwrap_or((0.0, 1.0));
-                ChartRange {
-                    min: min as f32,
-                    max: max as f32,
-                }
-            },
-        );
-        engine.on_candle_layout(|req: ChartCandleRequest| {
-            let started = $crate::profile::start();
+        // The request, without the value axis.
+        fn with_candles<T>(
+            req: &ChartCandleRequest,
+            f: impl FnOnce(&$crate::candle::CandleRequest) -> T,
+        ) -> T {
             let lines = datasets(&req.datasets);
-            let out = $crate::candle::layout(&$crate::candle::CandleRequest {
+            f(&$crate::candle::CandleRequest {
                 candles: &candles(&req.candles),
                 lines: &lines,
                 width: req.width,
                 height: req.height,
+                volume_height: req.volume_height,
                 scale: $crate::layout::ValueScale {
                     min: req.y_min.into(),
                     max: req.y_max.into(),
@@ -1303,6 +1300,7 @@ macro_rules! register {
                 view: (req.view_start, req.view_end),
                 progress: req.progress,
                 decimate: req.decimate,
+                skip_gaps: req.skip_gaps,
                 time: $crate::layout::TimeAxis {
                     origin: seconds(&req.time_origin),
                     utc_offset_minutes: req.utc_offset,
@@ -1310,7 +1308,18 @@ macro_rules! register {
                 font_size: req.font_size,
                 locale: &locale(&req.locale),
                 palette: &palette(&req.palette),
-            });
+            })
+        }
+        engine.on_candle_range(|req: ChartCandleRequest| {
+            let (min, max) = with_candles(&req, $crate::candle::value_extent).unwrap_or((0.0, 1.0));
+            ChartRange {
+                min: min as f32,
+                max: max as f32,
+            }
+        });
+        engine.on_candle_layout(|req: ChartCandleRequest| {
+            let started = $crate::profile::start();
+            let out = with_candles(&req, $crate::candle::layout);
             let layout = ChartCandleLayout {
                 candles: model(out.bars.into_iter().map(|b| ChartCandleBar {
                     first: b.first as i32,
@@ -1321,18 +1330,19 @@ macro_rules! register {
                     high: b.high,
                     low: b.low,
                     close: b.close,
-                    value: ChartCandle {
-                        x: b.value.x as f32,
-                        open: b.value.open as f32,
-                        high: b.value.high as f32,
-                        low: b.value.low as f32,
-                        close: b.value.close as f32,
-                    },
+                    volume: b.volume,
+                    value: chart_candle(b.value),
                     end: b.end as f32,
+                    previous_close: b.previous as f32,
+                    has_previous: b.previous.is_finite(),
                 })),
                 series: series(out.series),
                 x_ticks: ticks(out.x_ticks),
                 slot: out.slot,
+                last: out.last.map(chart_candle).unwrap_or_default(),
+                has_last: out.last.is_some(),
+                last_y: out.last_y,
+                volume_max: out.volume_max as f32,
             };
             $crate::profile::record_layout(started.elapsed());
             layout
@@ -1347,6 +1357,26 @@ macro_rules! register {
                 .position(|c| c.first <= index && index <= c.last)
                 .map_or(-1, |i| i as i32)
         });
+        engine.on_candle_values(|lines: ::slint::ModelRc<ChartDataset>, x: f32| {
+            model(datasets(&lines).iter().enumerate().filter_map(|(i, d)| {
+                let y = $crate::candle::value_at(d, x.into())?;
+                Some(ChartXY {
+                    x: i as f32,
+                    y: y as f32,
+                    r: 0.0,
+                })
+            }))
+        });
+        engine.on_axis_value(
+            |pos: f32, length: f32, min: f32, max: f32, logarithmic: bool| {
+                $crate::layout::ValueScale {
+                    min: min.into(),
+                    max: max.into(),
+                    logarithmic,
+                }
+                .value_at(pos, length) as f32
+            },
+        );
         engine.on_moving_average(|data: ::slint::ModelRc<ChartCandle>, period: i32| {
             let period = usize::try_from(period).unwrap_or(0);
             model(
