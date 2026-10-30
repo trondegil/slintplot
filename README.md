@@ -141,6 +141,7 @@ example and its properties.
 | [`WaterfallChart`](https://slintplot.dev/#waterfall) | Increases, decreases and totals, with connector lines |
 | [`DumbbellChart`](https://slintplot.dev/#dumbbell) | A dot per value and a bar between them, such as before and after |
 | [`GaugeChart`](https://slintplot.dev/#gauge) | A filled arc or a needle over colored bands |
+| [`BulletChart`](https://slintplot.dev/#bullet) | Rows of a value bar against a target mark, over shaded bands |
 
 Line and bar charts can mix the two: any dataset can be drawn as a line or as
 bars with `series-type`, such as an average line over bars. See

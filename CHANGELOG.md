@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- `BulletChart`: rows of a thin bar for a value and a mark for its target,
+  over shaded bands such as poor, OK and good. A compact alternative to
+  gauges for dashboards. Each row has its own axis, or all share one with
+  `shared-axis`; `vertical: true` turns the rows into columns.
+
 ### Fixed
 
 - A time series with `fill: true` lost its fill when it had more than two

@@ -36,6 +36,7 @@
 //! app.run()
 //! ```
 
+pub mod bullet;
 pub mod funnel;
 pub mod gauge;
 pub mod heatmap;
@@ -1167,6 +1168,141 @@ macro_rules! register {
                 step: bell.step,
             }
         });
+        // Bands without a color: shades of `shade`, the first the darkest.
+        fn bullet_colors(bands: &[ChartGaugeBand], shade: ::slint::Color) -> Vec<::slint::Color> {
+            bands
+                .iter()
+                .enumerate()
+                .map(|(i, b)| {
+                    if b.color.alpha() == 0 {
+                        color($crate::bullet::shade(i, bands.len(), rgba(shade)))
+                    } else {
+                        b.color
+                    }
+                })
+                .collect()
+        }
+        engine.on_bullet_layout(|req: ChartBulletRequest| {
+            let rows = tracked(&req.rows);
+            let shared_bands = tracked(&req.bands);
+            let row_bands: Vec<Vec<ChartGaugeBand>> = rows
+                .iter()
+                .map(|r| {
+                    let own = tracked(&r.bands);
+                    if own.is_empty() {
+                        shared_bands.clone()
+                    } else {
+                        own
+                    }
+                })
+                .collect();
+            let input: Vec<_> = rows
+                .iter()
+                .zip(&row_bands)
+                .map(|(r, bands)| $crate::bullet::Row {
+                    value: r.value.into(),
+                    target: r.target.into(),
+                    bands: bands.iter().map(|b| b.to.into()).collect(),
+                    format: format(
+                        &ChartFormat {
+                            prefix: if r.prefix.is_empty() {
+                                req.format.prefix.clone()
+                            } else {
+                                r.prefix.clone()
+                            },
+                            suffix: if r.suffix.is_empty() {
+                                req.format.suffix.clone()
+                            } else {
+                                r.suffix.clone()
+                            },
+                            decimals: req.format.decimals,
+                        },
+                        &req.locale,
+                    ),
+                })
+                .collect();
+            let started = $crate::profile::start();
+            let bullet = $crate::bullet::layout(&$crate::bullet::BulletRequest {
+                rows: &input,
+                width: req.width,
+                height: req.height,
+                vertical: req.vertical,
+                shared_axis: req.shared_axis,
+                format: &format(&req.format, &req.locale),
+                fixed: req
+                    .fixed
+                    .then(|| (req.fixed_min.into(), req.fixed_max.into())),
+                font_size: req.font_size,
+                progress: req.progress,
+            });
+            $crate::profile::record_layout(started.elapsed());
+            let colors: Vec<_> = row_bands
+                .iter()
+                .map(|bands| bullet_colors(bands, req.shade))
+                .collect();
+            let rect = |r: $crate::bullet::Rect| ChartBulletRect {
+                x: r.x,
+                y: r.y,
+                width: r.width,
+                height: r.height,
+            };
+            ChartBulletLayout {
+                rows: model(bullet.rows.iter().map(|r| {
+                    ChartBulletRow {
+                        index: r.index as i32,
+                        cell: rect(r.cell),
+                        track: rect(r.track),
+                        bar: rect(r.bar),
+                        target: rect(r.target.unwrap_or_default()),
+                        has_target: r.target.is_some(),
+                        value_band: r.value_band.map_or(-1, |b| b as i32),
+                        value_band_label: r
+                            .value_band
+                            .map(|b| row_bands[r.index][b].label.clone())
+                            .unwrap_or_default(),
+                        value_band_color: r
+                            .value_band
+                            .map(|b| colors[r.index][b])
+                            .unwrap_or_default(),
+                    }
+                })),
+                bands: model(bullet.bands.iter().map(|b| ChartBulletBand {
+                    row: b.row as i32,
+                    index: b.index as i32,
+                    x: b.rect.x,
+                    y: b.rect.y,
+                    width: b.rect.width,
+                    height: b.rect.height,
+                    color: colors[b.row][b.index],
+                })),
+                ticks: labels(bullet.ticks),
+                tick_marks: bullet.tick_marks.into(),
+                step: bullet.step,
+            }
+        });
+        engine.on_bullet_labels(|rows: ::slint::ModelRc<ChartBullet>, sublabels: bool| {
+            model(
+                tracked(&rows)
+                    .into_iter()
+                    .map(|r| if sublabels { r.sublabel } else { r.label }),
+            )
+        });
+        engine.on_bullet_legend(
+            |bands: ::slint::ModelRc<ChartGaugeBand>, shade: ::slint::Color, l: ChartLocale| {
+                let locale = locale(&l);
+                let bands = tracked(&bands);
+                let colors = bullet_colors(&bands, shade);
+                model(bands.iter().zip(colors).map(|(b, color)| ChartLegendItem {
+                    label: if b.label.is_empty() {
+                        format!("Up to {}", locale.value(b.to.into())).into()
+                    } else {
+                        b.label.clone()
+                    },
+                    color,
+                    hidden: false,
+                }))
+            },
+        );
         engine.on_value_range(|values: ::slint::ModelRc<f32>| {
             let (min, max) = $crate::heatmap::extent(tracked(&values).into_iter().map(f64::from))
                 .unwrap_or((0.0, 1.0));

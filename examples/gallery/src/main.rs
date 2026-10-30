@@ -210,6 +210,8 @@ enum Shape {
     Dumbbell,
     /// One value on a gauge.
     Gauge,
+    /// Measures against their targets.
+    Bullet,
     /// Sensors streaming new values.
     Live,
 }
@@ -677,6 +679,14 @@ const SAMPLES: &[Sample] = &[
         "Gauges",
         "GaugeChart: a filled arc with rounded ends, the same with a ring of bands, and a needle with ticks over the bands.",
         Shape::Gauge,
+        &["Randomize"],
+    ),
+    sample(
+        "bullet",
+        "Business charts",
+        "Bullet charts",
+        "BulletChart: a KPI panel with an axis per row and gray bands, and columns on a shared axis over colored bands.",
+        Shape::Bullet,
         &["Randomize"],
     ),
     sample(
@@ -1212,6 +1222,26 @@ impl State {
             } else {
                 72.0
             });
+            // The bullet charts: a KPI panel, then sales by region in
+            // percent of target.
+            const BULLET: [f32; 10] = [
+                270.0, 22.5, 320.0, 1650.0, 4.5, 104.0, 87.0, 72.0, 95.0, 118.0,
+            ];
+            let values: Vec<f32> = BULLET
+                .iter()
+                .enumerate()
+                .map(|(i, &v)| {
+                    if !randomize {
+                        v
+                    } else if i == 4 {
+                        // Satisfaction, out of 5.
+                        (v * (0.7 + 0.4 * self.rng.next()) * 10.0).round().min(50.0) / 10.0
+                    } else {
+                        vary(&mut self.rng, v, 0.3)
+                    }
+                })
+                .collect();
+            ui.set_bullet_values(ModelRc::new(VecModel::from(values)));
         }
     }
 
@@ -1553,7 +1583,11 @@ impl State {
             "Randomize"
                 if matches!(
                     self.sample.shape,
-                    Shape::Sunburst | Shape::Funnel | Shape::Waterfall | Shape::Gauge
+                    Shape::Sunburst
+                        | Shape::Funnel
+                        | Shape::Waterfall
+                        | Shape::Gauge
+                        | Shape::Bullet
                 ) =>
             {
                 self.business_data(true);

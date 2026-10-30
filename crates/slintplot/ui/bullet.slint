@@ -1,0 +1,375 @@
+import { ChartBullet, ChartBulletLayout, ChartEngine, ChartFormat, ChartGaugeBand, ChartLegendItem } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+
+// A bullet chart: for each row, a thin bar for the value and a mark for the
+// target, over shaded bands such as poor, OK and good. A compact alternative
+// to gauges, for a panel of measures. Each row has its own value axis unless
+// `shared-axis` is set.
+export component BulletChart {
+    in property <[ChartBullet]> rows;
+    // The bands of rows without their own. Bands without a color are shades
+    // of gray, the first the darkest.
+    in property <[ChartGaugeBand]> bands;
+    in property <string> title;
+    // Columns that grow upwards, instead of rows that grow to the right.
+    in property <bool> vertical: false;
+    // One value axis for all rows, for measures in the same unit.
+    in property <bool> shared-axis: false;
+    // The value bar, and the target mark.
+    in property <color> color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #3b82f6;
+    in property <color> target-color: ChartTheme.dark ? ChartTheme.text-color.brighter(0.3) : ChartTheme.text-color.darker(0.5);
+    // The legend lists the chart's bands.
+    in property <bool> show-legend: false;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
+    in property <bool> show-tooltip: true;
+    // Grow the bars from zero when the chart appears.
+    in property <bool> animated: true;
+    // A fixed value axis from `min-value` to `max-value`, instead of fitting
+    // each row.
+    in property <bool> fixed-range: false;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic). Rows can set their own prefix and suffix.
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The row under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: root.rows.length == 0 || bullet.step <= 0 ? -1
+        : touch.has-hover ? root.at-mouse
+        : keys.has-focus && root.key-index >= 0 ? min(root.key-index, root.rows.length - 1)
+        : -1;
+
+    callback row-clicked(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-index >= 0
+        ? root.rows[root.hovered-index].label + ": " + ChartEngine.format-value(root.rows[root.hovered-index].value, root.row-format(root.hovered-index))
+        : "";
+
+    private property <int> key-index: -1;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    // A row's format: its own prefix and suffix, or the chart's.
+    pure function row-format(index: int) -> ChartFormat {
+        {
+            prefix: root.rows[index].prefix != "" ? root.rows[index].prefix : root.value-prefix,
+            suffix: root.rows[index].suffix != "" ? root.rows[index].suffix : root.value-suffix,
+            decimals: root.value-decimals,
+        }
+    }
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+    private property <[string]> labels: ChartEngine.bullet-labels(root.rows, false);
+    private property <string> widest-sublabel: ChartEngine.widest-label(ChartEngine.bullet-labels(root.rows, true));
+    private property <length> sublabel-size: ChartTheme.font-size * 0.9;
+    private property <[ChartLegendItem]> legend: ChartEngine.bullet-legend(root.bands, ChartTheme.text-color, ChartTheme.locale);
+    private property <ChartBulletLayout> bullet: ChartEngine.bullet-layout({
+        rows: root.rows,
+        bands: root.bands,
+        width: plot.width / 1px,
+        height: plot.height / 1px,
+        vertical: root.vertical,
+        shared-axis: root.shared-axis,
+        fixed: root.fixed-range,
+        fixed-min: root.min-value,
+        fixed-max: root.max-value,
+        format: root.format,
+        font-size: ChartTheme.font-size / 1px * 0.9,
+        progress: root.progress,
+        shade: ChartTheme.text-color,
+        locale: ChartTheme.locale,
+    });
+    // The row at the mouse, or -1.
+    private property <int> at-mouse: {
+        let at = root.vertical
+            ? (touch.mouse-x - (bullet.rows.length > 0 ? bullet.rows[0].cell.x * 1px : 0px)) / (bullet.step * 1px)
+            : touch.mouse-y / (bullet.step * 1px);
+        at >= 0 && at < root.rows.length ? floor(at) : -1
+    };
+
+    min-width: 160px;
+    min-height: 80px;
+    preferred-width: 480px;
+    preferred-height: 260px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend && root.bands.length > 0;
+            position: root.legend-position;
+
+            frame := Rectangle {
+                horizontal-stretch: 1;
+
+                // Measures the labels, which don't depend on the chart size.
+                label-measure := Text {
+                    visible: false;
+                    text: ChartEngine.widest-label(root.labels);
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                }
+                sublabel-measure := Text {
+                    visible: false;
+                    text: root.widest-sublabel;
+                    font-size: root.sublabel-size;
+                }
+
+                // Labels left of the rows, or under the columns.
+                property <length> label-width: max(label-measure.preferred-width, root.widest-sublabel != "" ? sublabel-measure.preferred-width : 0px);
+                property <length> label-height: label-measure.preferred-height + (root.widest-sublabel != "" ? sublabel-measure.preferred-height : 0px);
+
+                plot := Rectangle {
+                    x: root.vertical || self.label-room == 0 ? 0px : min(self.label-room, parent.width * 0.4);
+                    property <length> label-room: frame.label-width > 0 ? frame.label-width + 12px : 0px;
+                    width: max(0px, parent.width - self.x);
+                    height: max(0px, parent.height - (root.vertical ? frame.label-height + 6px : 0px));
+                    y: 0;
+
+                    if root.hovered-index >= 0 && root.hovered-index < bullet.rows.length: Rectangle {
+                        x: bullet.rows[root.hovered-index].cell.x * 1px;
+                        y: bullet.rows[root.hovered-index].cell.y * 1px;
+                        width: bullet.rows[root.hovered-index].cell.width * 1px;
+                        height: bullet.rows[root.hovered-index].cell.height * 1px;
+                        background: ChartTheme.grid-color;
+                        border-radius: 4px;
+                    }
+
+                    // The tracks show where no band reaches.
+                    for row in bullet.rows: Rectangle {
+                        x: row.track.x * 1px;
+                        y: row.track.y * 1px;
+                        width: row.track.width * 1px;
+                        height: row.track.height * 1px;
+                        background: ChartTheme.grid-color;
+                    }
+
+                    for band in bullet.bands: Rectangle {
+                        x: band.x * 1px;
+                        y: band.y * 1px;
+                        width: band.width * 1px;
+                        height: band.height * 1px;
+                        background: band.color;
+                    }
+
+                    for row in bullet.rows: Rectangle {
+                        x: row.bar.x * 1px;
+                        y: row.bar.y * 1px;
+                        width: row.bar.width * 1px;
+                        height: row.bar.height * 1px;
+                        background: root.hovered-index == row.index ? root.color.mix(ChartTheme.text-color, 0.85) : root.color;
+                    }
+
+                    for row in bullet.rows: Rectangle {
+                        visible: row.has-target;
+                        x: row.target.x * 1px;
+                        y: row.target.y * 1px;
+                        width: row.target.width * 1px;
+                        height: row.target.height * 1px;
+                        background: root.target-color;
+                    }
+
+                    Path {
+                        viewbox-width: plot.width / 1px;
+                        viewbox-height: plot.height / 1px;
+                        width: plot.width;
+                        height: plot.height;
+                        fit: fill;
+                        commands: bullet.tick-marks;
+                        stroke: ChartTheme.axis-color;
+                        stroke-width: 1px;
+                    }
+                    for label in bullet.ticks: Text {
+                        x: label.x * 1px - self.preferred-width * label.align;
+                        y: label.y * 1px - self.preferred-height * label.valign;
+                        text: label.text;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size * 0.9;
+                    }
+                }
+
+                for row[i] in bullet.rows: VerticalLayout {
+                    // Right-aligned beside the track, or centered under the column.
+                    x: root.vertical ? plot.x + row.cell.x * 1px : 0px;
+                    width: root.vertical ? row.cell.width * 1px : max(0px, plot.x - 12px);
+                    y: root.vertical ? plot.height + 6px : plot.y + (row.track.y + row.track.height / 2) * 1px - self.preferred-height / 2;
+                    height: self.preferred-height;
+                    Text {
+                        text: root.rows[i].label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        font-weight: 600;
+                        horizontal-alignment: root.vertical ? center : right;
+                        overflow: elide;
+                    }
+                    if root.rows[i].sublabel != "": Text {
+                        text: root.rows[i].sublabel;
+                        color: ChartTheme.text-color;
+                        font-size: root.sublabel-size;
+                        horizontal-alignment: root.vertical ? center : right;
+                        overflow: elide;
+                        opacity: 0.8;
+                    }
+                }
+
+                // Keyboard: the arrow keys move through the rows, Enter
+                // clicks the selected one.
+                keys := FocusScope {
+                    x: plot.x;
+                    y: plot.y;
+                    width: plot.width;
+                    height: plot.height;
+                    key-pressed(event) => {
+                        let count = root.rows.length;
+                        if count == 0 {
+                            return reject;
+                        }
+                        let current = root.key-index < 0 ? 0 : min(root.key-index, count - 1);
+                        if event.text == Key.DownArrow || event.text == Key.RightArrow {
+                            root.key-index = root.key-index < 0 ? 0 : mod(current + 1, count);
+                        } else if event.text == Key.UpArrow || event.text == Key.LeftArrow {
+                            root.key-index = mod(current - 1 + count, count);
+                        } else if event.text == Key.Home {
+                            root.key-index = 0;
+                        } else if event.text == Key.End {
+                            root.key-index = count - 1;
+                        } else if event.text == Key.Return && root.key-index >= 0 {
+                            root.row-clicked(current);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-index >= 0 {
+                                root.key-index = root.hovered-index;
+                                root.row-clicked(root.hovered-index);
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    x: plot.x - 3px;
+                    y: plot.y - 3px;
+                    width: plot.width + 6px;
+                    height: plot.height + 6px;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.show-tooltip && root.hovered-index >= 0 && root.hovered-index < bullet.rows.length: Rectangle {
+                    property <int> index: root.hovered-index;
+                    property <ChartFormat> row-format: root.row-format(self.index);
+                    property <length> anchor-x: touch.has-hover ? plot.x + touch.mouse-x
+                        : plot.x + (bullet.rows[self.index].cell.x + bullet.rows[self.index].cell.width / 2) * 1px;
+                    property <length> anchor-y: touch.has-hover ? plot.y + touch.mouse-y
+                        : plot.y + (bullet.rows[self.index].cell.y + bullet.rows[self.index].cell.height / 2) * 1px;
+                    x: self.anchor-x + 14px + self.width > frame.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
+                    y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, frame.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    background: ChartTheme.tooltip-background;
+                    border-radius: 6px;
+
+                    VerticalLayout {
+                        padding: 6px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 4px;
+                        if root.rows[index].label != "": Text {
+                            text: root.rows[index].label;
+                            color: ChartTheme.tooltip-text;
+                            font-size: ChartTheme.font-size;
+                            font-weight: 700;
+                        }
+                        // The value, beside a swatch of the bar.
+                        HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 10px;
+                                    height: 10px;
+                                    background: root.color;
+                                    border-color: ChartTheme.tooltip-text;
+                                    border-width: 1px;
+                                }
+                            }
+                            Text {
+                                text: ChartEngine.format-value(root.rows[index].value, row-format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                                font-weight: 700;
+                            }
+                        }
+                        // The target, beside a mark like the chart's.
+                        if bullet.rows[index].has-target: HorizontalLayout {
+                            spacing: 6px;
+                            Rectangle {
+                                width: 10px;
+                                Rectangle {
+                                    width: 3px;
+                                    height: 12px;
+                                    background: ChartTheme.tooltip-text;
+                                }
+                            }
+                            Text {
+                                text: ChartEngine.format-value(root.rows[index].target, row-format);
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                            }
+                        }
+                        // The band the value is in, when it has a label.
+                        if bullet.rows[index].value-band-label != "": HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 10px;
+                                    height: 10px;
+                                    background: bullet.rows[index].value-band-color;
+                                    border-color: ChartTheme.tooltip-text;
+                                    border-width: 1px;
+                                }
+                            }
+                            Text {
+                                text: bullet.rows[index].value-band-label;
+                                color: ChartTheme.tooltip-text;
+                                font-size: ChartTheme.font-size;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -14,7 +14,7 @@ use slint::{Color, LogicalPosition, ModelRc, PhysicalSize, SharedString, VecMode
 
 slint::include_modules!();
 
-const CHARTS: i32 = 18;
+const CHARTS: i32 = 19;
 
 /// More memory than any chart should need: past it the fuzzer stops, rather
 /// than fill the machine's RAM and swap.
@@ -299,6 +299,30 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
         .collect();
     ui.set_bands(model(bands));
     ui.set_value(rng.number());
+    let bullets: Vec<ChartBullet> = (0..rng.below(12))
+        .map(|_| ChartBullet {
+            label: rng.text(),
+            sublabel: rng.text(),
+            value: rng.number(),
+            target: rng.number(),
+            bands: model(
+                (0..rng.below(5))
+                    .map(|_| ChartGaugeBand {
+                        to: rng.number(),
+                        label: rng.text(),
+                        color: rng.color(),
+                    })
+                    .collect(),
+            ),
+            prefix: rng.text(),
+            suffix: if rng.chance(50) {
+                "".into()
+            } else {
+                rng.text()
+            },
+        })
+        .collect();
+    ui.set_bullets(model(bullets));
 
     ui.set_stacked(rng.chance(40));
     ui.set_stacked_percent(rng.chance(25));
