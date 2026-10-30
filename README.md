@@ -136,6 +136,7 @@ example and its properties.
 | [`GanttChart`](https://slintplot.dev/#gantt) | One row per task with a bar on a time axis, groups, progress, milestones and a line at now |
 | [`CandlestickChart`](https://slintplot.dev/#candlestick) | Open, high, low and close per period, as candles or OHLC bars, on a zoomable time axis |
 | [`HeatmapChart`](https://slintplot.dev/#heatmap) | A matrix of colored cells, sequential or diverging |
+| [`MatrixChart`](https://slintplot.dev/#matrix) | Rows by columns of circles sized by value, colored by row, column, sign or a second measure |
 | [`CalendarHeatmap`](https://slintplot.dev/#calendar-heatmap) | Daily values over a year, like GitHub's contribution graph |
 | [`TreemapChart`](https://slintplot.dev/#treemap) | Squarified rectangles sized by value, optionally in groups |
 | [`SunburstChart`](https://slintplot.dev/#sunburst) | A hierarchy as rings; click an item to zoom into it |

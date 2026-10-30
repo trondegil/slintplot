@@ -44,6 +44,7 @@ pub mod gauge;
 pub mod heatmap;
 pub mod layout;
 pub mod locale;
+pub mod matrix;
 pub mod path;
 pub mod pie;
 pub mod profile;
@@ -1676,6 +1677,85 @@ macro_rules! register {
                         r: 0.0,
                     }),
             )
+        });
+        engine.on_matrix_layout(|req: ChartMatrixRequest| {
+            let values: Vec<f64> = tracked(&req.values).into_iter().map(f64::from).collect();
+            let color_values: Vec<f64> = tracked(&req.color_values)
+                .into_iter()
+                .map(f64::from)
+                .collect();
+            let m = $crate::matrix::layout(&$crate::matrix::MatrixRequest {
+                values: &values,
+                color_values: &color_values,
+                rows: usize::try_from(req.rows).unwrap_or(0),
+                columns: usize::try_from(req.columns).unwrap_or(0),
+                width: req.width,
+                height: req.height,
+                mode: match req.color_mode {
+                    ChartMatrixColorMode::Rows => $crate::matrix::ColorMode::Rows,
+                    ChartMatrixColorMode::Columns => $crate::matrix::ColorMode::Columns,
+                    ChartMatrixColorMode::Sign => $crate::matrix::ColorMode::Sign,
+                    ChartMatrixColorMode::Scale => $crate::matrix::ColorMode::Scale,
+                    _ => $crate::matrix::ColorMode::Single,
+                },
+                color: rgba(req.color),
+                negative_color: rgba(req.negative_color),
+                palette: &palette(&req.palette),
+                base: rgba(req.base),
+                max_value: req.fixed.then_some(req.max_value.into()),
+                progress: req.progress,
+                font_size: req.font_size,
+                show_values: req.show_values,
+                show_totals: req.show_totals,
+                legend_radius: req.legend_radius,
+                format: &format(&req.format, &req.locale),
+                color_format: &format(&req.color_format, &req.locale),
+            });
+            let size = |s: $crate::matrix::Reference| ChartMatrixSize {
+                value: s.value as f32,
+                label: s.label.into(),
+                r: s.r,
+                fill: color(s.fill),
+                stroke: color(s.stroke),
+            };
+            let index = |i: usize| i.min(i32::MAX as usize) as i32;
+            let strings =
+                |items: Vec<String>| model(items.into_iter().map(::slint::SharedString::from));
+            ChartMatrixLayout {
+                dots: model(m.dots.into_iter().map(|d| ChartMatrixDot {
+                    row: index(d.row),
+                    column: index(d.column),
+                    x: d.x,
+                    y: d.y,
+                    r: d.r,
+                    size: d.size,
+                    fill: color(d.fill),
+                    stroke: color(d.stroke),
+                    value: d.value as f32,
+                    label: d.label.into(),
+                    light_label: d.light_label,
+                })),
+                cell_width: m.cell_width,
+                cell_height: m.cell_height,
+                grid_width: m.grid_width,
+                grid_height: m.grid_height,
+                block_columns: index(m.block_columns),
+                block_rows: index(m.block_rows),
+                separators: m.separators.into(),
+                row_totals: strings(m.row_totals),
+                column_totals: strings(m.column_totals),
+                grand_total: m.grand_total.into(),
+                total_width: m.total_width,
+                total_height: m.total_height,
+                sizes: model(m.sizes.into_iter().map(size)),
+                has_negative: m.negative.is_some(),
+                negative: m.negative.map(size).unwrap_or_default(),
+                scale_min_label: m.scale_min_label.into(),
+                scale_max_label: m.scale_max_label.into(),
+                scale_low: color(m.scale_colors[0]),
+                scale_middle: color(m.scale_colors[1]),
+                scale_high: color(m.scale_colors[2]),
+            }
         });
     }};
 }

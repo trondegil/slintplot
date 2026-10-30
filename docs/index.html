@@ -309,6 +309,7 @@
   <a href="#gantt">GanttChart</a>
   <a href="#candlestick">CandlestickChart</a>
   <a href="#heatmap">HeatmapChart</a>
+  <a href="#matrix">MatrixChart</a>
   <a href="#calendar-heatmap">CalendarHeatmap</a>
   <a href="#treemap">TreemapChart</a>
   <a href="#sunburst">SunburstChart</a>
@@ -1164,6 +1165,75 @@ HeatmapChart {
 <p>A diverging scale suits values around a center, such as correlations:</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap-diverging.webp" alt="A diverging heatmap of correlations" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-diverging-dark.webp" alt="A diverging heatmap of correlations" loading="lazy"></figure>
 
+<h2 id="matrix">MatrixChart</h2>
+<p>A dot matrix: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order like a
+<a href="#heatmap">HeatmapChart</a>, but each cell holds a circle whose <em>area</em> is proportional to its value. Sizes compare more
+precisely than shades, so it suits sales by product and region, feature scores across tools, or survey answers by group. Zero and
+missing values draw nothing; negative values are hollow circles, or with <code>color-mode: sign</code> filled in
+<code>negative-color</code>. A size legend under the chart shows round values at the chart's scale, and the circles grow in when the chart
+appears and resize when the values change.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/matrix.webp" alt="MatrixChart: coffee sold by drink and hour, as circles in a color per drink" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/matrix-dark.webp" alt="MatrixChart: coffee sold by drink and hour, as circles in a color per drink" loading="lazy"></figure>
+<pre data-shot="matrix"><code>import { MatrixChart, ChartMatrixColorMode } from "@slintplot";
+
+MatrixChart {
+    title: "Cups sold by drink and hour";
+    x-labels: ["07", "08", "09", "10", "11", "12", "13", "14"];
+    y-labels: ["Latte", "Cappuccino", "Espresso", "Flat white", "Mocha", "Tea"];
+    values: [55, 96, 84, 61, 44, 40, 52, 36,
+             48, 82, 70, 52, 35, 30, 38, 25,
+             42, 68, 55, 38, 30, 34, 45, 28,
+             30, 58, 51, 40, 28, 24, 31, 20,
+             12, 20, 24, 22, 18, 21, 26, 30,
+              8, 14, 18, 20, 24, 35, 38, 46];
+    color-mode: ChartMatrixColorMode.rows;    // a theme color per drink
+    size-label: "Cups";
+    show-values: true;
+    show-totals: true;
+    x-labels-top: true;                       // hours above, totals below
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>x-labels</code></td><td><code>[string]</code></td><td></td><td>The column labels</td></tr>
+  <tr><td><code>y-labels</code></td><td><code>[string]</code></td><td></td><td>The row labels</td></tr>
+  <tr><td><code>values</code></td><td><code>[float]</code></td><td></td><td>The cells in row order: <code>values[row * columns + column]</code>; 0 or NaN for no circle</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>color-mode</code></td><td><code>ChartMatrixColorMode</code></td><td><code>single</code></td><td><code>single</code>: all in <code>color</code>; <code>rows</code>, <code>columns</code>: a theme color per row or column; <code>sign</code>: <code>color</code> and <code>negative-color</code>; <code>scale</code>: from pale to <code>color</code> by <code>color-values</code>, diverging at zero with <code>negative-color</code> when they have both signs</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The circles' color</td></tr>
+  <tr><td><code>negative-color</code></td><td><code>color</code></td><td><code>ChartTheme.decrease-color</code></td><td>Negative values with <code>color-mode: sign</code>, and the low end of a diverging scale</td></tr>
+  <tr><td><code>color-values</code></td><td><code>[float]</code></td><td><code>[]</code></td><td>A second measure that colors the circles with <code>color-mode: scale</code>, in the order of <code>values</code>; empty to color by the values</td></tr>
+  <tr><td><code>size-label</code>, <code>color-label</code></td><td><code>string</code></td><td><code>""</code></td><td>What the values and color values are, such as "Sales" and "Growth", for the legend and tooltip</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Size the circles against <code>max-value</code> instead of the largest value, so that charts compare</td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>With <code>fixed-range</code>, the value of a circle that fills its cell; larger values do too</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value in its circle, or under it when it doesn't fit</td></tr>
+  <tr><td><code>show-totals</code></td><td><code>bool</code></td><td><code>false</code></td><td>A column of row totals and a row of column totals, when the cells have room for them</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The size legend, and with <code>color-mode: scale</code> the color scale</td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the row, column and value under the mouse</td></tr>
+  <tr><td><code>x-labels-top</code></td><td><code>bool</code></td><td><code>false</code></td><td>The column labels above the matrix, instead of below it</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the circles on appearing, and resize them when the values change</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>color-value-prefix</code>, <code>color-value-suffix</code>, <code>color-value-decimals</code></td><td></td><td></td><td>The same for <code>color-values</code></td></tr>
+  <tr><td><code>hovered-row</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The row of the cell under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>hovered-column</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The column of the cell under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>cell-clicked(row, column)</code></td><td>callback</td><td></td><td>A cell was clicked, or chosen with Enter</td></tr>
+</table>
+<p>A second measure can color the circles while their size shows the first, such as sales colored by growth on last year:</p>
+<pre><code>MatrixChart {
+    x-labels: root.regions;
+    y-labels: root.products;
+    values: root.sales;
+    color-mode: ChartMatrixColorMode.scale;
+    color-values: root.growth;                // blue for growth, the theme's red for decline
+    size-label: "Sales";
+    color-label: "Growth";
+    value-prefix: "$";
+    value-suffix: "M";
+    color-value-suffix: ChartTexts.percent;
+}</code></pre>
+<p>Large matrices stay fast: when cells get smaller than a few pixels, as with 500 by 500 values on a small chart, neighboring cells
+merge into one circle that shows the value farthest from zero, while the tooltip still reads the exact cell under the mouse.</p>
+
 <h2 id="calendar-heatmap">CalendarHeatmap</h2>
 <p>A year (or any span) of daily values, like GitHub's contribution graph: one column per week, one row per weekday, with month and
 weekday labels and a "Less … More" legend. Days are colored in <code>levels</code> steps, split by quantiles of the positive values,
@@ -1755,6 +1825,7 @@ Charts build it from their <code>value-prefix</code>, <code>value-suffix</code> 
   <tr><th>Enum</th><th>Values</th></tr>
   <tr><td><code>ChartSeriesType</code></td><td><code>auto</code>, <code>line</code>, <code>bar</code></td></tr>
   <tr><td><code>ChartLegendPosition</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code></td></tr>
+  <tr><td><code>ChartMatrixColorMode</code></td><td><code>single</code>, <code>rows</code>, <code>columns</code>, <code>sign</code>, <code>scale</code></td></tr>
   <tr><td><code>ChartPalette</code></td><td><code>modern</code>, <code>material</code>, <code>corporate</code>, <code>mono</code>, <code>pastel</code></td></tr>
   <tr><td><code>ChartLanguage</code></td><td><code>english</code>, <code>chinese</code>, <code>danish</code>, <code>dutch</code>, <code>finnish</code>, <code>french</code>, <code>german</code>, <code>italian</code>, <code>japanese</code>, <code>norwegian</code>, <code>polish</code>, <code>portuguese</code>, <code>spanish</code>, <code>swedish</code></td></tr>
   <tr><td><code>ChartKind</code></td><td><code>line</code>, <code>bar</code>, <code>scatter</code>, <code>bubble</code> (used internally by the chart components)</td></tr>
@@ -1867,9 +1938,9 @@ and dataset names itself; everything else comes from the library.</p>
 
 <h2 id="interaction">Interaction</h2>
 <ul>
-  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, gauges the band under the mouse, and bullet charts the value, target, distance to the target and band of a row.</li>
+  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, gauges the band under the mouse, and bullet charts the value, target, distance to the target and band of a row. Matrix charts show the row, column and value of the cell under the mouse, with its color value, and light up its row and column.</li>
   <li><strong>Legend.</strong> Clicking an entry toggles the dataset's or slice's <code>hidden</code> flag; the axes rescale to the visible data. In a treemap, it hides or shows a group, and in a sunburst a top-level item.</li>
-  <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code>, <code>step-clicked</code> and <code>task-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
+  <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code>, <code>step-clicked</code>, <code>task-clicked</code> and <code>cell-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
   <li><strong>Keyboard.</strong> Every chart can be used without a mouse. Click a chart (or tab to it) and a focus ring appears; the arrow
   keys then move the highlight and tooltip, Home and End jump to the ends, and Enter clicks. Charts report their title as an accessibility label.
     <table>
@@ -1877,7 +1948,7 @@ and dataset names itself; everything else comes from the library.</p>
       <tr><td>Line, bar, horizontal bar</td><td>Left and Right move through the categories</td></tr>
       <tr><td>Scatter, bubble, time series</td><td>Left and Right move through a dataset's points in x order; Up and Down move to another dataset, at the point closest in x</td></tr>
       <tr><td>Pie, doughnut, polar area, radar</td><td>Move around the slices or spokes</td></tr>
-      <tr><td>Heatmap</td><td>Move from cell to cell</td></tr>
+      <tr><td>Heatmap, matrix</td><td>Move from cell to cell</td></tr>
       <tr><td>Calendar heatmap</td><td>Left and Right move a week, Up and Down a day</td></tr>
       <tr><td>Treemap</td><td>Move through the items, group by group and largest first</td></tr>
       <tr><td>Sunburst</td><td>Move through the items, each parent before its children; Enter also zooms into an item with children, and Escape or Backspace zooms out</td></tr>
@@ -2090,6 +2161,7 @@ axes are computed from the remaining values.</p>
   <tr><td>Pie, doughnut, polar area</td><td>The slice isn't shown, as with zero and negative values.</td></tr>
   <tr><td>Radar</td><td>No point on that spoke.</td></tr>
   <tr><td>Heatmap</td><td>An empty cell.</td></tr>
+  <tr><td>Matrix</td><td>No circle, as with zero; row and column totals leave it out.</td></tr>
   <tr><td>Calendar heatmap</td><td>A day without activity, as with zero.</td></tr>
   <tr><td>Treemap</td><td>The item isn't shown.</td></tr>
   <tr><td>Sunburst</td><td>The item counts as 0: it isn't shown, unless it has children, which are.</td></tr>
@@ -2133,6 +2205,7 @@ slintplot::register!(app);</code></pre>
   <tr><td><code>slintplot::time</code></td><td><code>time_ticks</code>, <code>format_datetime</code> (English), <code>time_ticks_in</code>, <code>format_datetime_in</code> (a <code>Locale</code>), <code>unix_seconds</code>, <code>days_from_civil</code>, <code>civil_from_days</code></td></tr>
   <tr><td><code>slintplot::gantt</code></td><td><code>rows</code> (groups and headings), <code>window</code>, <code>layout(&amp;GanttRequest) -&gt; Gantt</code> (rows in view, bars, ticks), <code>duration</code></td></tr>
   <tr><td><code>slintplot::heatmap</code></td><td><code>calendar</code>, <code>calendar_in</code> (calendar layout and quantile levels), <code>weekday_labels</code>, <code>extent</code></td></tr>
+  <tr><td><code>slintplot::matrix</code></td><td><code>layout(&amp;MatrixRequest) -&gt; Matrix</code> (circles, merged blocks, totals, size legend), <code>radius</code>, <code>nice_below</code></td></tr>
   <tr><td><code>slintplot::ticks</code></td><td><code>NiceScale</code> (round tick spacing), <code>Format</code>, <code>log_ticks</code>, <code>format_tick</code>, <code>format_value</code> (English)</td></tr>
   <tr><td><code>slintplot::locale</code></td><td><code>Locale</code>: separators, names and date patterns, with <code>number</code>, <code>tick</code>, <code>value</code>, <code>date</code> and <code>time</code></td></tr>
   <tr><td><code>slintplot::path</code></td><td><code>line</code>, <code>area</code>, <code>band</code>, <code>steps</code>: SVG path commands for Slint's <code>Path</code></td></tr>
@@ -2150,7 +2223,7 @@ let labels: Vec&lt;String&gt; = scale.ticks().iter().map(|&amp;v| format_tick(v,
   but it has to be exported from your root <code>.slint</code> file so that <code>register!</code> can connect it.
   Its pure callbacks include <code>layout</code>, <code>value-axis</code>, <code>pie-layout</code>, <code>radar-layout</code>, <code>treemap-layout</code>,
   <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gantt-layout</code>, <code>gauge-layout</code>, <code>bullet-layout</code>,
-  <code>candle-layout</code>, the hit tests and <code>format-value</code>. <code>moving-average(candles, period)</code> is for you: the simple
+  <code>candle-layout</code>, <code>matrix-layout</code>, the hit tests and <code>format-value</code>. <code>moving-average(candles, period)</code> is for you: the simple
   moving average of the closes, as points for a line over a <a href="#candlestick">CandlestickChart</a>; in Rust,
   <code>slintplot::candle::moving_average</code> computes the same.
 </p>

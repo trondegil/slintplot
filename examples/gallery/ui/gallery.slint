@@ -21,6 +21,7 @@ import {
     ChartEngine,
     ChartLanguage,
     ChartLegendPosition,
+    ChartMatrixColorMode,
     ChartPalette,
     ChartSlice,
     ChartTexts,
@@ -28,6 +29,7 @@ import {
     DoughnutChart,
     HeatmapChart,
     HorizontalBarChart,
+    MatrixChart,
     LineChart,
     PieChart,
     PolarAreaChart,
@@ -697,6 +699,7 @@ export component Gallery inherits Window {
     in-out property <[ChartSlice]> slices;
     in property <[string]> row-labels;
     in property <[float]> grid;
+    in property <[float]> growth;
     in-out property <[ChartTreemapItem]> tree;
     in-out property <[ChartSunburstItem]> sun;
     in property <[ChartWaterfallStep]> steps;
@@ -1157,6 +1160,22 @@ export component Gallery inherits Window {
                         max-value: 1;
                         show-values: true;
                         value-decimals: 2;
+                    }
+                    if root.sample == "matrix": MatrixChart {
+                        title: "Sales by product and region";
+                        x-labels: root.labels;
+                        y-labels: root.row-labels;
+                        values: root.grid;
+                        color-mode: ChartMatrixColorMode.scale;
+                        color-values: root.growth;
+                        size-label: "Sales";
+                        color-label: "Growth";
+                        value-prefix: "$";
+                        value-suffix: "M";
+                        color-value-suffix: ChartTexts.percent;
+                        show-values: true;
+                        show-totals: true;
+                        x-labels-top: true;
                     }
                     if root.sample == "treemap": TreemapChart {
                         title: "World population by country (millions)";

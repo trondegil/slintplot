@@ -1,0 +1,562 @@
+import { ChartEngine, ChartFormat, ChartMatrixColorMode, ChartMatrixDot, ChartMatrixLayout } from "engine.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
+import { TooltipFrame, TooltipLine } from "tooltip.slint";
+
+// A matrix of circles: rows (`y-labels`) by columns (`x-labels`), with
+// `values` in row order: `values[row * columns + column]`, like
+// HeatmapChart. Each circle's area is proportional to its value; negative
+// values are hollow, or in `negative-color` with `color-mode: sign`. Zero and
+// missing values (NaN) draw nothing.
+export component MatrixChart {
+    in property <[string]> x-labels;
+    in property <[string]> y-labels;
+    in property <[float]> values;
+    in property <string> title;
+    // How the circles are colored: all in `color` (`single`), a theme color
+    // per row or column, `color` and `negative-color` by sign, or on a
+    // `scale` from pale to `color` by `color-values`. A scale over values on
+    // both sides of zero diverges, with `negative-color` below zero.
+    in property <ChartMatrixColorMode> color-mode: ChartMatrixColorMode.single;
+    in property <color> color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #3b82f6;
+    in property <color> negative-color: ChartTheme.decrease-color;
+    // A second measure for `color-mode: scale`, in the same order as
+    // `values`; empty to color by the values themselves.
+    in property <[float]> color-values;
+    // What the values and the color values are, such as "Sales" and
+    // "Growth", for the legend and the tooltip.
+    in property <string> size-label;
+    in property <string> color-label;
+    // A fixed size scale: a circle for `max-value` fills its cell, and
+    // larger values too, instead of the largest value.
+    in property <bool> fixed-range: false;
+    in property <float> max-value: 100;
+    // Write each value in its circle, or under it when it doesn't fit.
+    in property <bool> show-values: false;
+    // A column of row totals and a row of column totals, when the cells
+    // have room for them.
+    in property <bool> show-totals: false;
+    // The size legend, and the color scale with `color-mode: scale`.
+    in property <bool> show-legend: true;
+    in property <bool> show-tooltip: true;
+    // The column labels above the matrix, instead of below it.
+    in property <bool> x-labels-top: false;
+    // Grow the circles when the chart appears, and resize them when the
+    // values change.
+    in property <bool> animated: true;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+    // How `color-values` are written.
+    in property <string> color-value-prefix;
+    in property <string> color-value-suffix;
+    in property <int> color-value-decimals: -1;
+
+    // The cell under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-row: root.hovered-cell < 0 ? -1 : floor(root.hovered-cell / root.columns);
+    out property <int> hovered-column: root.hovered-cell < 0 ? -1 : mod(root.hovered-cell, root.columns);
+
+    callback cell-clicked(row: int, column: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-cell >= 0 ? root.describe(root.hovered-cell) : "";
+
+    private property <int> columns: max(1, root.x-labels.length);
+    private property <int> rows: max(1, root.y-labels.length);
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    private property <ChartFormat> color-format: {
+        prefix: root.color-value-prefix,
+        suffix: root.color-value-suffix,
+        decimals: root.color-value-decimals,
+    };
+    private property <bool> scaled: root.color-mode == ChartMatrixColorMode.scale;
+    // Sizes in the legend are gray when the circles' colors mean something
+    // else, such as a row.
+    private property <bool> neutral-legend: root.color-mode != ChartMatrixColorMode.single && root.color-mode != ChartMatrixColorMode.sign;
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    // Value changes resize the circles, once they have grown in.
+    private property <duration> transition: root.animated && root.progress >= 1 ? 400ms : 0ms;
+    // The number of circles drawn. Each layout makes a new list of circles;
+    // drawing them by their position in it, rather than from the list
+    // itself, keeps the drawn circles, so that they can animate. The count
+    // is set only when it changes, which makes them anew.
+    private property <int> layout-dots: root.matrix.dots.length;
+    private property <int> dot-count;
+    init => {
+        root.progress = 1;
+        root.dot-count = root.layout-dots;
+    }
+    changed layout-dots => {
+        root.dot-count = root.layout-dots;
+    }
+    private property <length> small-size: ChartTheme.font-size * 0.85;
+    // The largest circle of the size legend: about the size of the chart's
+    // largest circles, within limits, estimated from the space for the
+    // matrix rather than from its layout, so that the legend's height
+    // doesn't change the size the circles are made for.
+    private property <length> legend-radius: clamp(
+        min((frame.width - plot.x - 4px) / root.columns,
+            (frame.height - column-measure.preferred-height - ChartTheme.font-size * 2.2 - 16px) / root.rows) * 0.44,
+        ChartTheme.font-size * 1.1, ChartTheme.font-size * 2.5);
+    private property <length> legend-height: root.show-legend ? root.legend-radius * 2 + 10px : 0px;
+    private property <ChartMatrixLayout> matrix: ChartEngine.matrix-layout({
+        values: root.values,
+        color-values: root.color-values,
+        rows: root.rows,
+        columns: root.columns,
+        width: plot.width / 1px,
+        height: plot.height / 1px,
+        color-mode: root.color-mode,
+        color: root.color,
+        negative-color: root.negative-color,
+        palette: ChartTheme.colors,
+        base: root.empty,
+        fixed: root.fixed-range,
+        max-value: root.max-value,
+        progress: root.progress,
+        font-size: root.small-size / 1px,
+        show-values: root.show-values,
+        show-totals: root.show-totals,
+        legend-radius: root.legend-radius / 1px,
+        format: root.format,
+        color-format: root.color-format,
+        locale: ChartTheme.locale,
+    });
+    private property <length> cell-width: root.matrix.cell-width * 1px;
+    private property <length> cell-height: root.matrix.cell-height * 1px;
+    // What weak colors of a scale fade towards: a gray that shows on the
+    // background.
+    private property <color> empty: ChartTheme.dark ? #4a515e : #e8eaee;
+    private property <int> hovered-cell: touch.has-hover
+        ? (root.cell-width <= 0 || root.cell-height <= 0 ? -1 : root.cell-at(floor(touch.mouse-x / root.cell-width), floor(touch.mouse-y / root.cell-height)))
+        : keys.has-focus && root.key-cell >= 0 && root.values.length > 0 ? min(root.key-cell, root.values.length - 1)
+        : -1;
+    // The circle that shows the hovered cell, which may be merged with its
+    // neighbors when crowded.
+    private property <int> hovered-dot: root.hovered-cell < 0 ? -1 : root.dot-of(root.hovered-row, root.hovered-column);
+    // The cell selected with the arrow keys.
+    private property <int> key-cell: -1;
+
+    pure function cell-at(column: int, row: int) -> int {
+        column >= 0 && column < root.columns && row >= 0 && row < root.rows && row * root.columns + column < root.values.length
+            ? row * root.columns + column : -1
+    }
+
+    pure function dot-of(row: int, column: int) -> int {
+        let across = ceil(root.columns / max(1, root.matrix.block-columns));
+        let index = floor(row / max(1, root.matrix.block-rows)) * across + floor(column / max(1, root.matrix.block-columns));
+        index >= 0 && index < root.matrix.dots.length ? index : -1
+    }
+
+    pure function value-text(value: float) -> string {
+        // NaN is not equal to itself: a missing value.
+        value == value ? ChartEngine.format-value(value, root.format) : ChartTexts.no-data
+    }
+
+    // A cell for screen readers: "Row, Column: value".
+    pure function describe(cell: int) -> string {
+        root.y-labels[floor(cell / root.columns)] + ", " + root.x-labels[mod(cell, root.columns)] + ": "
+            + (root.size-label != "" ? root.size-label + " " : "") + root.value-text(root.values[cell])
+            + (root.scaled && root.color-values.length > cell && root.color-values[cell] == root.color-values[cell]
+            ? ", " + (root.color-label != "" ? root.color-label + " " : "") + ChartEngine.format-value(root.color-values[cell], root.color-format) : "")
+    }
+
+    min-width: 160px;
+    min-height: 120px;
+    preferred-width: 560px;
+    preferred-height: 380px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        frame := Rectangle {
+            vertical-stretch: 1;
+
+            // The labels don't depend on the chart size, so they can be
+            // measured exactly.
+            label-measure := Text {
+                visible: false;
+                text: ChartEngine.widest-label(root.y-labels);
+                font-size: ChartTheme.font-size;
+                font-weight: 600;
+            }
+            column-measure := Text {
+                visible: false;
+                text: ChartEngine.widest-label(root.x-labels);
+                font-size: ChartTheme.font-size;
+                font-weight: 600;
+            }
+
+            plot := Rectangle {
+                property <length> label-height: column-measure.preferred-height + 6px;
+                x: min(label-measure.preferred-width + 10px, parent.width * 0.4);
+                y: root.x-labels-top ? self.label-height : 0px;
+                width: max(0px, parent.width - self.x - 4px);
+                height: max(0px, parent.height - self.label-height - root.legend-height);
+
+                // The hovered row and column, as light bands.
+                if root.hovered-cell >= 0: Rectangle {
+                    x: 0;
+                    y: root.hovered-row * root.cell-height;
+                    width: (root.matrix.grid-width + root.matrix.total-width) * 1px;
+                    height: root.cell-height;
+                    background: ChartTheme.text-color.with-alpha(0.07);
+                }
+                if root.hovered-cell >= 0: Rectangle {
+                    x: root.hovered-column * root.cell-width;
+                    y: 0;
+                    width: root.cell-width;
+                    height: (root.matrix.grid-height + root.matrix.total-height) * 1px;
+                    background: ChartTheme.text-color.with-alpha(0.07);
+                }
+
+                // The cells, framed.
+                Path {
+                    viewbox-width: plot.width / 1px;
+                    viewbox-height: plot.height / 1px;
+                    width: plot.width;
+                    height: plot.height;
+                    fit: fill;
+                    commands: root.matrix.separators;
+                    stroke: ChartTheme.grid-color;
+                    stroke-width: 1px;
+                }
+                Rectangle {
+                    x: 0;
+                    y: 0;
+                    width: root.matrix.grid-width * 1px;
+                    height: root.matrix.grid-height * 1px;
+                    border-width: root.values.length > 0 ? 1px : 0px;
+                    border-color: ChartTheme.grid-color;
+                }
+
+                for i in root.dot-count: Rectangle {
+                    property <ChartMatrixDot> dot: i < root.matrix.dots.length ? root.matrix.dots[i] : { };
+                    x: (self.dot.x - self.dot.r) * 1px;
+                    y: (self.dot.y - self.dot.r) * 1px;
+                    width: self.dot.r * 2px;
+                    height: self.dot.r * 2px;
+                    border-radius: self.width / 2;
+                    background: i != root.hovered-dot ? self.dot.fill
+                        : ChartTheme.dark ? self.dot.fill.brighter(0.2) : self.dot.fill.darker(0.15);
+                    border-color: i != root.hovered-dot ? self.dot.stroke
+                        : ChartTheme.dark ? self.dot.stroke.brighter(0.3) : self.dot.stroke.darker(0.3);
+                    // Within what the circle can hold: Slint's software
+                    // renderer panics on a border wider than half of it.
+                    border-width: self.width < 3px ? 0px : min(self.width / 2, i == root.hovered-dot ? 2px : 1.5px);
+                    animate background, border-color { duration: 120ms; }
+                    animate x, y, width, height {
+                        duration: root.transition;
+                        easing: ease-out;
+                    }
+                }
+
+                // Values inside the circles, or under those too small for
+                // them; none where neither fits.
+                if root.show-values: Rectangle {
+                    x: 0;
+                    y: 0;
+                    for dot[i] in root.matrix.dots: Text {
+                        // How much the label shrinks to fit in its circle: a
+                        // little, or it goes under the circle.
+                        property <float> fit: min(1, (dot.size * 2px - 4px) / max(1px, self.preferred-width), dot.size * 1.6px / max(1px, self.preferred-height));
+                        property <bool> inside: self.fit >= 0.8;
+                        property <length> cell-bottom: (dot.row + 1) * root.cell-height;
+                        property <bool> below: !self.inside && self.preferred-width <= root.cell-width - 2px
+                            && (dot.y + dot.size + 1) * 1px + self.preferred-height <= self.cell-bottom;
+                        visible: dot.label != "" && (self.inside || self.below);
+                        x: dot.x * 1px - self.preferred-width / 2;
+                        y: self.inside ? dot.y * 1px - self.preferred-height / 2 : (dot.y + dot.size + 1) * 1px;
+                        width: self.preferred-width;
+                        text: dot.label;
+                        color: !self.inside ? ChartTheme.text-color
+                            : dot.light-label ? #ffffff
+                            : dot.fill.alpha > 128 ? #1a1a1a : ChartTheme.text-color;
+                        font-size: root.small-size;
+                        font-weight: 600;
+                        transform-scale: self.inside ? self.fit : 1;
+                        opacity: root.progress;
+                    }
+                }
+
+                // The totals, right of the rows and below the columns.
+                for total[row] in root.matrix.row-totals: Text {
+                    x: root.matrix.grid-width * 1px;
+                    width: root.matrix.total-width * 1px;
+                    y: (row + 0.5) * root.cell-height - self.height / 2;
+                    text: total;
+                    color: ChartTheme.text-color;
+                    font-size: root.small-size;
+                    font-weight: row == root.hovered-row ? 700 : 600;
+                    horizontal-alignment: center;
+                }
+                for total[column] in root.matrix.column-totals: Text {
+                    x: (column + 0.5) * root.cell-width - self.width / 2;
+                    y: root.matrix.grid-height * 1px;
+                    height: root.matrix.total-height * 1px;
+                    text: total;
+                    color: ChartTheme.text-color;
+                    font-size: root.small-size;
+                    font-weight: column == root.hovered-column ? 700 : 600;
+                    vertical-alignment: center;
+                    // Hidden where neighbors would overlap.
+                    visible: self.preferred-width <= root.cell-width;
+                }
+                if root.matrix.row-totals.length > 0 && root.matrix.column-totals.length > 0: Text {
+                    x: root.matrix.grid-width * 1px;
+                    y: root.matrix.grid-height * 1px;
+                    width: root.matrix.total-width * 1px;
+                    height: root.matrix.total-height * 1px;
+                    text: root.matrix.grand-total;
+                    color: ChartTheme.text-color;
+                    font-size: root.small-size;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+
+                // Keyboard: the arrow keys move from cell to cell, Home and End
+                // to the first and last cell, and Enter clicks.
+                keys := FocusScope {
+                    x: 0;
+                    y: 0;
+                    width: root.matrix.grid-width * 1px;
+                    height: root.matrix.grid-height * 1px;
+                    key-pressed(event) => {
+                        let count = min(root.values.length, root.rows * root.columns);
+                        if count <= 0 {
+                            return reject;
+                        }
+                        let current = root.key-cell < 0 ? 0 : min(root.key-cell, count - 1);
+                        let column = mod(current, root.columns);
+                        if root.key-cell < 0 && (event.text == Key.LeftArrow || event.text == Key.RightArrow
+                            || event.text == Key.UpArrow || event.text == Key.DownArrow) {
+                            root.key-cell = 0;
+                        } else if event.text == Key.LeftArrow {
+                            root.key-cell = column > 0 ? current - 1 : current;
+                        } else if event.text == Key.RightArrow {
+                            root.key-cell = column < root.columns - 1 && current + 1 < count ? current + 1 : current;
+                        } else if event.text == Key.UpArrow {
+                            root.key-cell = current >= root.columns ? current - root.columns : current;
+                        } else if event.text == Key.DownArrow {
+                            root.key-cell = current + root.columns < count ? current + root.columns : current;
+                        } else if event.text == Key.Home {
+                            root.key-cell = 0;
+                        } else if event.text == Key.End {
+                            root.key-cell = count - 1;
+                        } else if event.text == Key.Return && root.key-cell >= 0 {
+                            root.cell-clicked(floor(current / root.columns), column);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-cell >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-cell >= 0 {
+                                root.key-cell = root.hovered-cell;
+                                root.cell-clicked(root.hovered-row, root.hovered-column);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Every row label where they fit; otherwise every second, third, ...
+            for label[row] in root.y-labels: Text {
+                property <int> skip: root.cell-height <= 0 ? 1 : max(1, ceil(label-measure.preferred-height / root.cell-height));
+                visible: mod(row, self.skip) == 0 || row == root.hovered-row;
+                x: 0;
+                width: plot.x - 8px;
+                y: plot.y + (row + 0.5) * root.cell-height - self.height / 2;
+                text: label;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                font-weight: row == root.hovered-row ? 700 : 400;
+                horizontal-alignment: right;
+                overflow: elide;
+            }
+            if root.matrix.column-totals.length > 0: Text {
+                x: 0;
+                width: plot.x - 8px;
+                y: plot.y + (root.matrix.grid-height + root.matrix.total-height / 2) * 1px - self.height / 2;
+                text: ChartTexts.total;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                font-weight: 600;
+                horizontal-alignment: right;
+                overflow: elide;
+            }
+
+            // Every column label where they fit; otherwise every second, third, ...
+            for label[column] in root.x-labels: Text {
+                property <int> skip: root.cell-width <= 0 ? 1 : max(1, ceil((column-measure.preferred-width + 6px) / root.cell-width));
+                visible: mod(column, self.skip) == 0 || column == root.hovered-column;
+                x: plot.x + (column + 0.5) * root.cell-width - self.width / 2;
+                y: root.x-labels-top ? plot.y - self.height - 6px : plot.y + plot.height + 6px;
+                text: label;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                font-weight: column == root.hovered-column ? 700 : 400;
+            }
+            if root.matrix.row-totals.length > 0: Text {
+                x: plot.x + (root.matrix.grid-width + root.matrix.total-width / 2) * 1px - self.width / 2;
+                y: root.x-labels-top ? plot.y - self.height - 6px : plot.y + plot.height + 6px;
+                text: ChartTexts.total;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                font-weight: 600;
+            }
+
+            if keys.has-focus: Rectangle {
+                x: plot.x - 3px;
+                y: plot.y - 3px;
+                width: root.matrix.grid-width * 1px + 6px;
+                height: root.matrix.grid-height * 1px + 6px;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: ChartTheme.axis-color;
+            }
+
+            // The legend: round values at the chart's scale, a negative
+            // value when there are any, and the color scale. It has a fixed
+            // height, so it doesn't change the size the circles are made for.
+            if root.show-legend && (root.matrix.sizes.length > 0 || (root.scaled && root.matrix.scale-min-label != "")): HorizontalLayout {
+                x: plot.x + max(0px, (plot.width - self.width) / 2);
+                y: frame.height - root.legend-height + 6px;
+                width: min(self.preferred-width, frame.width - plot.x);
+                height: root.legend-radius * 2 + 4px;
+                spacing: 6px;
+                if root.size-label != "" && root.matrix.sizes.length > 0: Text {
+                    text: root.size-label;
+                    color: ChartTheme.text-color;
+                    font-size: ChartTheme.font-size;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+                for size in root.matrix.sizes: HorizontalLayout {
+                    spacing: 4px;
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: size.r * 2px;
+                            height: size.r * 2px;
+                            border-radius: self.width / 2;
+                            background: root.neutral-legend ? ChartTheme.text-color.with-alpha(0.3) : size.fill;
+                            border-color: root.neutral-legend ? ChartTheme.text-color.with-alpha(0.7) : size.stroke;
+                            border-width: min(self.width / 2, 1.5px);
+                        }
+                    }
+                    Text {
+                        text: size.label;
+                        color: ChartTheme.text-color;
+                        font-size: root.small-size;
+                        vertical-alignment: center;
+                    }
+                }
+                if root.matrix.has-negative: HorizontalLayout {
+                    spacing: 4px;
+                    padding-left: 6px;
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: root.matrix.negative.r * 2px;
+                            height: root.matrix.negative.r * 2px;
+                            border-radius: self.width / 2;
+                            background: root.neutral-legend ? ChartTheme.text-color.with-alpha(0.06) : root.matrix.negative.fill;
+                            border-color: root.neutral-legend ? ChartTheme.text-color.with-alpha(0.7) : root.matrix.negative.stroke;
+                            border-width: min(self.width / 2, 1.5px);
+                        }
+                    }
+                    Text {
+                        text: root.matrix.negative.label;
+                        color: ChartTheme.text-color;
+                        font-size: root.small-size;
+                        vertical-alignment: center;
+                    }
+                }
+                if root.scaled && root.matrix.scale-min-label != "": HorizontalLayout {
+                    spacing: 6px;
+                    padding-left: root.matrix.sizes.length > 0 ? 16px : 0px;
+                    if root.color-label != "": Text {
+                        text: root.color-label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        text: root.matrix.scale-min-label;
+                        color: ChartTheme.text-color;
+                        font-size: root.small-size;
+                        vertical-alignment: center;
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 110px;
+                            height: 10px;
+                            border-radius: 5px;
+                            background: @linear-gradient(90deg, root.matrix.scale-low 0%, root.matrix.scale-middle 50%, root.matrix.scale-high 100%);
+                        }
+                    }
+                    Text {
+                        text: root.matrix.scale-max-label;
+                        color: ChartTheme.text-color;
+                        font-size: root.small-size;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            if root.show-tooltip && root.hovered-cell >= 0: TooltipFrame {
+                property <int> cell: root.hovered-cell;
+                property <float> value: root.values[self.cell];
+                property <float> color-value: root.color-values.length > self.cell ? root.color-values[self.cell] : 0;
+                property <bool> has-color: root.scaled && root.color-values.length > self.cell && self.color-value == self.color-value;
+                // At the mouse, or at the cell selected with the keyboard.
+                property <length> anchor-x: plot.x + (touch.has-hover ? touch.mouse-x : (root.hovered-column + 0.5) * root.cell-width);
+                property <length> anchor-y: plot.y + (touch.has-hover ? touch.mouse-y : (root.hovered-row + 0.5) * root.cell-height);
+                x: self.anchor-x + 14px + self.width > frame.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
+                y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, frame.height - self.height));
+                width: self.preferred-width;
+                height: self.preferred-height;
+                title: root.y-labels[root.hovered-row];
+
+                TooltipLine {
+                    swatch: root.hovered-dot >= 0 && root.matrix.block-rows == 1 && root.matrix.block-columns == 1 && value == value && value != 0
+                        ? root.matrix.dots[root.hovered-dot].stroke : transparent;
+                    indent: true;
+                    text: root.x-labels[root.hovered-column] + ": " + (root.size-label != "" ? root.size-label + " " : "") + root.value-text(value);
+                    bold: true;
+                }
+                if has-color: TooltipLine {
+                    indent: true;
+                    text: (root.color-label != "" ? root.color-label + ": " : "") + ChartEngine.format-value(color-value, root.color-format);
+                }
+            }
+        }
+    }
+}

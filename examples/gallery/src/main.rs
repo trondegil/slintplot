@@ -194,6 +194,8 @@ enum Shape {
     Matrix,
     /// A symmetric correlation matrix, from -1 to 1.
     Correlation,
+    /// Sales by product and region, with their growth.
+    Sales,
     /// One value per day for a year.
     Calendar,
     /// Survey answers per group, shown as shares of 100%.
@@ -291,6 +293,29 @@ const PROFIT_AND_LOSS: [(&str, f32, bool); 9] = [
     ("Operating profit", 0.0, true),
     ("Tax", -22.0, false),
     ("Net profit", 0.0, true),
+];
+
+/// The regions of the matrix sample.
+const SALES_REGIONS: [&str; 6] = [
+    "N. America",
+    "Europe",
+    "Asia Pacific",
+    "Latin America",
+    "Middle East",
+    "Africa",
+];
+
+/// Sales per product and region in millions of dollars (made up), in the
+/// order of `SALES_REGIONS`.
+const SALES: [(&str, [f32; 6]); 8] = [
+    ("Phones", [610.0, 540.0, 890.0, 210.0, 160.0, 120.0]),
+    ("Laptops", [420.0, 360.0, 510.0, 95.0, 70.0, 38.0]),
+    ("Accessories", [240.0, 210.0, 300.0, 80.0, 55.0, 45.0]),
+    ("Headphones", [210.0, 190.0, 260.0, 60.0, 45.0, 30.0]),
+    ("Tablets", [180.0, 150.0, 220.0, 40.0, 35.0, 18.0]),
+    ("Smartwatches", [160.0, 120.0, 180.0, 35.0, 40.0, 14.0]),
+    ("Monitors", [150.0, 140.0, 190.0, 30.0, 25.0, 12.0]),
+    ("Cameras", [90.0, 85.0, 140.0, 15.0, 12.0, 6.0]),
 ];
 
 /// Life expectancy at birth in years, in 2000 and 2023 (rounded estimates).
@@ -654,6 +679,14 @@ const SAMPLES: &[Sample] = &[
         &["Randomize"],
     ),
     sample(
+        "matrix",
+        "Heatmaps",
+        "Matrix",
+        "MatrixChart: sales by product and region as circles, their area proportional to the value, colored by growth on last year: blue for growth, red for decline. Totals at the edges; Randomize changes the numbers.",
+        Shape::Sales,
+        &["Randomize"],
+    ),
+    sample(
         "calendar",
         "Heatmaps",
         "Calendar heatmap",
@@ -790,6 +823,8 @@ struct State {
     /// Heatmap rows, and heatmap or calendar values.
     row_labels: Rc<VecModel<SharedString>>,
     grid: Rc<VecModel<f32>>,
+    /// The matrix sample's growth per cell, which colors it.
+    growth: Rc<VecModel<f32>>,
     tree: Rc<VecModel<ChartTreemapItem>>,
     sun: Rc<VecModel<ChartSunburstItem>>,
     steps: Rc<VecModel<ChartWaterfallStep>>,
@@ -1153,6 +1188,27 @@ impl State {
                 }
                 m
             }
+            Shape::Sales => {
+                // The table at first; then each figure a little off it.
+                let randomize = self.randomized;
+                let mut growth = Vec::new();
+                let sales = SALES
+                    .iter()
+                    .flat_map(|(_, row)| row.iter().enumerate())
+                    .map(|(region, &v)| {
+                        // Faster growth in the smaller markets.
+                        let trend = [2.0, -1.0, 6.0, 9.0, 11.0, 14.0][region];
+                        growth.push((trend + (self.rng.next() - 0.45) * 30.0).round());
+                        if randomize {
+                            (v * (0.55 + self.rng.next() * 0.9)).round()
+                        } else {
+                            v
+                        }
+                    })
+                    .collect();
+                self.growth.set_vec(growth);
+                sales
+            }
             Shape::Calendar => (0..365)
                 .map(|i| {
                     // Fewer contributions on weekends, and some idle days.
@@ -1409,6 +1465,7 @@ impl State {
             Shape::Correlation => ["Price", "Size", "Age", "Rooms", "Floor", "Garden"]
                 .map(SharedString::from)
                 .to_vec(),
+            Shape::Sales => SALES.iter().map(|(p, _)| SharedString::from(*p)).collect(),
             _ => Vec::new(),
         };
         self.row_labels.set_vec(row_labels);
@@ -1417,6 +1474,7 @@ impl State {
             Shape::Correlation => ["Price", "Size", "Age", "Rooms", "Floor", "Garden"]
                 .map(SharedString::from)
                 .to_vec(),
+            Shape::Sales => SALES_REGIONS.map(SharedString::from).to_vec(),
             Shape::Survey => [
                 "Engineering",
                 "Design",
@@ -1659,9 +1717,10 @@ impl State {
             "Randomize"
                 if matches!(
                     self.sample.shape,
-                    Shape::Matrix | Shape::Correlation | Shape::Calendar
+                    Shape::Matrix | Shape::Correlation | Shape::Sales | Shape::Calendar
                 ) =>
             {
+                self.randomized = true;
                 self.grid_values();
             }
             "Randomize" => {
@@ -1792,6 +1851,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         slices: Rc::new(VecModel::default()),
         row_labels: Rc::new(VecModel::default()),
         grid: Rc::new(VecModel::default()),
+        growth: Rc::new(VecModel::default()),
         tree: Rc::new(VecModel::default()),
         sun: Rc::new(VecModel::default()),
         steps: Rc::new(VecModel::default()),
@@ -1814,6 +1874,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         ui.set_slices(s.slices.clone().into());
         ui.set_row_labels(s.row_labels.clone().into());
         ui.set_grid(s.grid.clone().into());
+        ui.set_growth(s.growth.clone().into());
         ui.set_tree(s.tree.clone().into());
         ui.set_sun(s.sun.clone().into());
         ui.set_steps(s.steps.clone().into());
@@ -2191,6 +2252,11 @@ fn snapshots(
             &[Key::DownArrow, Key::DownArrow][..],
         ),
         ("candlestick", (700.0, 400.0), &[Key::RightArrow][..]),
+        (
+            "matrix",
+            (700.0, 400.0),
+            &[Key::DownArrow, Key::RightArrow][..],
+        ),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);
@@ -2223,6 +2289,7 @@ fn snapshots(
         ("waterfall", (670.0, 420.0), false, "waterfall-hover"),
         ("axes-two", (1000.0, 420.0), false, "axes-two-hover"),
         ("candlestick", (700.0, 400.0), false, "candlestick-hover"),
+        ("matrix", (640.0, 330.0), false, "matrix-hover"),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);

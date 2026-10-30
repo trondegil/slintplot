@@ -34,6 +34,19 @@
   one. `candle-clicked(first, last)` and `hovered-last` give the candles a
   merged candle holds. The tooltip texts are translated into the 14
   languages (`ChartLocale.open`, `high`, `low`, `close`, `volume`).
+- `MatrixChart`: rows by columns of circles whose area is proportional to
+  the value, like `HeatmapChart`'s `x-labels`, `y-labels` and `values`. Zero
+  and missing values draw nothing; negative values are hollow, or filled in
+  `negative-color` with `color-mode: sign`. The circles take one theme
+  color, a theme color per row or column, or a color scale over a second
+  measure (`color-values`), diverging at zero. A size legend shows round
+  values at the chart's scale; `show-values` writes the values in or under
+  the circles, `show-totals` adds row and column totals, and `x-labels-top`
+  puts the column labels above. Hovering lights up the cell's row and
+  column; the arrow keys move from cell to cell, and `cell-clicked(row,
+  column)` reports clicks. The circles grow in and resize when the values
+  change. Cells smaller than a few pixels merge into blocks, so a 500 by
+  500 matrix stays fast.
 
 ### Fixed
 
