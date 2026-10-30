@@ -351,7 +351,7 @@ const SAMPLES: &[Sample] = &[
         "bullet",
         "New",
         "Bullet charts",
-        "BulletChart: a KPI panel with an axis per row over gray bands, columns over tinted bands, and rows on one axis, some without a target.",
+        "BulletChart: a KPI panel with an axis per row, columns on one axis, and rows without a target. Bands are shades of gray; bars take the theme's colors, and rows below target its decrease color.",
         Shape::Bullet,
         &["Randomize"],
     ),

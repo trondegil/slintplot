@@ -1129,7 +1129,7 @@ export component Gallery inherits Window {
                     if root.sample == "candlestick": CandlestickChart {
                         title: "Acme Robotics, daily";
                         candles: root.candles;
-                        datasets: [{ label: "20-day average", points: ChartEngine.moving-average(root.candles, 20) }];
+                        datasets: [{ label: "20-day average", points: ChartEngine.moving-average(root.candles, 20), color: ChartTheme.text-color }];
                         ohlc: root.ohlc;
                         skip-gaps: root.skip-gaps;
                         show-volume: true;
@@ -1273,7 +1273,7 @@ export component Gallery inherits Window {
                             colspan: root.narrow ? 1 : 2;
                             vertical-stretch: 0;
                             title: "Sales, year to date";
-                            below-target-color: ChartTheme.dark ? #fb7185 : #e11d48;
+                            below-target-color: ChartTheme.decrease-color;
                             rows: [
                                 { label: "Revenue", sublabel: "US$ (1,000s)", value: root.bullet-values[0], target: 250, prefix: "$",
                                   bands: [{ to: 150, label: "Poor" }, { to: 225, label: "OK" }, { to: 300, label: "Good" }] },
@@ -1299,7 +1299,7 @@ export component Gallery inherits Window {
                             min-value: 0;
                             max-value: 120;
                             value-suffix: ChartTexts.percent;
-                            color: ChartTheme.dark ? #94a3b8 : #475569;
+                            below-target-color: ChartTheme.decrease-color;
                             rows: [
                                 { label: "North", value: root.bullet-values[5], target: 100 },
                                 { label: "South", value: root.bullet-values[6], target: 100 },
@@ -1308,9 +1308,9 @@ export component Gallery inherits Window {
                                 { label: "Online", value: root.bullet-values[9], target: 100 },
                             ];
                             bands: [
-                                { to: 80, label: "Behind", color: ChartTheme.dark ? #5b3434 : #f2d4d0 },
-                                { to: 100, label: "Close", color: ChartTheme.dark ? #574a2e : #f5e6c6 },
-                                { to: 120, label: "Ahead", color: ChartTheme.dark ? #2f4a39 : #d4e7d6 },
+                                { to: 80, label: "Behind" },
+                                { to: 100, label: "Close" },
+                                { to: 120, label: "Ahead" },
                             ];
                         }
                         // Rows without a target, on one axis.

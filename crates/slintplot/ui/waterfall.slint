@@ -18,8 +18,8 @@ export component WaterfallChart {
     in property <bool> show-values: false;
     // Lines from each bar's end to the next bar.
     in property <bool> show-connectors: true;
-    in property <color> increase-color: ChartTheme.dark ? #34d399 : #10b981;
-    in property <color> decrease-color: ChartTheme.dark ? #fb7185 : #f43f5e;
+    in property <color> increase-color: ChartTheme.increase-color;
+    in property <color> decrease-color: ChartTheme.decrease-color;
     in property <color> total-color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #3b82f6;
     in property <string> increase-label: ChartTexts.increase;
     in property <string> decrease-label: ChartTexts.decrease;

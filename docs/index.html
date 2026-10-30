@@ -1034,7 +1034,7 @@ open, high, low and close, the change from the close before, the volume, and the
 candles, such as a moving average: <code>ChartEngine.moving-average(candles, period)</code> computes one as points, and so does
 <code>slintplot::candle::moving_average</code> in Rust.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/candlestick.webp" alt="CandlestickChart of five weeks of daily stock prices with volume bars" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/candlestick-dark.webp" alt="CandlestickChart of five weeks of daily stock prices with volume bars" loading="lazy"></figure>
-<pre data-shot="candlestick"><code>import { CandlestickChart, ChartEngine } from "@slintplot";
+<pre data-shot="candlestick"><code>import { CandlestickChart, ChartEngine, ChartTheme } from "@slintplot";
 
 CandlestickChart {
     title: "Acme Robotics";
@@ -1065,7 +1065,7 @@ CandlestickChart {
         { x: 2678400, open: 114.77, high: 117.19, low: 114.20, close: 116.80, volume: 3570000 },
         { x: 2764800, open: 116.61, high: 120.15, low: 116.39, close: 118.78, volume: 3920000 },
     ];
-    datasets: [{ label: "5-day average", points: ChartEngine.moving-average(self.candles, 5) }];
+    datasets: [{ label: "5-day average", points: ChartEngine.moving-average(self.candles, 5), color: ChartTheme.text-color }];
     time-origin: { year: 2026, month: 9, day: 7 };
     value-prefix: "$";
     value-decimals: 2;
@@ -1074,8 +1074,8 @@ CandlestickChart {
     zoom-enabled: true;
     // skip-gaps: true;                              // false: a linear time axis, with gaps at weekends
     // ohlc: false;                                  // true: OHLC bars instead of candles
-    // increase-color: #10b981;                      // default: green, lighter in dark mode
-    // decrease-color: #f43f5e;                      // default: red, lighter in dark mode
+    // increase-color: #10b981;                      // default: ChartTheme.increase-color, a green
+    // decrease-color: #f43f5e;                      // default: ChartTheme.decrease-color, a red
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -1089,8 +1089,8 @@ CandlestickChart {
   <tr><td><code>show-volume</code></td><td><code>bool</code></td><td><code>false</code></td><td>Volume bars in a strip below the candles, a fifth of the plot high, on their own scale</td></tr>
   <tr><td><code>show-last-price</code></td><td><code>bool</code></td><td><code>false</code></td><td>A dashed line at the last candle's close, labeled on the value axis in its color</td></tr>
   <tr><td><code>show-crosshair</code></td><td><code>bool</code></td><td><code>true</code></td><td>Dashed lines through the mouse, with the price and the date labeled on the axes</td></tr>
-  <tr><td><code>increase-color</code></td><td><code>color</code></td><td>green</td><td>The color of periods that closed at or above their open</td></tr>
-  <tr><td><code>decrease-color</code></td><td><code>color</code></td><td>red</td><td>The color of periods that closed below their open</td></tr>
+  <tr><td><code>increase-color</code></td><td><code>color</code></td><td><code>ChartTheme.increase-color</code></td><td>The color of periods that closed at or above their open</td></tr>
+  <tr><td><code>decrease-color</code></td><td><code>color</code></td><td><code>ChartTheme.decrease-color</code></td><td>The color of periods that closed below their open</td></tr>
   <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of the candle bodies, whose outline stays solid</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets, when there are any; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
@@ -1370,8 +1370,8 @@ WaterfallChart {
         { label: "Net profit", total: true },
     ];
     show-values: true;
-    increase-color: #10b981;                          // default: green, lighter in dark mode
-    decrease-color: #f43f5e;                          // default: red, lighter in dark mode
+    increase-color: #10b981;                          // default: ChartTheme.increase-color, a green
+    decrease-color: #f43f5e;                          // default: ChartTheme.decrease-color, a red
     value-prefix: "$";
     value-suffix: "k";
 }</code></pre>
@@ -1381,8 +1381,8 @@ WaterfallChart {
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each change, with its sign, or total by its bar</td></tr>
   <tr><td><code>show-connectors</code></td><td><code>bool</code></td><td><code>true</code></td><td>Lines from each bar's end to the next bar</td></tr>
-  <tr><td><code>increase-color</code></td><td><code>color</code></td><td>green</td><td>The color of increases</td></tr>
-  <tr><td><code>decrease-color</code></td><td><code>color</code></td><td>red</td><td>The color of decreases</td></tr>
+  <tr><td><code>increase-color</code></td><td><code>color</code></td><td><code>ChartTheme.increase-color</code></td><td>The color of increases</td></tr>
+  <tr><td><code>decrease-color</code></td><td><code>color</code></td><td><code>ChartTheme.decrease-color</code></td><td>The color of decreases</td></tr>
   <tr><td><code>total-color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The color of totals</td></tr>
   <tr><td><code>increase-label</code></td><td><code>string</code></td><td><code>"Increase"</code></td><td>The legend entry for increases, in the chart's language</td></tr>
   <tr><td><code>decrease-label</code></td><td><code>string</code></td><td><code>"Decrease"</code></td><td>The legend entry for decreases</td></tr>
@@ -1519,7 +1519,7 @@ set <code>has-target: true</code> for a real target of 0. With <code>fixed-range
 
 BulletChart {
     title: "Sales, year to date";
-    below-target-color: ChartTheme.dark ? #fb7185 : #e11d48;
+    below-target-color: ChartTheme.decrease-color;
     rows: [
         { label: "Revenue", sublabel: "US$ (1,000s)", value: 270, target: 250, prefix: "$",
           bands: [{ to: 150, label: "Poor" }, { to: 225, label: "OK" }, { to: 300, label: "Good" }] },
@@ -1850,6 +1850,7 @@ and dataset names itself; everything else comes from the library.</p>
   <tr><td><code>colors</code></td><td><code>[color]</code></td><td>from <code>palette</code></td><td>The dataset colors for the current mode; assign for a custom palette</td></tr>
   <tr><td><code>dark</code></td><td><code>bool</code></td><td>follows <code>Palette</code></td><td>Dark mode</td></tr>
   <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>0.5</code></td><td>Opacity of filled marks (bars, areas, points, bubbles, polar slices); outlines stay solid</td></tr>
+  <tr><td><code>increase-color</code>, <code>decrease-color</code></td><td><code>color</code></td><td>a green and a red that suit <code>palette</code></td><td>Rises and falls in candlestick and waterfall charts</td></tr>
   <tr><td><code>text-color</code></td><td><code>color</code></td><td>gray</td><td>Axis labels, titles and legend text</td></tr>
   <tr><td><code>grid-color</code>, <code>axis-color</code></td><td><code>color</code></td><td>translucent</td><td>Grid lines and axis lines</td></tr>
   <tr><td><code>background</code></td><td><code>brush</code></td><td><code>Palette.background</code></td><td>Used for slice borders and label backdrops</td></tr>

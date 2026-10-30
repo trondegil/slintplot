@@ -31,6 +31,18 @@ export global ChartTheme {
         : root.palette == ChartPalette.mono ? (root.dark ? [#93c5fd, #2563eb, #bfdbfe, #3b82f6, #dbeafe, #1d4ed8, #60a5fa, #1e40af] : [#1e3a8a, #60a5fa, #1d4ed8, #93c5fd, #2563eb, #bfdbfe, #3b82f6, #172554])
         : root.palette == ChartPalette.pastel ? (root.dark ? [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff] : [#a1c9f4, #8de5a1, #f5a8d8, #bae6fd, #ff9f9b, #99e2dc, #ffb482, #d0bbff])
         : [];
+    // Rises and falls, in candlestick and waterfall charts: a green and a red
+    // that suit `palette` (in the mono palette, a light and a dark blue).
+    in-out property <color> increase-color: root.palette == ChartPalette.material ? (root.dark ? #66bb6a : #4caf50)
+        : root.palette == ChartPalette.corporate ? (root.dark ? #6cb262 : #59a14f)
+        : root.palette == ChartPalette.mono ? (root.dark ? #93c5fd : #60a5fa)
+        : root.palette == ChartPalette.pastel ? #8de5a1
+        : (root.dark ? #34d399 : #10b981);
+    in-out property <color> decrease-color: root.palette == ChartPalette.material ? (root.dark ? #ef5350 : #f44336)
+        : root.palette == ChartPalette.corporate ? (root.dark ? #e8696b : #e15759)
+        : root.palette == ChartPalette.mono ? (root.dark ? #2563eb : #1e3a8a)
+        : root.palette == ChartPalette.pastel ? #ff9f9b
+        : (root.dark ? #fb7185 : #f43f5e);
     in-out property <color> text-color: dark ? #c8c8c8 : #666666;
     in-out property <color> grid-color: dark ? #ffffff1f : #0000001a;
     in-out property <color> axis-color: dark ? #ffffff40 : #00000040;

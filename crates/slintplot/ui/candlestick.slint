@@ -54,8 +54,8 @@ export component CandlestickChart {
     in property <bool> show-last-price: false;
     // Dashed lines through the mouse, labeled on both axes.
     in property <bool> show-crosshair: true;
-    in property <color> increase-color: ChartTheme.dark ? #34d399 : #10b981;
-    in property <color> decrease-color: ChartTheme.dark ? #fb7185 : #f43f5e;
+    in property <color> increase-color: ChartTheme.increase-color;
+    in property <color> decrease-color: ChartTheme.decrease-color;
     // Opacity of the candle bodies, whose outline stays solid; the theme's
     // `fill-opacity` by default.
     in property <float> fill-opacity: ChartTheme.fill-opacity;
