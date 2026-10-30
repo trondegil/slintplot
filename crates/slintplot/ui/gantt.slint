@@ -3,9 +3,8 @@ import { ChartTheme } from "theme.slint";
 
 // A Gantt chart: one row per task, with a bar from its start to its end on a
 // time axis. Tasks with the same `group` are placed together under the
-// group's heading, which shows the group's span. Tasks that end where they
-// start are milestones, drawn as diamonds. Rows share the height; when they
-// don't fit, they scroll.
+// group's heading. Tasks that end where they start are milestones, drawn as
+// diamonds. Rows share the height; when they don't fit, they scroll.
 export component GanttChart {
     in property <[ChartGanttTask]> tasks;
     in property <string> title;
@@ -18,7 +17,9 @@ export component GanttChart {
     // today. Hidden outside the view.
     in property <bool> show-now: false;
     in property <float> now: 0;
-    in property <color> now-color: ChartTheme.dark ? #f87171 : #dc2626;
+    in property <color> now-color: ChartTheme.dark ? #f5f5f5 : #000000;
+    // Write each task's progress after its bar.
+    in property <bool> show-values: false;
     in property <bool> show-tooltip: true;
     // Grow the bars in when the chart appears.
     in property <bool> animated: true;
@@ -226,15 +227,6 @@ export component GanttChart {
                     background: ChartTheme.axis-color;
                 }
 
-                for bar in gantt.summaries: Rectangle {
-                    x: bar.x * 1px;
-                    y: bar.y * 1px;
-                    width: bar.width * 1px;
-                    height: bar.height * 1px;
-                    border-radius: min(self.height, self.width) / 2;
-                    background: bar.color.with-alpha(0.8);
-                }
-
                 for bar in gantt.bars: Rectangle {
                     property <bool> hovered: bar.index == root.hovered-index;
                     x: bar.x * 1px;
@@ -256,15 +248,29 @@ export component GanttChart {
                             background: bar.color;
                         }
                     }
+                    // A milestone reached (progress 1) is a filled diamond; one
+                    // still ahead is an outline.
                     if bar.milestone: Path {
+                        property <bool> reached: root.tasks[bar.index].progress >= 1;
                         viewbox-x: 0;
                         viewbox-y: 0;
                         viewbox-width: 2;
                         viewbox-height: 2;
                         commands: "M 1 0 L 2 1 L 1 2 L 0 1 Z";
-                        fill: bar.color;
-                        stroke: hovered ? ChartTheme.text-color : ChartTheme.background;
-                        stroke-width: 1px;
+                        fill: self.reached ? bar.color : ChartTheme.background;
+                        stroke: hovered ? ChartTheme.text-color : self.reached ? ChartTheme.background : bar.color;
+                        stroke-width: self.reached ? 1px : 1.5px;
+                    }
+                    // After the bar, or before it when there's no room after it.
+                    if root.show-values && !bar.milestone: Text {
+                        x: parent.x + parent.width + 6px + self.preferred-width <= plot.width
+                            ? parent.width + 6px : -self.preferred-width - 6px;
+                        text: ChartEngine.format-percent(clamp(root.tasks[bar.index].progress, 0, 1) * 100, 0);
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        vertical-alignment: center;
+                        opacity: root.progress >= 1 ? 1 : 0;
+                        animate opacity { duration: 200ms; }
                     }
                 }
 

@@ -557,7 +557,7 @@ export struct ChartGanttRows {
 export struct ChartGanttRow { row: int, y: float }
 
 export struct ChartGanttBar {
-    // The task's index, or for a heading's span, the group's.
+    // The task's index.
     index: int,
     row: int,
     x: float,
@@ -574,8 +574,6 @@ export struct ChartGanttBar {
 export struct ChartGanttLayout {
     rows: [ChartGanttRow],
     bars: [ChartGanttBar],
-    // The groups' spans, on their headings.
-    summaries: [ChartGanttBar],
     ticks: [ChartTick],
     // The "now" line, when it is set and in view.
     show-now: bool,

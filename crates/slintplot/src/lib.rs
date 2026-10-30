@@ -1252,7 +1252,6 @@ macro_rules! register {
                         )),
                     )
                 })),
-                summaries: model(gantt.summaries.iter().map(|b| bar(b, group_color(b.index)))),
                 ticks: ticks(gantt.ticks),
                 show_now: gantt.now.is_some(),
                 now: gantt.now.unwrap_or(0.0),

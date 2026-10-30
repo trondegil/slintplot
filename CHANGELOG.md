@@ -5,7 +5,7 @@
 ### Added
 
 - `GanttChart`: one row per task, with a bar from its start to its end on a
-  time axis, tasks grouped under headings that show each group's span,
+  time axis, tasks grouped under headings,
   progress drawn as the solid part of a bar, milestones as diamonds and an
   optional line at `now`. It zooms and pans along time like the time series,
   scrolls rows that don't fit and lays out only the rows in view. Tasks are

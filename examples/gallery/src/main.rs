@@ -343,7 +343,7 @@ const SAMPLES: &[Sample] = &[
         "gantt",
         "New",
         "Gantt",
-        "GanttChart: a release plan in four groups, with progress, milestones and a line at today. Scroll to zoom, drag to pan.",
+        "GanttChart: a release plan in four groups, with progress written after each bar, milestones and a line at today. Scroll to zoom, drag to pan.",
         Shape::Gantt,
         &["Reset zoom"],
     ),
