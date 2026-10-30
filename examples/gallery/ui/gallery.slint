@@ -1188,8 +1188,8 @@ export component Gallery inherits Window {
                     if root.sample == "gantt": GanttChart {
                         property <float> day: 86400;
                         title: "Release 3.0";
-                        // Monday 7 September 2026; task times are seconds after it.
-                        time-origin: { year: 2026, month: 9, day: 7 };
+                        // 15 December 2026; task times are seconds after it.
+                        time-origin: { year: 2026, month: 12, day: 15 };
                         tasks: [
                             { label: "User research", group: "Design", start: 0, end: 10 * day, progress: 1 },
                             { label: "Wireframes", group: "Design", start: 7 * day, end: 21 * day, progress: 1 },
@@ -1209,7 +1209,7 @@ export component Gallery inherits Window {
                             { label: "App store review", group: "Launch", start: 84 * day, end: 89 * day },
                             { label: "Release", group: "Launch", start: 91 * day, end: 91 * day },
                         ];
-                        // Today, 30 October 2026.
+                        // Today, 53 days in: 6 February 2027.
                         show-now: true;
                         now: 53 * day;
                         show-values: true;
