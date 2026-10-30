@@ -247,6 +247,8 @@ export component Fuzz inherits Window {
             min-value: root.min-value;
             max-value: root.max-value;
             show-legend: root.show-values;
+            show-values: !root.logarithmic;
+            below-target-color: root.fixed-range ? #ff0000 : transparent;
             value-decimals: root.decimals;
         }
         if root.chart == 20: CandlestickChart {

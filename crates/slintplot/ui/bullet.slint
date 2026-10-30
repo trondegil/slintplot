@@ -1,14 +1,15 @@
 import { ChartBullet, ChartBulletLayout, ChartEngine, ChartFormat, ChartGaugeBand, ChartLegendItem } from "engine.slint";
-import { ChartTheme } from "theme.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
+import { TooltipFrame, TooltipLine } from "tooltip.slint";
 
-// A bullet chart: for each row, a thin bar for the value and a mark for the
+// A bullet chart: for each row, a bar for the value and a mark for the
 // target, over shaded bands such as poor, OK and good. A compact alternative
 // to gauges, for a panel of measures. Each row has its own value axis unless
 // `shared-axis` is set.
 export component BulletChart {
     in property <[ChartBullet]> rows;
-    // The bands of rows without their own. Bands without a color are shades
+    // The bands of rows without their own. Bands without a color are steps
     // of gray, the first the darkest.
     in property <[ChartGaugeBand]> bands;
     in property <string> title;
@@ -16,17 +17,25 @@ export component BulletChart {
     in property <bool> vertical: false;
     // One value axis for all rows, for measures in the same unit.
     in property <bool> shared-axis: false;
-    // The value bar, and the target mark.
+    // The value bars, of rows without their own color.
     in property <color> color: ChartTheme.colors.length > 0 ? ChartTheme.colors[0] : #3b82f6;
-    in property <color> target-color: ChartTheme.dark ? ChartTheme.text-color.brighter(0.3) : ChartTheme.text-color.darker(0.5);
-    // The legend lists the chart's bands.
+    // The value bars of rows below their target; leave unset (transparent)
+    // to keep their color.
+    in property <color> below-target-color;
+    // The target marks.
+    in property <color> target-color: ChartTheme.dark ? #ededed : #262626;
+    // Each value at the end of its track, or under its column.
+    in property <bool> show-values: true;
+    // The legend lists the chart's bands, or the labelled bands of the
+    // first row with any.
     in property <bool> show-legend: false;
     in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
     in property <bool> show-tooltip: true;
-    // Grow the bars from zero when the chart appears.
+    // Grow the bars from zero when the chart appears, and move them when
+    // the values change.
     in property <bool> animated: true;
     // A fixed value axis from `min-value` to `max-value`, instead of fitting
-    // each row.
+    // each row. Values beyond it end in an arrow.
     in property <bool> fixed-range: false;
     in property <float> min-value: 0;
     in property <float> max-value: 100;
@@ -46,9 +55,7 @@ export component BulletChart {
 
     accessible-role: image;
     accessible-label: root.title;
-    accessible-description: root.hovered-index >= 0
-        ? root.rows[root.hovered-index].label + ": " + ChartEngine.format-value(root.rows[root.hovered-index].value, root.row-format(root.hovered-index))
-        : "";
+    accessible-description: root.hovered-index >= 0 && root.hovered-index < bullet.rows.length ? root.describe(root.hovered-index) : "";
 
     private property <int> key-index: -1;
     private property <ChartFormat> format: {
@@ -64,6 +71,26 @@ export component BulletChart {
             decimals: root.value-decimals,
         }
     }
+    // A row's target, if any: "Target: $250".
+    pure function target-text(index: int) -> string {
+        bullet.rows[index].has-target || root.rows[index].has-target || root.rows[index].target != 0
+            ? ChartTexts.target + ": " + ChartEngine.format-value(root.rows[index].target, root.row-format(index))
+            : ""
+    }
+    // How a row compares to its target: "+$20 (108% of target)".
+    pure function comparison(index: int) -> string {
+        bullet.rows[index].delta == "" ? ""
+            : bullet.rows[index].of-target < 0 ? bullet.rows[index].delta
+            : bullet.rows[index].delta + " (" + ChartEngine.fill-text(ChartTexts.of-target, ChartEngine.format-percent(bullet.rows[index].of-target, 0), "") + ")"
+    }
+    // A row for screen readers: its value, target, band and comparison.
+    pure function describe(index: int) -> string {
+        root.rows[index].label + ": " + ChartEngine.format-value(root.rows[index].value, root.row-format(index))
+            + (bullet.rows[index].overflow != 0 ? " (" + ChartTexts.off-scale + ")" : "")
+            + (root.target-text(index) != "" ? ", " + root.target-text(index) : "")
+            + (root.comparison(index) != "" ? ", " + root.comparison(index) : "")
+            + (bullet.rows[index].value-band-label != "" ? ", " + bullet.rows[index].value-band-label : "")
+    }
     private property <float> progress: 0;
     animate progress {
         duration: root.animated ? ChartTheme.animation-duration : 0ms;
@@ -72,10 +99,17 @@ export component BulletChart {
     init => {
         progress = 1;
     }
+    // Value changes move the bars, once they have grown in.
+    private property <duration> transition: root.animated && root.progress >= 1 ? 300ms : 0ms;
     private property <[string]> labels: ChartEngine.bullet-labels(root.rows, false);
     private property <string> widest-sublabel: ChartEngine.widest-label(ChartEngine.bullet-labels(root.rows, true));
     private property <length> sublabel-size: ChartTheme.font-size * 0.9;
-    private property <[ChartLegendItem]> legend: ChartEngine.bullet-legend(root.bands, ChartTheme.text-color, ChartTheme.locale);
+    // The size of the axis labels and values, which the layout plans for.
+    private property <length> small-size: ChartTheme.font-size * 0.9;
+    private property <[ChartLegendItem]> legend: ChartEngine.bullet-legend(root.rows, root.bands, ChartTheme.text-color, root.base, ChartTheme.locale);
+    // About the background, for the legend and the tooltip, which show the
+    // translucent bands opaque.
+    private property <color> base: ChartTheme.dark ? #1c1c1c : #ffffff;
     private property <ChartBulletLayout> bullet: ChartEngine.bullet-layout({
         rows: root.rows,
         bands: root.bands,
@@ -87,23 +121,31 @@ export component BulletChart {
         fixed-min: root.min-value,
         fixed-max: root.max-value,
         format: root.format,
-        font-size: ChartTheme.font-size / 1px * 0.9,
+        font-size: root.small-size / 1px,
         progress: root.progress,
+        show-values: root.show-values,
+        color: root.color,
+        below-target-color: root.below-target-color,
         shade: ChartTheme.text-color,
         locale: ChartTheme.locale,
     });
-    // The row at the mouse, or -1.
+    // The row at the mouse, or -1: beside the plot too, over the labels.
     private property <int> at-mouse: {
         let at = root.vertical
-            ? (touch.mouse-x - (bullet.rows.length > 0 ? bullet.rows[0].cell.x * 1px : 0px)) / (bullet.step * 1px)
-            : touch.mouse-y / (bullet.step * 1px);
+            ? (touch.mouse-x - plot.x - (bullet.rows.length > 0 ? bullet.rows[0].cell.x * 1px : 0px)) / (bullet.step * 1px)
+            : (touch.mouse-y - plot.y) / (bullet.step * 1px);
         at >= 0 && at < root.rows.length ? floor(at) : -1
     };
+    // The height the rows need, which the layout gives each at most.
+    private property <length> row-height: root.small-size * 2.8 + (root.shared-axis ? 0px : root.small-size * 1.4 + 6px);
 
     min-width: 160px;
     min-height: 80px;
     preferred-width: 480px;
-    preferred-height: 260px;
+    preferred-height: root.vertical ? 280px
+        : 16px + (root.title != "" ? ChartTheme.title-font-size * 1.4 + 8px : 0px)
+        + root.rows.length * root.row-height + (root.shared-axis ? root.small-size * 1.4 + 6px : 0px)
+        + (root.show-legend && root.legend.length > 0 ? ChartTheme.font-size * 2 + 8px : 0px);
 
     VerticalLayout {
         padding: 8px;
@@ -120,7 +162,7 @@ export component BulletChart {
         LegendFrame {
             vertical-stretch: 1;
             items: root.legend;
-            show-legend: root.show-legend && root.bands.length > 0;
+            show-legend: root.show-legend && root.legend.length > 0;
             position: root.legend-position;
 
             frame := Rectangle {
@@ -143,6 +185,17 @@ export component BulletChart {
                 property <length> label-width: max(label-measure.preferred-width, root.widest-sublabel != "" ? sublabel-measure.preferred-width : 0px);
                 property <length> label-height: label-measure.preferred-height + (root.widest-sublabel != "" ? sublabel-measure.preferred-height : 0px);
 
+                // The hovered row, with its label.
+                if root.hovered-index >= 0 && root.hovered-index < bullet.rows.length: Rectangle {
+                    property <length> pad: 4px;
+                    x: root.vertical ? plot.x + bullet.rows[root.hovered-index].cell.x * 1px : 0px;
+                    y: root.vertical ? 0px : plot.y + bullet.rows[root.hovered-index].cell.y * 1px;
+                    width: root.vertical ? bullet.rows[root.hovered-index].cell.width * 1px : parent.width;
+                    height: root.vertical ? parent.height : bullet.rows[root.hovered-index].cell.height * 1px;
+                    background: ChartTheme.text-color.with-alpha(0.08);
+                    border-radius: 4px;
+                }
+
                 plot := Rectangle {
                     x: root.vertical || self.label-room == 0 ? 0px : min(self.label-room, parent.width * 0.4);
                     property <length> label-room: frame.label-width > 0 ? frame.label-width + 12px : 0px;
@@ -150,22 +203,13 @@ export component BulletChart {
                     height: max(0px, parent.height - (root.vertical ? frame.label-height + 6px : 0px));
                     y: 0;
 
-                    if root.hovered-index >= 0 && root.hovered-index < bullet.rows.length: Rectangle {
-                        x: bullet.rows[root.hovered-index].cell.x * 1px;
-                        y: bullet.rows[root.hovered-index].cell.y * 1px;
-                        width: bullet.rows[root.hovered-index].cell.width * 1px;
-                        height: bullet.rows[root.hovered-index].cell.height * 1px;
-                        background: ChartTheme.grid-color;
-                        border-radius: 4px;
-                    }
-
                     // The tracks show where no band reaches.
                     for row in bullet.rows: Rectangle {
                         x: row.track.x * 1px;
                         y: row.track.y * 1px;
                         width: row.track.width * 1px;
                         height: row.track.height * 1px;
-                        background: ChartTheme.grid-color;
+                        background: ChartTheme.text-color.with-alpha(0.06);
                     }
 
                     for band in bullet.bands: Rectangle {
@@ -181,7 +225,25 @@ export component BulletChart {
                         y: row.bar.y * 1px;
                         width: row.bar.width * 1px;
                         height: row.bar.height * 1px;
-                        background: root.hovered-index == row.index ? root.color.mix(ChartTheme.text-color, 0.85) : root.color;
+                        background: root.hovered-index != row.index ? row.color
+                            : ChartTheme.dark ? row.color.brighter(0.2) : row.color.darker(0.2);
+                        animate background { duration: 120ms; }
+                        animate x, y, width, height {
+                            duration: root.transition;
+                            easing: ease-out;
+                        }
+                    }
+
+                    // Arrows at the ends of bars whose value is off the axis.
+                    for row in bullet.rows: Path {
+                        visible: row.cue != "";
+                        viewbox-width: plot.width / 1px;
+                        viewbox-height: plot.height / 1px;
+                        width: plot.width;
+                        height: plot.height;
+                        fit: fill;
+                        commands: row.cue;
+                        fill: row.color;
                     }
 
                     for row in bullet.rows: Rectangle {
@@ -191,6 +253,24 @@ export component BulletChart {
                         width: row.target.width * 1px;
                         height: row.target.height * 1px;
                         background: root.target-color;
+                        animate x, y {
+                            duration: root.transition;
+                            easing: ease-out;
+                        }
+                    }
+
+                    for row in bullet.rows: Text {
+                        visible: row.has-value-label;
+                        x: row.value-label.x * 1px - self.preferred-width * row.value-label.align;
+                        y: row.value-label.y * 1px - self.preferred-height * row.value-label.valign;
+                        text: row.value-label.text;
+                        color: ChartTheme.text-color;
+                        font-size: root.small-size;
+                        font-weight: 600;
+                        animate x, y {
+                            duration: root.transition;
+                            easing: ease-out;
+                        }
                     }
 
                     Path {
@@ -208,7 +288,7 @@ export component BulletChart {
                         y: label.y * 1px - self.preferred-height * label.valign;
                         text: label.text;
                         color: ChartTheme.text-color;
-                        font-size: ChartTheme.font-size * 0.9;
+                        font-size: root.small-size;
                     }
                 }
 
@@ -237,12 +317,9 @@ export component BulletChart {
                 }
 
                 // Keyboard: the arrow keys move through the rows, Enter
-                // clicks the selected one.
+                // clicks the selected one. The mouse works over the labels
+                // too.
                 keys := FocusScope {
-                    x: plot.x;
-                    y: plot.y;
-                    width: plot.width;
-                    height: plot.height;
                     key-pressed(event) => {
                         let count = root.rows.length;
                         if count == 0 {
@@ -286,87 +363,41 @@ export component BulletChart {
                     border-color: ChartTheme.axis-color;
                 }
 
-                if root.show-tooltip && root.hovered-index >= 0 && root.hovered-index < bullet.rows.length: Rectangle {
+                if root.show-tooltip && root.hovered-index >= 0 && root.hovered-index < bullet.rows.length: TooltipFrame {
                     property <int> index: root.hovered-index;
                     property <ChartFormat> row-format: root.row-format(self.index);
-                    property <length> anchor-x: touch.has-hover ? plot.x + touch.mouse-x
+                    property <length> anchor-x: touch.has-hover ? touch.mouse-x
                         : plot.x + (bullet.rows[self.index].cell.x + bullet.rows[self.index].cell.width / 2) * 1px;
-                    property <length> anchor-y: touch.has-hover ? plot.y + touch.mouse-y
+                    property <length> anchor-y: touch.has-hover ? touch.mouse-y
                         : plot.y + (bullet.rows[self.index].cell.y + bullet.rows[self.index].cell.height / 2) * 1px;
                     x: self.anchor-x + 14px + self.width > frame.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
                     y: clamp(self.anchor-y - self.height / 2, 0px, max(0px, frame.height - self.height));
                     width: self.preferred-width;
                     height: self.preferred-height;
-                    background: ChartTheme.tooltip-background;
-                    border-radius: 6px;
+                    title: root.rows[self.index].label;
 
-                    VerticalLayout {
-                        padding: 6px;
-                        padding-left: 8px;
-                        padding-right: 8px;
-                        spacing: 4px;
-                        if root.rows[index].label != "": Text {
-                            text: root.rows[index].label;
-                            color: ChartTheme.tooltip-text;
-                            font-size: ChartTheme.font-size;
-                            font-weight: 700;
-                        }
-                        // The value, beside a swatch of the bar.
-                        HorizontalLayout {
-                            spacing: 6px;
-                            VerticalLayout {
-                                alignment: center;
-                                Rectangle {
-                                    width: 10px;
-                                    height: 10px;
-                                    background: root.color;
-                                    border-color: ChartTheme.tooltip-text;
-                                    border-width: 1px;
-                                }
-                            }
-                            Text {
-                                text: ChartEngine.format-value(root.rows[index].value, row-format);
-                                color: ChartTheme.tooltip-text;
-                                font-size: ChartTheme.font-size;
-                                font-weight: 700;
-                            }
-                        }
-                        // The target, beside a mark like the chart's.
-                        if bullet.rows[index].has-target: HorizontalLayout {
-                            spacing: 6px;
-                            Rectangle {
-                                width: 10px;
-                                Rectangle {
-                                    width: 3px;
-                                    height: 12px;
-                                    background: ChartTheme.tooltip-text;
-                                }
-                            }
-                            Text {
-                                text: ChartEngine.format-value(root.rows[index].target, row-format);
-                                color: ChartTheme.tooltip-text;
-                                font-size: ChartTheme.font-size;
-                            }
-                        }
-                        // The band the value is in, when it has a label.
-                        if bullet.rows[index].value-band-label != "": HorizontalLayout {
-                            spacing: 6px;
-                            VerticalLayout {
-                                alignment: center;
-                                Rectangle {
-                                    width: 10px;
-                                    height: 10px;
-                                    background: bullet.rows[index].value-band-color;
-                                    border-color: ChartTheme.tooltip-text;
-                                    border-width: 1px;
-                                }
-                            }
-                            Text {
-                                text: bullet.rows[index].value-band-label;
-                                color: ChartTheme.tooltip-text;
-                                font-size: ChartTheme.font-size;
-                            }
-                        }
+                    // The value, beside a swatch of the bar.
+                    TooltipLine {
+                        swatch: bullet.rows[index].color;
+                        text: ChartEngine.format-value(root.rows[index].value, row-format)
+                            + (bullet.rows[index].overflow != 0 ? " (" + ChartTexts.off-scale + ")" : "");
+                        bold: true;
+                    }
+                    // The target, beside a mark like the chart's.
+                    if root.target-text(index) != "": TooltipLine {
+                        swatch: ChartTheme.tooltip-text;
+                        mark: true;
+                        text: root.target-text(index);
+                    }
+                    if root.comparison(index) != "": TooltipLine {
+                        indent: true;
+                        text: root.comparison(index);
+                    }
+                    // The band the value is in, when it has a label.
+                    if bullet.rows[index].value-band-label != "": TooltipLine {
+                        // The band as it looks over the page.
+                        swatch: bullet.rows[index].value-band-color.with-alpha(1).mix(root.base, bullet.rows[index].value-band-color.alpha / 255);
+                        text: bullet.rows[index].value-band-label;
                     }
                 }
             }

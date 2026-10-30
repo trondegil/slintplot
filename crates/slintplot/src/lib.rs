@@ -186,6 +186,20 @@ macro_rules! register {
                 locale: locale(l),
             }
         }
+        // A band's label, or its range: "Up to 50" in the locale's words.
+        fn band_label(b: &ChartGaugeBand, l: &ChartLocale) -> ::slint::SharedString {
+            if !b.label.is_empty() {
+                return b.label.clone();
+            }
+            let pattern = if l.up_to.is_empty() {
+                "Up to {value}"
+            } else {
+                l.up_to.as_str()
+            };
+            pattern
+                .replace("{value}", &locale(l).value(b.to.into()))
+                .into()
+        }
         fn seconds(t: &ChartDateTime) -> f64 {
             if t.year == 0 && t.month == 0 && t.day == 0 {
                 return t.hour as f64 * 3600.0 + t.minute as f64 * 60.0 + t.second as f64;
@@ -229,7 +243,7 @@ macro_rules! register {
                 })),
             }))
         }
-        fn labels(labels: Vec<$crate::radar::Label>) -> ::slint::ModelRc<ChartLabel> {
+        fn labels(labels: Vec<$crate::layout::Label>) -> ::slint::ModelRc<ChartLabel> {
             model(labels.into_iter().map(|l| ChartLabel {
                 x: l.x,
                 y: l.y,
@@ -966,14 +980,9 @@ macro_rules! register {
              colors: ::slint::ModelRc<::slint::Color>,
              l: ChartLocale| {
                 let palette = palette(&colors);
-                let locale = locale(&l);
                 let bands = tracked(&bands);
                 model(bands.iter().enumerate().map(|(i, b)| ChartLegendItem {
-                    label: if b.label.is_empty() {
-                        format!("Up to {}", locale.value(b.to.into())).into()
-                    } else {
-                        b.label.clone()
-                    },
+                    label: band_label(b, &l),
                     color: color($crate::layout::resolve_color(rgba(b.color), i, &palette)),
                     hidden: false,
                 }))
@@ -1293,7 +1302,7 @@ macro_rules! register {
                 .zip(&row_bands)
                 .map(|(r, bands)| $crate::bullet::Row {
                     value: r.value.into(),
-                    target: r.target.into(),
+                    target: $crate::bullet::target(r.target.into(), r.has_target),
                     bands: bands.iter().map(|b| b.to.into()).collect(),
                     format: format(
                         &ChartFormat {
@@ -1326,6 +1335,7 @@ macro_rules! register {
                     .then(|| (req.fixed_min.into(), req.fixed_max.into())),
                 font_size: req.font_size,
                 progress: req.progress,
+                show_values: req.show_values,
             });
             $crate::profile::record_layout(started.elapsed());
             let colors: Vec<_> = row_bands
@@ -1339,12 +1349,19 @@ macro_rules! register {
                 height: r.height,
             };
             ChartBulletLayout {
-                rows: model(bullet.rows.iter().map(|r| {
+                rows: model(bullet.rows.into_iter().map(|r| {
+                    let row = &input[r.index];
                     ChartBulletRow {
                         index: r.index as i32,
                         cell: rect(r.cell),
                         track: rect(r.track),
                         bar: rect(r.bar),
+                        color: color($crate::bullet::bar_color(
+                            row,
+                            rgba(rows[r.index].color),
+                            rgba(req.color),
+                            rgba(req.below_target_color),
+                        )),
                         target: rect(r.target.unwrap_or_default()),
                         has_target: r.target.is_some(),
                         value_band: r.value_band.map_or(-1, |b| b as i32),
@@ -1356,6 +1373,21 @@ macro_rules! register {
                             .value_band
                             .map(|b| colors[r.index][b])
                             .unwrap_or_default(),
+                        has_value_label: r.value_label.is_some(),
+                        value_label: r
+                            .value_label
+                            .map(|l| ChartLabel {
+                                x: l.x,
+                                y: l.y,
+                                text: l.text.into(),
+                                align: l.align,
+                                valign: l.valign,
+                            })
+                            .unwrap_or_default(),
+                        overflow: r.overflow.into(),
+                        cue: r.cue.into(),
+                        delta: $crate::bullet::delta(row).unwrap_or_default().into(),
+                        of_target: $crate::bullet::of_target(row).map_or(-1.0, |p| p as f32),
                     }
                 })),
                 bands: model(bullet.bands.iter().map(|b| ChartBulletBand {
@@ -1380,16 +1412,45 @@ macro_rules! register {
             )
         });
         engine.on_bullet_legend(
-            |bands: ::slint::ModelRc<ChartGaugeBand>, shade: ::slint::Color, l: ChartLocale| {
-                let locale = locale(&l);
+            |rows: ::slint::ModelRc<ChartBullet>,
+             bands: ::slint::ModelRc<ChartGaugeBand>,
+             shade: ::slint::Color,
+             base: ::slint::Color,
+             l: ChartLocale| {
                 let bands = tracked(&bands);
-                let colors = bullet_colors(&bands, shade);
+                // Opaque, as the bands look over the background.
+                let colors = |bands: &[ChartGaugeBand]| -> Vec<::slint::Color> {
+                    bullet_colors(bands, shade)
+                        .into_iter()
+                        .map(|c| color($crate::bullet::over(rgba(c), rgba(base))))
+                        .collect()
+                };
+                if bands.is_empty() {
+                    // Rows' own bands span different ranges: only their
+                    // labels say what they mean.
+                    let Some(bands) = tracked(&rows)
+                        .iter()
+                        .map(|r| tracked(&r.bands))
+                        .find(|b| b.iter().any(|b| !b.label.is_empty()))
+                    else {
+                        return model(std::iter::empty());
+                    };
+                    let colors = colors(&bands);
+                    return model(
+                        bands
+                            .iter()
+                            .zip(colors)
+                            .filter(|(b, _)| !b.label.is_empty())
+                            .map(|(b, color)| ChartLegendItem {
+                                label: b.label.clone(),
+                                color,
+                                hidden: false,
+                            }),
+                    );
+                }
+                let colors = colors(&bands);
                 model(bands.iter().zip(colors).map(|(b, color)| ChartLegendItem {
-                    label: if b.label.is_empty() {
-                        format!("Up to {}", locale.value(b.to.into())).into()
-                    } else {
-                        b.label.clone()
-                    },
+                    label: band_label(b, &l),
                     color,
                     hidden: false,
                 }))

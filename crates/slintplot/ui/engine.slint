@@ -605,10 +605,14 @@ export struct ChartBullet {
     // A second, smaller line under the label, such as the unit.
     sublabel: string,
     value: float,
-    // Where the target mark goes.
+    // Where the target mark goes. A target of 0 counts as none, unless
+    // `has-target` is set.
     target: float,
+    has-target: bool,
     // The row's own bands; empty to use the chart's.
     bands: [ChartGaugeBand],
+    // The row's value bar; leave unset (transparent) for the chart's `color`.
+    color: color,
     // How the row's values are written; empty to use the chart's
     // `value-prefix` and `value-suffix`.
     prefix: string,
@@ -619,10 +623,12 @@ export struct ChartBulletRect { x: float, y: float, width: float, height: float 
 
 export struct ChartBulletRow {
     index: int,
-    // The row's part of the plot, the shaded track in it, and the value bar.
+    // The row's part of the plot, the shaded track in it, and the value bar
+    // with its color.
     cell: ChartBulletRect,
     track: ChartBulletRect,
     bar: ChartBulletRect,
+    color: color,
     // The target mark, when the row has one on its axis.
     target: ChartBulletRect,
     has-target: bool,
@@ -630,6 +636,17 @@ export struct ChartBulletRow {
     value-band: int,
     value-band-label: string,
     value-band-color: color,
+    // The value label, with `show-values`.
+    value-label: ChartLabel,
+    has-value-label: bool,
+    // 1 when the value is past the end of the axis, -1 before its start,
+    // with an arrow at the end of the bar.
+    overflow: int,
+    cue: string,
+    // The value minus the target, such as "+$20", and the value in percent
+    // of the target; empty and -1 without a target.
+    delta: string,
+    of-target: float,
 }
 
 export struct ChartBulletBand { row: int, index: int, x: float, y: float, width: float, height: float, color: color }
@@ -659,6 +676,10 @@ export struct ChartBulletRequest {
     format: ChartFormat,
     font-size: float,
     progress: float,
+    show-values: bool,
+    // The value bars, and those of rows below their target, if set.
+    color: color,
+    below-target-color: color,
     // Bands without a color are shades of this one.
     shade: color,
     locale: ChartLocale,
@@ -802,9 +823,10 @@ export global ChartEngine {
     pure callback bullet-layout(request: ChartBulletRequest) -> ChartBulletLayout;
     // The rows' labels, or their sublabels.
     pure callback bullet-labels(rows: [ChartBullet], sublabels: bool) -> [string];
-    // The legend of a bullet chart's bands; bands without a color are
+    // The legend of a bullet chart's bands, or those of its first row with
+    // labelled bands, opaque over `base`; bands without a color are
     // shades of `shade`.
-    pure callback bullet-legend(bands: [ChartGaugeBand], shade: color, locale: ChartLocale) -> [ChartLegendItem];
+    pure callback bullet-legend(rows: [ChartBullet], bands: [ChartGaugeBand], shade: color, base: color, locale: ChartLocale) -> [ChartLegendItem];
     // The value at which a data point is drawn: itself, or its stacked total.
     pure callback plotted-value(datasets: [ChartDataset], chart: ChartKind, stacked: bool, dataset: int, index: int) -> float;
     // Gantt charts: the rows, which don't depend on the chart size, and the

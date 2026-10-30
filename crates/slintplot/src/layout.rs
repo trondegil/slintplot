@@ -10,6 +10,19 @@ use crate::time::time_ticks_in;
 /// RGBA color, 8 bits per channel.
 pub type Rgba = [u8; 4];
 
+/// A text label positioned in pixels.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Label {
+    pub x: f32,
+    pub y: f32,
+    pub text: String,
+    /// Horizontal anchor: 0 when `x` is the left edge, 0.5 for the center,
+    /// 1 for the right edge.
+    pub align: f32,
+    /// Vertical anchor: 0 when `y` is the top edge, 1 for the bottom edge.
+    pub valign: f32,
+}
+
 /// The dataset colors used when no palette is given: the light colors of the
 /// `modern` theme.
 pub const PALETTE: [Rgba; 8] = [

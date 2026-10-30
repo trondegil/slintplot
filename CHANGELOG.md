@@ -5,15 +5,19 @@
 ### Added
 
 - `GanttChart`: one row per task, with a bar from its start to its end on a
-  time axis, tasks grouped under headings,
-  progress drawn as the solid part of a bar, milestones as diamonds and an
-  optional line at `now`. It zooms and pans along time like the time series,
-  scrolls rows that don't fit and lays out only the rows in view. Tasks are
-  `ChartGanttTask`s.
-- `BulletChart`: rows of a thin bar for a value and a mark for its target,
-  over shaded bands such as poor, OK and good. A compact alternative to
-  gauges for dashboards. Each row has its own axis, or all share one with
-  `shared-axis`; `vertical: true` turns the rows into columns.
+  time axis, tasks grouped under headings, progress drawn as the solid part
+  of a bar (and written after it with `show-values`), milestones as
+  diamonds, filled once reached, and an optional line at `now`. It zooms and
+  pans along time like the time series, scrolls rows that don't fit and lays
+  out only the rows in view. Tasks are `ChartGanttTask`s.
+- `BulletChart`: rows of a bar for a value and a mark for its target, over
+  shaded bands such as poor, OK and good. A compact alternative to gauges
+  for dashboards. Each row has its own axis, or all share one with
+  `shared-axis`; `vertical: true` turns the rows into columns. Bands without
+  a color are three steps of gray that suit light and dark mode. Each value
+  is written at the end of its row (`show-values`), the tooltip shows the
+  distance to the target, `below-target-color` colors the rows that fall
+  short, and a value beyond a fixed axis ends in an arrow.
 - `CandlestickChart`: open, high, low and close per period on a time axis,
   as candles or, with `ohlc: true`, OHLC bars. Rising and falling periods
   have their own colors (`rise-color`, `fall-color`). It zooms and pans like
@@ -22,6 +26,14 @@
   candles, and `ChartEngine.moving-average` computes a moving average for
   one. The tooltip texts are translated into the 14 languages
   (`ChartLocale.open`, `high`, `low`, `close`).
+- `ChartLocale`: `up-to`, `target`, `of-target` and `off-scale`, for the
+  bullet chart's texts and the "Up to {value}" of band legends, translated
+  into all built-in languages.
+
+### Changed
+
+- `GaugeChart`: the legend of a band without a label follows
+  `ChartTheme.language`, instead of always "Up to …" in English.
 
 ### Fixed
 

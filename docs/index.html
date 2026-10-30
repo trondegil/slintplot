@@ -1491,16 +1491,21 @@ GaugeChart {
 </table>
 
 <h2 id="bullet">BulletChart</h2>
-<p>Rows of a thin bar for a value and a mark for its target, over shaded bands such as poor, OK and good, after Stephen Few's
+<p>Rows of a bar for a value and a mark for its target, over shaded bands such as poor, OK and good, after Stephen Few's
 bullet graphs: a compact alternative to a row of gauges, for dashboards and small screens. Each row has its own value axis, so
-measures in different units fit in one panel; <code>shared-axis: true</code> puts them all on one. Bands are <code>ChartGaugeBand</code>s,
-the row's own or the chart's, and those without a color are shades of gray, the first the darkest. <code>vertical: true</code> turns
-the rows into columns. The tooltip shows the value, the target and the band the value is in.</p>
+measures in different units fit in one panel; <code>shared-axis: true</code> puts them all on one. The axis ends with the last band.
+Bands are <code>ChartGaugeBand</code>s, the row's own or the chart's, in any order; those without a color are three steps of gray,
+the first the darkest, which suit the theme in light and dark mode. Each value is written at the end of its row; the tooltip adds the
+target, how far the value is from it ("+$20 (108% of target)") and the band it is in. <code>below-target-color</code> colors the bars of
+rows that fall short, and a row's own <code>color</code> overrides the chart's. A target of 0 counts as none, so rows can leave it out;
+set <code>has-target: true</code> for a real target of 0. With <code>fixed-range</code>, a value beyond the axis ends in an arrow.
+<code>vertical: true</code> turns the rows into columns, with the values under them.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/bullet.webp" alt="BulletChart of five sales measures against their targets" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/bullet-dark.webp" alt="BulletChart of five sales measures against their targets" loading="lazy"></figure>
-<pre data-shot="bullet"><code>import { BulletChart } from "@slintplot";
+<pre data-shot="bullet"><code>import { BulletChart, ChartTheme } from "@slintplot";
 
 BulletChart {
     title: "Sales, year to date";
+    below-target-color: ChartTheme.dark ? #fb7185 : #e11d48;
     rows: [
         { label: "Revenue", sublabel: "US$ (1,000s)", value: 270, target: 250, prefix: "$",
           bands: [{ to: 150, label: "Poor" }, { to: 225, label: "OK" }, { to: 300, label: "Good" }] },
@@ -1516,18 +1521,20 @@ BulletChart {
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
-  <tr><td><code>rows</code></td><td><code>[ChartBullet]</code></td><td></td><td>One entry per row: <code>label</code>, <code>sublabel</code>, <code>value</code>, <code>target</code>, <code>bands</code>, <code>prefix</code>, <code>suffix</code>. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>rows</code></td><td><code>[ChartBullet]</code></td><td></td><td>One entry per row: <code>label</code>, <code>sublabel</code>, <code>value</code>, <code>target</code>, <code>has-target</code>, <code>bands</code>, <code>color</code>, <code>prefix</code>, <code>suffix</code>. See <a href="#data-types">Data types</a></td></tr>
   <tr><td><code>bands</code></td><td><code>[ChartGaugeBand]</code></td><td></td><td>The bands of rows without their own: <code>to</code>, <code>label</code>, <code>color</code>; each band starts where the previous one ends</td></tr>
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>vertical</code></td><td><code>bool</code></td><td><code>false</code></td><td>Columns that grow upwards, with the labels below them</td></tr>
   <tr><td><code>shared-axis</code></td><td><code>bool</code></td><td><code>false</code></td><td>One value axis for all rows, for measures in the same unit, instead of one per row</td></tr>
-  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The value bar</td></tr>
-  <tr><td><code>target-color</code></td><td><code>color</code></td><td>dark gray, light gray in dark mode</td><td>The target mark</td></tr>
-  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>A legend of the chart's <code>bands</code></td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td><code>ChartTheme.colors[0]</code></td><td>The value bars of rows without their own <code>color</code></td></tr>
+  <tr><td><code>below-target-color</code></td><td><code>color</code></td><td>unset</td><td>The value bars of rows below their target, when set</td></tr>
+  <tr><td><code>target-color</code></td><td><code>color</code></td><td>near black, near white in dark mode</td><td>The target marks</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>true</code></td><td>Each value at the end of its row, or under its column</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>A legend of the chart's <code>bands</code>, or of the labelled bands of the first row with any</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the row under the mouse</td></tr>
-  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the bars in when the chart appears</td></tr>
-  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> for every axis instead of fitting each row</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the bars in when the chart appears, and move them when the values change</td></tr>
+  <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> for every axis instead of fitting each row; values beyond it end in an arrow</td></tr>
   <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axes, with <code>fixed-range</code></td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axes, with <code>fixed-range</code></td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code>, in rows without their own <code>prefix</code></td></tr>
@@ -1693,10 +1700,11 @@ after <code>time-origin</code>, and its first, highest, lowest and last value. A
 <p><code>{ to: float, label: string, color: color }</code>. A gauge band, from where the previous one ends (or <code>min-value</code>) to <code>to</code>.
 Leave <code>color</code> unset for the theme's next color.</p>
 <h3><code>ChartBullet</code></h3>
-<p><code>{ label: string, sublabel: string, value: float, target: float, bands: [ChartGaugeBand], prefix: string, suffix: string }</code>.
-A row of a bullet chart. <code>sublabel</code> is a smaller line under the label, such as the unit. Leave <code>bands</code> empty to use the
-chart's, and <code>prefix</code> and <code>suffix</code> empty to use its <code>value-prefix</code> and <code>value-suffix</code>. Bands start at the
-start of the row's axis; those without a color are shades of gray, the first the darkest.</p>
+<p><code>{ label: string, sublabel: string, value: float, target: float, has-target: bool, bands: [ChartGaugeBand], color: color, prefix: string, suffix: string }</code>.
+A row of a bullet chart. <code>sublabel</code> is a smaller line under the label, such as the unit. A <code>target</code> of 0 counts as none,
+unless <code>has-target</code> is set. Leave <code>bands</code> empty to use the chart's, <code>color</code> unset for the chart's, and
+<code>prefix</code> and <code>suffix</code> empty to use its <code>value-prefix</code> and <code>value-suffix</code>. Bands start at the
+start of the row's axis; those without a color are steps of gray, the first the darkest.</p>
 <h3><code>ChartHit</code></h3>
 <p><code>{ dataset: int, index: int, x: float, y: float, r: float }</code>. The point under the mouse in a scatter or bubble chart, with its position in pixels. <code>dataset</code> is -1 when there is none.</p>
 <h3><code>ChartDateTime</code></h3>
@@ -1724,6 +1732,8 @@ Charts build it from their <code>value-prefix</code>, <code>value-suffix</code> 
   <tr><td><code>of-first-stage</code>, <code>of-previous-stage</code></td><td><code>string</code></td><td>Funnel tooltips, with <code>{value}</code> for the percentage: "{value} of the first stage", "{value} of the previous stage"</td></tr>
   <tr><td><code>on-date</code></td><td><code>string</code></td><td>Calendar heatmap tooltips: "{value} on {date}"</td></tr>
   <tr><td><code>open</code>, <code>high</code>, <code>low</code>, <code>close</code></td><td><code>string</code></td><td>Candlestick tooltips: "Open", "High", "Low", "Close"</td></tr>
+  <tr><td><code>up-to</code></td><td><code>string</code></td><td>Gauge and bullet chart legends, for a band without a label: "Up to {value}"</td></tr>
+  <tr><td><code>target</code>, <code>of-target</code>, <code>off-scale</code></td><td><code>string</code></td><td>Bullet chart tooltips: "Target", "{value} of target", and "Off the scale" for a value beyond a fixed axis</td></tr>
 </table>
 <h3>Enums</h3>
 <table>
@@ -1841,7 +1851,7 @@ and dataset names itself; everything else comes from the library.</p>
 
 <h2 id="interaction">Interaction</h2>
 <ul>
-  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, gauges the band under the mouse, and bullet charts the value, target and band of a row.</li>
+  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, gauges the band under the mouse, and bullet charts the value, target, distance to the target and band of a row.</li>
   <li><strong>Legend.</strong> Clicking an entry toggles the dataset's or slice's <code>hidden</code> flag; the axes rescale to the visible data. In a treemap, it hides or shows a group, and in a sunburst a top-level item.</li>
   <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code>, <code>step-clicked</code> and <code>task-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
   <li><strong>Keyboard.</strong> Every chart can be used without a mouse. Click a chart (or tab to it) and a focus ring appears; the arrow

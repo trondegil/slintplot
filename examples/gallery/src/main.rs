@@ -351,7 +351,7 @@ const SAMPLES: &[Sample] = &[
         "bullet",
         "New",
         "Bullet charts",
-        "BulletChart: a KPI panel with an axis per row and gray bands, and columns on a shared axis over colored bands.",
+        "BulletChart: a KPI panel with an axis per row over gray bands, columns over tinted bands, and rows on one axis, some without a target.",
         Shape::Bullet,
         &["Randomize"],
     ),
@@ -1291,10 +1291,11 @@ impl State {
             } else {
                 72.0
             });
-            // The bullet charts: a KPI panel, then sales by region in
-            // percent of target.
-            const BULLET: [f32; 10] = [
-                270.0, 22.5, 320.0, 1650.0, 4.5, 104.0, 87.0, 72.0, 95.0, 118.0,
+            // The bullet charts: a KPI panel, sales by region in percent of
+            // target, and website visits.
+            const BULLET: [f32; 15] = [
+                270.0, 22.5, 320.0, 1650.0, 4.5, 104.0, 87.0, 72.0, 95.0, 128.0, 48.0, 36.0, 14.0,
+                9.0, 27.0,
             ];
             let values: Vec<f32> = BULLET
                 .iter()

@@ -367,7 +367,13 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
             label: rng.text(),
             sublabel: rng.text(),
             value: rng.number(),
-            target: rng.number(),
+            target: if rng.chance(20) { 0.0 } else { rng.number() },
+            has_target: rng.chance(50),
+            color: if rng.chance(50) {
+                Color::from_argb_u8(0, 0, 0, 0)
+            } else {
+                rng.color()
+            },
             bands: model(
                 (0..rng.below(5))
                     .map(|_| ChartGaugeBand {
