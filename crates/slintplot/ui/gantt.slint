@@ -248,15 +248,18 @@ export component GanttChart {
                             background: bar.color;
                         }
                     }
+                    // A milestone reached (progress 1) is a filled diamond; one
+                    // still ahead is an outline.
                     if bar.milestone: Path {
+                        property <bool> reached: root.tasks[bar.index].progress >= 1;
                         viewbox-x: 0;
                         viewbox-y: 0;
                         viewbox-width: 2;
                         viewbox-height: 2;
                         commands: "M 1 0 L 2 1 L 1 2 L 0 1 Z";
-                        fill: bar.color;
-                        stroke: hovered ? ChartTheme.text-color : ChartTheme.background;
-                        stroke-width: 1px;
+                        fill: self.reached ? bar.color : ChartTheme.background;
+                        stroke: hovered ? ChartTheme.text-color : self.reached ? ChartTheme.background : bar.color;
+                        stroke-width: self.reached ? 1px : 1.5px;
                     }
                     // After the bar, or before it when there's no room after it.
                     if root.show-values && !bar.milestone: Text {

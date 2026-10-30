@@ -953,7 +953,7 @@ TimeSeriesChart {
 <p>One row per task, with a bar from its start to its end on a time axis like the time series': task times are seconds after
 <code>time-origin</code>, and the ticks fall on round hours, days, weeks or months. Tasks with the same <code>group</code> are placed
 together under the group's heading and share the group's color. A task's <code>progress</code> fills
-that share of its bar; a task that ends where it starts is a milestone, drawn as a diamond. <code>show-now</code> draws a line at
+that share of its bar; a task that ends where it starts is a milestone, drawn as a diamond: filled once reached (<code>progress: 1</code>), an outline before. <code>show-now</code> draws a line at
 <code>now</code>, such as today. Labels too long for the left column are cut short with an ellipsis. Rows share the height, within
 <code>min-row-height</code> and <code>max-row-height</code>; when they don't fit, the wheel or a drag scrolls them, and only the rows in
 view are laid out, so plans of thousands of tasks stay fast. The tooltip shows the task's dates, duration and progress.</p>
@@ -968,10 +968,11 @@ GanttChart {
         { label: "Research", group: "Design", start: 0, end: 10 * day, progress: 1 },
         { label: "Wireframes", group: "Design", start: 7 * day, end: 21 * day, progress: 1 },
         { label: "Visual design", group: "Design", start: 17 * day, end: 31 * day, progress: 0.6 },
+        { label: "Concept review", group: "Design", start: 24 * day, end: 24 * day, progress: 1 },  // Reached
         { label: "Backend API", group: "Build", start: 21 * day, end: 56 * day, progress: 0.9 },
         { label: "Web app", group: "Build", start: 28 * day, end: 63 * day, progress: 0.7 },
         { label: "Mobile app", group: "Build", start: 35 * day, end: 70 * day, progress: 0.5 },
-        { label: "Feature freeze", group: "Build", start: 70 * day, end: 70 * day },  // A milestone
+        { label: "Feature freeze", group: "Build", start: 70 * day, end: 70 * day },  // Ahead
         { label: "QA and bug fixing", group: "Test", start: 56 * day, end: 84 * day },
         { label: "Public beta", group: "Test", start: 70 * day, end: 84 * day },
         { label: "Docs and website", group: "Launch", start: 70 * day, end: 88 * day },
@@ -1546,7 +1547,7 @@ unset for the theme's color (top level) or a lighter shade of the parent's.</p>
 <h3 id="chart-gantt-task"><code>ChartGanttTask</code></h3>
 <p><code>{ label: string, start: float, end: float, group: string, color: color, progress: float }</code>. A Gantt chart task.
 <code>start</code> and <code>end</code> are seconds after the chart's <code>time-origin</code>; a task with <code>end</code> equal to
-<code>start</code> is a milestone. Tasks with the same <code>group</code> are placed together under its heading; leave <code>color</code>
+<code>start</code> is a milestone, filled when its <code>progress</code> is 1. Tasks with the same <code>group</code> are placed together under its heading; leave <code>color</code>
 unset to use the group's color. <code>progress</code> is the share done, from 0 to 1.</p>
 <h3><code>ChartWaterfallStep</code></h3>
 <p><code>{ label: string, value: float, total: bool }</code>. A waterfall step: a change, or with <code>total: true</code>, the running total so far.</p>
