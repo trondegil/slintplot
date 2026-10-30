@@ -303,6 +303,7 @@
   <a href="#doughnut-chart">DoughnutChart</a>
   <a href="#polar-area-chart">PolarAreaChart</a>
   <a href="#radar-chart">RadarChart</a>
+  <a href="#radial-bar-chart">RadialBarChart</a>
   <a href="#mixed-charts">Mixed charts</a>
   <a href="#percent-bars">100% stacked bars</a>
   <a href="#time-series">TimeSeriesChart</a>
@@ -360,7 +361,7 @@
 </p>
 <div class="grid">
   <div class="card"><h2>Cartesian charts</h2><p>Line, bar, horizontal bar, scatter and bubble charts; stacked, mixed, stepped and filled variants.</p></div>
-  <div class="card"><h2>Radial charts</h2><p>Pie, doughnut, polar area and radar charts.</p></div>
+  <div class="card"><h2>Radial charts</h2><p>Pie, doughnut, polar area, radar and radial bar charts.</p></div>
   <div class="card"><h2>Time and heatmaps</h2><p>Time series with date axes, candlestick and OHLC charts, Gantt charts, matrix heatmaps and GitHub-style calendar heatmaps.</p></div>
   <div class="card"><h2>Hierarchies and business</h2><p>Treemaps, sunbursts, funnels, waterfalls, dumbbells, gauges and bullet charts.</p></div>
   <div class="card"><h2>Interactive</h2><p>Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.</p></div>
@@ -841,6 +842,57 @@ RadarChart {
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The spoke under the mouse or selected with the keyboard, or -1</td></tr>
   <tr><td><code>category-clicked(index)</code></td><td>callback</td><td></td><td>A spoke was clicked, or chosen with Enter</td></tr>
   <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a dataset</td></tr>
+</table>
+
+<h2 id="radial-bar-chart">RadialBarChart</h2>
+<p>One ring per bar, the first outermost, each filled along its arc in proportion to its value over a faint gray track, like
+activity rings and radial progress bars. A full ring is <code>max-value</code>, or the largest value when it is 0; larger values fill
+the ring. The rings cover <code>sweep</code> degrees (270 by default) clockwise from <code>start-angle</code>, and each label goes in
+the opening before the start of its ring. Each value is written just past the end of its bar, or inside the bar when it is nearly full.
+The bars take the theme's colors in turn, or one <code>color</code> for all; a bar's own color overrides both. They grow in when the
+chart appears and move to new values when a bar's value changes; change the bars' rows in place (<code>set_row_data</code>) rather than
+replacing the model, so that each bar keeps its ring. Hovering a ring or its label shows its value. The bars are
+<code>ChartSlice</code>s, as in a pie chart, so the same data can be shown both ways.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/radial-bar.webp" alt="RadialBarChart of six weekly fitness goals in percent" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/radial-bar-dark.webp" alt="RadialBarChart of six weekly fitness goals in percent" loading="lazy"></figure>
+<pre data-shot="radial-bar"><code>import { RadialBarChart } from "@slintplot";
+
+RadialBarChart {
+    title: "Fitness goals this week";
+    bars: [
+        { label: "Steps", value: 86 },
+        { label: "Active minutes", value: 64 },
+        { label: "Workouts", value: 100 },
+        { label: "Sleep", value: 92 },
+        { label: "Water", value: 45 },
+        { label: "Stretching", value: 30 },
+        { label: "Reading", value: 18 },
+    ];
+    max-value: 100;
+    value-suffix: "%";
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>bars</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td></td><td>One entry per ring, from the outside in: <code>label</code>, <code>value</code>, <code>color</code>, <code>hidden</code>. Values of 0 or less, and missing ones, leave the ring empty. See <a href="#data-types">Data types</a></td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The value of a full ring; 0 for the largest value</td></tr>
+  <tr><td><code>start-angle</code></td><td><code>float</code></td><td><code>0</code></td><td>Where the rings start, in degrees clockwise from 12 o'clock</td></tr>
+  <tr><td><code>sweep</code></td><td><code>float</code></td><td><code>270</code></td><td>The angle a full ring covers, in degrees; below 360 it leaves room for the labels</td></tr>
+  <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.25</code></td><td>The empty middle, as a share of the radius</td></tr>
+  <tr><td><code>ring-gap</code></td><td><code>float</code></td><td><code>0.25</code></td><td>The gap between the rings, as a share of their width</td></tr>
+  <tr><td><code>rounded</code></td><td><code>bool</code></td><td><code>true</code></td><td>Round ends on the bars and tracks</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td>unset</td><td>One color for every bar without its own; unset, the bars take <code>ChartTheme.colors</code> in turn</td></tr>
+  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>Each bar's label before the start of its ring</td></tr>
+  <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>true</code></td><td>Each value just past the end of its bar, or inside it; rings too thin for the text leave it out</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>A legend of the bars; clicking an entry hides or shows one</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the value under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the bars in when the chart appears, and move them when the values change</td></tr>
+  <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
+  <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
+  <tr><td><code>value-decimals</code></td><td><code>int</code></td><td><code>-1</code></td><td>Decimals of every value; -1 picks them from the data</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The bar under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>bar-clicked(index)</code></td><td>callback</td><td></td><td>A ring or its label was clicked, or the bar chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a bar</td></tr>
 </table>
 
 <h2 id="mixed-charts">Mixed charts</h2>
@@ -1692,7 +1744,7 @@ BarChart {
 <h3><code>ChartXY</code></h3>
 <p><code>{ x: float, y: float, r: float }</code>. A scatter or bubble point; <code>r</code> is the bubble radius in pixels and is ignored by scatter charts.</p>
 <h3><code>ChartSlice</code></h3>
-<p><code>{ label: string, value: float, color: color, hidden: bool }</code>. A pie, doughnut or polar area slice.</p>
+<p><code>{ label: string, value: float, color: color, hidden: bool }</code>. A pie, doughnut or polar area slice, a funnel stage or a radial bar.</p>
 <h3><code>ChartTreemapItem</code></h3>
 <p><code>{ label: string, value: float, group: string, color: color }</code>. A treemap item. Items with the same <code>group</code> are
 placed together; leave <code>color</code> unset to use the group's color, or the theme's next color for items without a group.</p>
@@ -1867,9 +1919,9 @@ and dataset names itself; everything else comes from the library.</p>
 
 <h2 id="interaction">Interaction</h2>
 <ul>
-  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, gauges the band under the mouse, and bullet charts the value, target, distance to the target and band of a row.</li>
+  <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, gauges the band under the mouse, bullet charts the value, target, distance to the target and band of a row, and radial bar charts the value of a ring, which stands out while the others fade.</li>
   <li><strong>Legend.</strong> Clicking an entry toggles the dataset's or slice's <code>hidden</code> flag; the axes rescale to the visible data. In a treemap, it hides or shows a group, and in a sunburst a top-level item.</li>
-  <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code>, <code>step-clicked</code> and <code>task-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
+  <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code>, <code>step-clicked</code>, <code>task-clicked</code> and <code>bar-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
   <li><strong>Keyboard.</strong> Every chart can be used without a mouse. Click a chart (or tab to it) and a focus ring appears; the arrow
   keys then move the highlight and tooltip, Home and End jump to the ends, and Enter clicks. Charts report their title as an accessibility label.
     <table>
@@ -1882,6 +1934,7 @@ and dataset names itself; everything else comes from the library.</p>
       <tr><td>Treemap</td><td>Move through the items, group by group and largest first</td></tr>
       <tr><td>Sunburst</td><td>Move through the items, each parent before its children; Enter also zooms into an item with children, and Escape or Backspace zooms out</td></tr>
       <tr><td>Funnel, dumbbell, bullet</td><td>Move through the stages or rows</td></tr>
+      <tr><td>Radial bar</td><td>Move through the rings, from the outside in</td></tr>
       <tr><td>Waterfall</td><td>Move through the steps</td></tr>
       <tr><td>Gantt</td><td>Up and Down move through the tasks, scrolling them into view; with <code>zoom-enabled</code>, Left and Right pan</td></tr>
       <tr><td>Gauge</td><td>None: a gauge shows one value, which its accessibility description reads out</td></tr>
@@ -2130,6 +2183,7 @@ slintplot::register!(app);</code></pre>
   <tr><td><code>slintplot::layout</code></td><td><code>layout(&amp;LayoutRequest) -&gt; Layout</code>, <code>value_axis(&amp;AxisRequest) -&gt; Axis</code>, <code>Dataset</code>, <code>Values</code>, <code>DataPoint</code>, <code>Kind</code>, <code>Stacks</code>, <code>plotted_value</code>, <code>nearest_point</code>, <code>category_window</code>, <code>resolve_color</code>, <code>PALETTE</code></td></tr>
   <tr><td><code>slintplot::pie</code></td><td><code>layout(&amp;PieRequest) -&gt; PieLayout</code>, <code>hit(&amp;PieLayout, x, y)</code></td></tr>
   <tr><td><code>slintplot::radar</code></td><td><code>layout(&amp;RadarRequest) -&gt; RadarLayout</code>, <code>hit(&amp;RadarLayout, x, y)</code></td></tr>
+  <tr><td><code>slintplot::radial</code></td><td><code>layout(&amp;RadialBarRequest) -&gt; RadialBars</code>, <code>bar_path</code>, <code>value_spot</code>, <code>hit</code></td></tr>
   <tr><td><code>slintplot::time</code></td><td><code>time_ticks</code>, <code>format_datetime</code> (English), <code>time_ticks_in</code>, <code>format_datetime_in</code> (a <code>Locale</code>), <code>unix_seconds</code>, <code>days_from_civil</code>, <code>civil_from_days</code></td></tr>
   <tr><td><code>slintplot::gantt</code></td><td><code>rows</code> (groups and headings), <code>window</code>, <code>layout(&amp;GanttRequest) -&gt; Gantt</code> (rows in view, bars, ticks), <code>duration</code></td></tr>
   <tr><td><code>slintplot::heatmap</code></td><td><code>calendar</code>, <code>calendar_in</code> (calendar layout and quantile levels), <code>weekday_labels</code>, <code>extent</code></td></tr>
@@ -2150,7 +2204,7 @@ let labels: Vec&lt;String&gt; = scale.ticks().iter().map(|&amp;v| format_tick(v,
   but it has to be exported from your root <code>.slint</code> file so that <code>register!</code> can connect it.
   Its pure callbacks include <code>layout</code>, <code>value-axis</code>, <code>pie-layout</code>, <code>radar-layout</code>, <code>treemap-layout</code>,
   <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gantt-layout</code>, <code>gauge-layout</code>, <code>bullet-layout</code>,
-  <code>candle-layout</code>, the hit tests and <code>format-value</code>. <code>moving-average(candles, period)</code> is for you: the simple
+  <code>candle-layout</code>, <code>radial-bar-layout</code>, the hit tests and <code>format-value</code>. <code>moving-average(candles, period)</code> is for you: the simple
   moving average of the closes, as points for a line over a <a href="#candlestick">CandlestickChart</a>; in Rust,
   <code>slintplot::candle::moving_average</code> computes the same.
 </p>

@@ -291,7 +291,13 @@ pub fn layout(req: &GaugeRequest) -> Gauge {
 
 /// A ring sector from `start` to `end` with round ends, which stay inside
 /// the angles. Too short for both ends, it is a dot.
-fn rounded_arc(center: (f32, f32), outer: f32, inner: f32, start: f32, end: f32) -> String {
+pub(crate) fn rounded_arc(
+    center: (f32, f32),
+    outer: f32,
+    inner: f32,
+    start: f32,
+    end: f32,
+) -> String {
     let mut out = String::new();
     if end <= start || outer <= inner {
         return out;

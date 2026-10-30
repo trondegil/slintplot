@@ -685,6 +685,59 @@ export struct ChartBulletRequest {
     locale: ChartLocale,
 }
 
+// One ring of a radial bar chart, for the item `index`. Hidden items have
+// one too, not `visible`.
+export struct ChartRadialBarRing {
+    index: int,
+    visible: bool,
+    // The ring's place among the visible ones, from the outside; -1 if hidden.
+    position: int,
+    outer: float,
+    inner: float,
+    // The angle the value reaches, in radians clockwise from 12 o'clock.
+    end: float,
+    color: color,
+    // The label's anchor, before the start of the ring.
+    label: ChartLabel,
+}
+
+export struct ChartRadialBarLayout {
+    // One per item, in the input order.
+    rings: [ChartRadialBarRing],
+    // The visible items, outermost first.
+    visible: [int],
+    center-x: float,
+    center-y: float,
+    radius: float,
+    // The angles where the rings start and end.
+    start: float,
+    end: float,
+    // The value of a full ring.
+    max: float,
+}
+
+export struct ChartRadialBarRequest {
+    bars: [ChartSlice],
+    width: float,
+    height: float,
+    // In degrees: where the rings start, clockwise from 12 o'clock, and the
+    // angle they cover.
+    start-angle: float,
+    sweep: float,
+    // The value of a full ring; 0 or less for the largest value.
+    max: float,
+    cutout: float,
+    ring-gap: float,
+    // The size of the widest label; 0 for none.
+    label-width: float,
+    label-height: float,
+    palette: [color],
+}
+
+// Where a radial bar's value label goes: its center, and whether it is
+// inside the bar. Not `visible` when the ring is too thin for it.
+export struct ChartRadialBarValue { x: float, y: float, inside: bool, visible: bool }
+
 // A period of a candlestick chart: its time, in seconds after `time-origin`,
 // its first, highest, lowest and last value, and the volume traded in it.
 export struct ChartCandle { x: float, open: float, high: float, low: float, close: float, volume: float }
@@ -874,4 +927,12 @@ export global ChartEngine {
     // The simple moving average of the closes over `period` candles, as
     // points for a dataset over the candles.
     pure callback moving-average(candles: [ChartCandle], period: int) -> [ChartXY];
+    pure callback radial-bar-layout(request: ChartRadialBarRequest) -> ChartRadialBarLayout;
+    // A ring's bar up to the angle `end` (its track, at `layout.end`).
+    pure callback radial-bar-path(layout: ChartRadialBarLayout, ring: ChartRadialBarRing, end: float, rounded: bool) -> string;
+    // Where a value label of `width` × `height` goes on a ring whose bar
+    // ends at `end`.
+    pure callback radial-bar-value(layout: ChartRadialBarLayout, ring: ChartRadialBarRing, end: float, width: float, height: float) -> ChartRadialBarValue;
+    // The item at (x, y), on its ring or its label, or -1.
+    pure callback radial-bar-hit(layout: ChartRadialBarLayout, x: float, y: float, label-width: float, label-height: float) -> int;
 }

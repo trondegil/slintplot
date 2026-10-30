@@ -3,7 +3,7 @@ import {
     BarChart, BubbleChart, BulletChart, CalendarHeatmap, CandlestickChart, ChartBullet, ChartCandle, ChartDataset, ChartEngine, ChartGanttTask, ChartGaugeBand, ChartLegendPosition, ChartSlice,
     ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GanttChart, GaugeChart,
     HeatmapChart, HorizontalBarChart, LineChart, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
-    TimeSeriesChart, TreemapChart, WaterfallChart,
+    RadialBarChart, TimeSeriesChart, TreemapChart, WaterfallChart,
 } from "@slintplot";
 export { ChartEngine }
 
@@ -270,6 +270,21 @@ export component Fuzz inherits Window {
             view-start <=> root.view-start;
             view-end <=> root.view-end;
             min-view: root.number;
+            legend-position: root.legend-position;
+        }
+        if root.chart == 21: RadialBarChart {
+            bars <=> root.slices;
+            max-value: root.fixed-range ? root.max-value : 0;
+            start-angle: root.min-value;
+            sweep: root.number * 400;
+            cutout: root.number;
+            ring-gap: root.value;
+            rounded: !root.flag;
+            color: root.stacked ? #ff0000 : transparent;
+            show-labels: !root.logarithmic;
+            show-values: root.show-values;
+            show-legend: root.begin-at-zero;
+            value-decimals: root.decimals;
             legend-position: root.legend-position;
         }
     }

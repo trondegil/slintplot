@@ -32,6 +32,7 @@ import {
     PieChart,
     PolarAreaChart,
     RadarChart,
+    RadialBarChart,
     ScatterChart,
     TimeSeriesChart,
 } from "@slintplot";
@@ -695,6 +696,7 @@ export component Gallery inherits Window {
     in property <[string]> labels;
     in-out property <[ChartDataset]> datasets;
     in-out property <[ChartSlice]> slices;
+    in-out property <[ChartSlice]> channels;
     in property <[string]> row-labels;
     in property <[float]> grid;
     in-out property <[ChartTreemapItem]> tree;
@@ -1263,6 +1265,32 @@ export component Gallery inherits Window {
                                 { to: 85, label: "Warm", color: ChartTheme.dark ? #fbbf24 : #f59e0b },
                                 { to: 100, label: "Hot", color: ChartTheme.dark ? #fb7185 : #f43f5e },
                             ];
+                        }
+                    }
+                    if root.sample == "radial-bar": GridLayout {
+                        spacing: 8px;
+                        RadialBarChart {
+                            row: 0;
+                            col: 0;
+                            title: "Daily goals reached";
+                            bars <=> root.slices;
+                            max-value: 100;
+                            value-suffix: ChartTexts.percent;
+                            value-decimals: 0;
+                            bar-clicked(index) => {
+                                root.status = "bar-clicked: " + self.bars[index].label;
+                            }
+                        }
+                        RadialBarChart {
+                            row: root.narrow ? 1 : 0;
+                            col: root.narrow ? 0 : 1;
+                            title: "How customers contacted support";
+                            bars <=> root.channels;
+                            value-suffix: ChartTexts.percent;
+                            value-decimals: 0;
+                            bar-clicked(index) => {
+                                root.status = "bar-clicked: " + self.bars[index].label;
+                            }
                         }
                     }
                     if root.sample == "bullet": GridLayout {

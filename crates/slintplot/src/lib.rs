@@ -48,6 +48,7 @@ pub mod path;
 pub mod pie;
 pub mod profile;
 pub mod radar;
+pub mod radial;
 pub mod sunburst;
 pub mod ticks;
 pub mod time;
@@ -1677,5 +1678,128 @@ macro_rules! register {
                     }),
             )
         });
+        engine.on_radial_bar_layout(|req: ChartRadialBarRequest| {
+            let bars = tracked(&req.bars);
+            let values: Vec<f64> = bars.iter().map(|b| b.value.into()).collect();
+            let hidden: Vec<bool> = bars.iter().map(|b| b.hidden).collect();
+            let out = $crate::radial::layout(&$crate::radial::RadialBarRequest {
+                values: &values,
+                hidden: &hidden,
+                width: req.width,
+                height: req.height,
+                start_angle: req.start_angle,
+                sweep: req.sweep,
+                max: req.max.into(),
+                cutout: req.cutout,
+                gap: req.ring_gap,
+                label_width: req.label_width,
+                label_height: req.label_height,
+            });
+            let palette = palette(&req.palette);
+            // One ring per item, so that the chart can look its bar up by
+            // index; hidden items keep an empty one.
+            let mut rings: Vec<ChartRadialBarRing> = bars
+                .iter()
+                .enumerate()
+                .map(|(i, b)| ChartRadialBarRing {
+                    index: i as i32,
+                    color: color($crate::layout::resolve_color(rgba(b.color), i, &palette)),
+                    end: out.start,
+                    position: -1,
+                    ..Default::default()
+                })
+                .collect();
+            for (position, r) in out.rings.iter().enumerate() {
+                let ring = &mut rings[r.index];
+                ring.visible = true;
+                ring.position = position as i32;
+                ring.outer = r.outer;
+                ring.inner = r.inner;
+                ring.end = r.end;
+                ring.label = ChartLabel {
+                    x: r.label.x,
+                    y: r.label.y,
+                    text: bars[r.index].label.clone(),
+                    align: r.label.align,
+                    valign: r.label.valign,
+                };
+            }
+            ChartRadialBarLayout {
+                visible: model(out.rings.iter().map(|r| r.index as i32)),
+                rings: model(rings),
+                center_x: out.center.0,
+                center_y: out.center.1,
+                radius: out.radius,
+                start: out.start,
+                end: out.end,
+                max: out.max as f32,
+            }
+        });
+        engine.on_radial_bar_path(
+            |layout: ChartRadialBarLayout, ring: ChartRadialBarRing, end: f32, rounded: bool| {
+                $crate::radial::bar_path(
+                    (layout.center_x, layout.center_y),
+                    ring.outer,
+                    ring.inner,
+                    layout.start,
+                    end.min(layout.end),
+                    rounded,
+                )
+                .into()
+            },
+        );
+        engine.on_radial_bar_value(
+            |layout: ChartRadialBarLayout,
+             ring: ChartRadialBarRing,
+             end: f32,
+             width: f32,
+             height: f32| {
+                $crate::radial::value_spot(
+                    (layout.center_x, layout.center_y),
+                    (ring.outer, ring.inner),
+                    layout.start,
+                    end,
+                    layout.end,
+                    (width, height),
+                )
+                .map_or_else(Default::default, |(x, y, inside)| {
+                    ChartRadialBarValue {
+                        x,
+                        y,
+                        inside,
+                        visible: true,
+                    }
+                })
+            },
+        );
+        engine.on_radial_bar_hit(
+            |layout: ChartRadialBarLayout, x: f32, y: f32, label_width: f32, label_height: f32| {
+                let bars = $crate::radial::RadialBars {
+                    center: (layout.center_x, layout.center_y),
+                    radius: layout.radius,
+                    start: layout.start,
+                    end: layout.end,
+                    max: layout.max.into(),
+                    rings: tracked(&layout.rings)
+                        .into_iter()
+                        .filter(|r| r.visible)
+                        .map(|r| $crate::radial::Ring {
+                            index: r.index as usize,
+                            outer: r.outer,
+                            inner: r.inner,
+                            end: r.end,
+                            label: $crate::layout::Label {
+                                x: r.label.x,
+                                y: r.label.y,
+                                text: String::new(),
+                                align: r.label.align,
+                                valign: r.label.valign,
+                            },
+                        })
+                        .collect(),
+                };
+                $crate::radial::hit(&bars, x, y, label_width, label_height).map_or(-1, |i| i as i32)
+            },
+        );
     }};
 }

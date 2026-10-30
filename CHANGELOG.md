@@ -34,6 +34,16 @@
   one. `candle-clicked(first, last)` and `hovered-last` give the candles a
   merged candle holds. The tooltip texts are translated into the 14
   languages (`ChartLocale.open`, `high`, `low`, `close`, `volume`).
+- `RadialBarChart`: one ring per bar, the first outermost, each filled along
+  its arc in proportion to its value over a faint gray track, like activity
+  rings. A full ring is `max-value`, or the largest value. The rings cover
+  `sweep` degrees (270 by default) from `start-angle`, with rounded ends,
+  and each label sits in the opening before its ring. Values are written
+  past the end of each bar, or inside it when it is nearly full. Bars take
+  the theme's colors, or one `color`; they grow in and move to new values.
+  Hovering a ring or its label fades the others and shows a tooltip; the
+  arrow keys, Home, End and Enter work, and `bar-clicked` reports clicks.
+  Bars are `ChartSlice`s, as in pie charts.
 
 ### Fixed
 
