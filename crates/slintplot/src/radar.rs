@@ -10,18 +10,7 @@ use crate::locale::Locale;
 use crate::path;
 use crate::ticks::NiceScale;
 
-/// A text label positioned in pixels.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Label {
-    pub x: f32,
-    pub y: f32,
-    pub text: String,
-    /// Horizontal anchor: 0 when `x` is the left edge, 0.5 for the center,
-    /// 1 for the right edge.
-    pub align: f32,
-    /// Vertical anchor: 0 when `y` is the top edge, 1 for the bottom edge.
-    pub valign: f32,
-}
+pub use crate::layout::Label;
 
 pub struct RadarRequest<'a> {
     pub datasets: &'a [Dataset],

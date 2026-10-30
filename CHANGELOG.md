@@ -4,10 +4,22 @@
 
 ### Added
 
-- `BulletChart`: rows of a thin bar for a value and a mark for its target,
-  over shaded bands such as poor, OK and good. A compact alternative to
-  gauges for dashboards. Each row has its own axis, or all share one with
-  `shared-axis`; `vertical: true` turns the rows into columns.
+- `BulletChart`: rows of a bar for a value and a mark for its target, over
+  shaded bands such as poor, OK and good. A compact alternative to gauges
+  for dashboards. Each row has its own axis, or all share one with
+  `shared-axis`; `vertical: true` turns the rows into columns. Bands without
+  a color are three steps of gray that suit light and dark mode. Each value
+  is written at the end of its row (`show-values`), the tooltip shows the
+  distance to the target, `below-target-color` colors the rows that fall
+  short, and a value beyond a fixed axis ends in an arrow.
+- `ChartLocale`: `up-to`, `target`, `of-target` and `off-scale`, for the
+  bullet chart's texts and the "Up to {value}" of band legends, translated
+  into all built-in languages.
+
+### Changed
+
+- `GaugeChart`: the legend of a band without a label follows
+  `ChartTheme.language`, instead of always "Up to …" in English.
 
 ### Fixed
 

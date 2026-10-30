@@ -1,18 +1,9 @@
 import { ChartDataset, ChartEngine, ChartFormat, ChartSeries } from "engine.slint";
 import { ChartTheme } from "theme.slint";
 
-// Tooltip listing the value of every visible dataset at one category.
-export component Tooltip inherits Rectangle {
+// The box of a tooltip: a bold title, then the lines placed in it.
+export component TooltipFrame inherits Rectangle {
     in property <string> title;
-    in property <int> index;
-    in property <[ChartDataset]> datasets;
-    in property <[ChartSeries]> series;
-    in property <[int]> visible-datasets;
-    in property <ChartFormat> format: { decimals: -1 };
-    // The format of the datasets on the right value axis.
-    in property <ChartFormat> format2: { decimals: -1 };
-    // Show each dataset's share of the category (100% stacked charts).
-    in property <bool> percent: false;
 
     background: ChartTheme.tooltip-background;
     border-radius: 6px;
@@ -28,23 +19,56 @@ export component Tooltip inherits Rectangle {
             font-size: ChartTheme.font-size;
             font-weight: 700;
         }
-        for ds in root.visible-datasets: HorizontalLayout {
-            spacing: 6px;
-            Rectangle {
-                y: (parent.height - self.height) / 2;
-                width: 10px;
-                height: 10px;
-                background: series[ds].color;
-                border-color: ChartTheme.tooltip-text;
-                border-width: 1px;
-            }
-            Text {
-                text: datasets[ds].label + ": " + (root.percent
-                    ? ChartEngine.format-percent(ChartEngine.share(root.datasets, ds, root.index), 1)
-                    : ChartEngine.format-value(datasets[ds].values[root.index], datasets[ds].right-axis ? root.format2 : root.format));
-                color: ChartTheme.tooltip-text;
-                font-size: ChartTheme.font-size;
-            }
+        @children
+    }
+}
+
+// A line of a tooltip: a swatch, or a thin mark, and a text.
+export component TooltipLine inherits HorizontalLayout {
+    in property <string> text;
+    // Leave unset (transparent) for no swatch.
+    in property <color> swatch;
+    // A thin upright mark, such as a target's, instead of a square.
+    in property <bool> mark: false;
+    in property <bool> bold: false;
+    // Line up with the texts of lines that have a swatch.
+    in property <bool> indent: false;
+
+    spacing: 6px;
+    if root.swatch.alpha > 0 || root.indent: Rectangle {
+        width: 10px;
+        if root.swatch.alpha > 0: Rectangle {
+            width: root.mark ? 3px : 10px;
+            height: root.mark ? 12px : 10px;
+            background: root.swatch;
+            border-color: root.mark ? transparent : ChartTheme.tooltip-text;
+            border-width: root.mark ? 0px : 1px;
         }
+    }
+    Text {
+        text: root.text;
+        color: ChartTheme.tooltip-text;
+        font-size: ChartTheme.font-size;
+        font-weight: root.bold ? 700 : 400;
+    }
+}
+
+// Tooltip listing the value of every visible dataset at one category.
+export component Tooltip inherits TooltipFrame {
+    in property <int> index;
+    in property <[ChartDataset]> datasets;
+    in property <[ChartSeries]> series;
+    in property <[int]> visible-datasets;
+    in property <ChartFormat> format: { decimals: -1 };
+    // The format of the datasets on the right value axis.
+    in property <ChartFormat> format2: { decimals: -1 };
+    // Show each dataset's share of the category (100% stacked charts).
+    in property <bool> percent: false;
+
+    for ds in root.visible-datasets: TooltipLine {
+        swatch: series[ds].color;
+        text: datasets[ds].label + ": " + (root.percent
+            ? ChartEngine.format-percent(ChartEngine.share(root.datasets, ds, root.index), 1)
+            : ChartEngine.format-value(datasets[ds].values[root.index], datasets[ds].right-axis ? root.format2 : root.format));
     }
 }
