@@ -306,6 +306,7 @@
   <a href="#mixed-charts">Mixed charts</a>
   <a href="#percent-bars">100% stacked bars</a>
   <a href="#time-series">TimeSeriesChart</a>
+  <a href="#gantt">GanttChart</a>
   <a href="#heatmap">HeatmapChart</a>
   <a href="#calendar-heatmap">CalendarHeatmap</a>
   <a href="#treemap">TreemapChart</a>
@@ -948,6 +949,69 @@ TimeSeriesChart {
 <code>ScatterChart</code> has the same <code>time-axis</code>, <code>time-origin</code> and <code>show-lines</code> properties.
 <code>x</code> values are 32-bit floats: measured from a nearby origin, they stay exact to the second for about half a year.</p>
 
+<h2 id="gantt">GanttChart</h2>
+<p>One row per task, with a bar from its start to its end on a time axis like the time series': task times are seconds after
+<code>time-origin</code>, and the ticks fall on round hours, days, weeks or months. Tasks with the same <code>group</code> are placed
+together under the group's heading, which shows the group's span, and share the group's color. A task's <code>progress</code> fills
+that share of its bar; a task that ends where it starts is a milestone, drawn as a diamond. <code>show-now</code> draws a line at
+<code>now</code>, such as today. Labels too long for the left column are cut short with an ellipsis. Rows share the height, within
+<code>min-row-height</code> and <code>max-row-height</code>; when they don't fit, the wheel or a drag scrolls them, and only the rows in
+view are laid out, so plans of thousands of tasks stay fast. The tooltip shows the task's dates, duration and progress.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/gantt.webp" alt="GanttChart of a software release plan" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/gantt-dark.webp" alt="GanttChart of a software release plan" loading="lazy"></figure>
+<pre data-shot="gantt"><code>import { GanttChart } from "@slintplot";
+
+GanttChart {
+    property &lt;float&gt; day: 86400;  // Task times are seconds after the time origin.
+    title: "Release 3.0";
+    time-origin: { year: 2026, month: 9, day: 7 };
+    tasks: [
+        { label: "Research", group: "Design", start: 0, end: 10 * day, progress: 1 },
+        { label: "Wireframes", group: "Design", start: 7 * day, end: 21 * day, progress: 1 },
+        { label: "Visual design", group: "Design", start: 17 * day, end: 31 * day, progress: 1 },
+        { label: "Backend API", group: "Build", start: 21 * day, end: 56 * day, progress: 0.9 },
+        { label: "Web app", group: "Build", start: 28 * day, end: 63 * day, progress: 0.7 },
+        { label: "Mobile app", group: "Build", start: 35 * day, end: 70 * day, progress: 0.5 },
+        { label: "Feature freeze", group: "Build", start: 70 * day, end: 70 * day },  // A milestone
+        { label: "QA and bug fixing", group: "Test", start: 56 * day, end: 84 * day },
+        { label: "Public beta", group: "Test", start: 70 * day, end: 84 * day },
+        { label: "Docs and website", group: "Launch", start: 70 * day, end: 88 * day },
+        { label: "Marketing", group: "Launch", start: 77 * day, end: 91 * day },
+        { label: "Release", group: "Launch", start: 91 * day, end: 91 * day },
+    ];
+    show-now: true;
+    now: 53 * day;
+    zoom-enabled: true;
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>tasks</code></td><td><code>[ChartGanttTask]</code></td><td></td><td>One entry per task: <code>label</code>, <code>start</code>, <code>end</code>, <code>group</code>, <code>color</code>, <code>progress</code>. See <a href="#chart-gantt-task">ChartGanttTask</a></td></tr>
+  <tr><td><code>time-origin</code></td><td><code>ChartDateTime</code></td><td><code>1970-01-01</code></td><td>The time of <code>start: 0</code>, in UTC</td></tr>
+  <tr><td><code>utc-offset</code></td><td><code>int</code></td><td><code>0</code></td><td>Minutes added to UTC for the times on the axis and in the tooltip, such as 120</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>show-now</code></td><td><code>bool</code></td><td><code>false</code></td><td>A vertical line at <code>now</code>, when it is in view</td></tr>
+  <tr><td><code>now</code></td><td><code>float</code></td><td><code>0</code></td><td>The time of the line, in seconds after <code>time-origin</code></td></tr>
+  <tr><td><code>now-color</code></td><td><code>color</code></td><td>red</td><td>The color of the line</td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the task's dates, duration and progress</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the bars in when the chart appears</td></tr>
+  <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td>theme's</td><td>The opacity of the part of a bar not yet done; the part done is solid</td></tr>
+  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>3px</code></td><td>Rounded corners</td></tr>
+  <tr><td><code>min-row-height</code></td><td><code>length</code></td><td><code>20px</code></td><td>The smallest height of a row; rows that don't fit scroll</td></tr>
+  <tr><td><code>max-row-height</code></td><td><code>length</code></td><td><code>40px</code></td><td>The largest height of a row, for plans with few tasks</td></tr>
+  <tr><td><code>x-title</code></td><td><code>string</code></td><td><code>""</code></td><td>The title of the time axis</td></tr>
+  <tr><td><code>zoom-enabled</code></td><td><code>bool</code></td><td><code>false</code></td><td>The mouse wheel zooms the time axis around the mouse, dragging pans, and a double-click resets. Shift and the wheel scroll the rows</td></tr>
+  <tr><td><code>view-start</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>0</code></td><td>The start of the visible part of the time axis, from 0 to 1; set it to zoom from code</td></tr>
+  <tr><td><code>view-end</code> <span class="tag">in-out</span></td><td><code>float</code></td><td><code>1</code></td><td>The end of the visible part of the time axis, from 0 to 1</td></tr>
+  <tr><td><code>min-view</code></td><td><code>float</code></td><td><code>0.001</code></td><td>The smallest part of the time axis a zoom can show</td></tr>
+  <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
+  <tr><td><code>scroll-y</code> <span class="tag">in-out</span></td><td><code>length</code></td><td><code>0</code></td><td>How far the rows are scrolled up, when they don't fit</td></tr>
+  <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The task under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>task-clicked(index)</code></td><td>callback</td><td></td><td>A task was clicked, or chosen with Enter; <code>index</code> is its place in <code>tasks</code></td></tr>
+  <tr><td><code>reset-zoom()</code></td><td>function</td><td></td><td>Shows the whole time axis again</td></tr>
+</table>
+<p>The time axis spans all tasks, with a little room at both ends. The up and down arrow keys move through the tasks, scrolling them
+into view, and with <code>zoom-enabled</code> the left and right arrows pan. A task whose <code>end</code> is before its
+<code>start</code> runs from the earlier time to the later, and a task with one missing time is a milestone at the other.</p>
+
 <h2 id="heatmap">HeatmapChart</h2>
 <p>A matrix of colored cells: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order.
 Missing values (NaN) are drawn as empty cells.</p>
@@ -1477,6 +1541,11 @@ placed together; leave <code>color</code> unset to use the group's color, or the
 <p><code>{ label: string, value: float, parent: int, color: color, hidden: bool }</code>. A sunburst item. <code>parent</code> is the index
 of an earlier item, or -1 for the top level. Leave a parent's <code>value</code> at 0 to use the sum of its children, and <code>color</code>
 unset for the theme's color (top level) or a lighter shade of the parent's.</p>
+<h3 id="chart-gantt-task"><code>ChartGanttTask</code></h3>
+<p><code>{ label: string, start: float, end: float, group: string, color: color, progress: float }</code>. A Gantt chart task.
+<code>start</code> and <code>end</code> are seconds after the chart's <code>time-origin</code>; a task with <code>end</code> equal to
+<code>start</code> is a milestone. Tasks with the same <code>group</code> are placed together under its heading; leave <code>color</code>
+unset to use the group's color. <code>progress</code> is the share done, from 0 to 1.</p>
 <h3><code>ChartWaterfallStep</code></h3>
 <p><code>{ label: string, value: float, total: bool }</code>. A waterfall step: a change, or with <code>total: true</code>, the running total so far.</p>
 <h3><code>ChartGaugeBand</code></h3>
@@ -1627,7 +1696,7 @@ and dataset names itself; everything else comes from the library.</p>
 <ul>
   <li><strong>Tooltips and highlights.</strong> Line, bar and radar charts show every dataset's value for the category under the mouse. Scatter and bubble charts show the nearest point, pies the slice under the mouse, and treemaps and sunbursts the item under the mouse with its share of the total. Funnels add each stage's share of the first and previous stage, waterfalls the running total, dumbbells the change between two datasets, and gauges the band under the mouse.</li>
   <li><strong>Legend.</strong> Clicking an entry toggles the dataset's or slice's <code>hidden</code> flag; the axes rescale to the visible data. In a treemap, it hides or shows a group, and in a sunburst a top-level item.</li>
-  <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code> and <code>step-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
+  <li><strong>Clicks.</strong> <code>category-clicked</code>, <code>point-clicked</code>, <code>slice-clicked</code>, <code>item-clicked</code>, <code>stage-clicked</code>, <code>step-clicked</code> and <code>task-clicked</code> report what was clicked. Clicking a sunburst item with children zooms into it, and clicking the center zooms out.</li>
   <li><strong>Keyboard.</strong> Every chart can be used without a mouse. Click a chart (or tab to it) and a focus ring appears; the arrow
   keys then move the highlight and tooltip, Home and End jump to the ends, and Enter clicks. Charts report their title as an accessibility label.
     <table>
@@ -1641,6 +1710,7 @@ and dataset names itself; everything else comes from the library.</p>
       <tr><td>Sunburst</td><td>Move through the items, each parent before its children; Enter also zooms into an item with children, and Escape or Backspace zooms out</td></tr>
       <tr><td>Funnel, dumbbell</td><td>Move through the stages or rows</td></tr>
       <tr><td>Waterfall</td><td>Move through the steps</td></tr>
+      <tr><td>Gantt</td><td>Up and Down move through the tasks, scrolling them into view; with <code>zoom-enabled</code>, Left and Right pan</td></tr>
       <tr><td>Gauge</td><td>None: a gauge shows one value, which its accessibility description reads out</td></tr>
     </table>
   </li>
@@ -1887,6 +1957,7 @@ slintplot::register!(app);</code></pre>
   <tr><td><code>slintplot::pie</code></td><td><code>layout(&amp;PieRequest) -&gt; PieLayout</code>, <code>hit(&amp;PieLayout, x, y)</code></td></tr>
   <tr><td><code>slintplot::radar</code></td><td><code>layout(&amp;RadarRequest) -&gt; RadarLayout</code>, <code>hit(&amp;RadarLayout, x, y)</code></td></tr>
   <tr><td><code>slintplot::time</code></td><td><code>time_ticks</code>, <code>format_datetime</code> (English), <code>time_ticks_in</code>, <code>format_datetime_in</code> (a <code>Locale</code>), <code>unix_seconds</code>, <code>days_from_civil</code>, <code>civil_from_days</code></td></tr>
+  <tr><td><code>slintplot::gantt</code></td><td><code>rows</code> (groups and headings), <code>window</code>, <code>layout(&amp;GanttRequest) -&gt; Gantt</code> (rows in view, bars, ticks), <code>duration</code></td></tr>
   <tr><td><code>slintplot::heatmap</code></td><td><code>calendar</code>, <code>calendar_in</code> (calendar layout and quantile levels), <code>weekday_labels</code>, <code>extent</code></td></tr>
   <tr><td><code>slintplot::ticks</code></td><td><code>NiceScale</code> (round tick spacing), <code>Format</code>, <code>log_ticks</code>, <code>format_tick</code>, <code>format_value</code> (English)</td></tr>
   <tr><td><code>slintplot::locale</code></td><td><code>Locale</code>: separators, names and date patterns, with <code>number</code>, <code>tick</code>, <code>value</code>, <code>date</code> and <code>time</code></td></tr>
@@ -1904,7 +1975,7 @@ let labels: Vec&lt;String&gt; = scale.ticks().iter().map(|&amp;v| format_tick(v,
   <code>ChartEngine</code> is the Slint global that the chart components call to compute their geometry. You don't call it yourself,
   but it has to be exported from your root <code>.slint</code> file so that <code>register!</code> can connect it.
   Its pure callbacks include <code>layout</code>, <code>value-axis</code>, <code>pie-layout</code>, <code>radar-layout</code>, <code>treemap-layout</code>,
-  <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gauge-layout</code>,
+  <code>sunburst-layout</code>, <code>funnel-layout</code>, <code>waterfall-layout</code>, <code>dumbbell-layout</code>, <code>gantt-layout</code>, <code>gauge-layout</code>,
   the hit tests and <code>format-value</code>.
 </p>
 

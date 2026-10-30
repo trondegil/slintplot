@@ -1,0 +1,447 @@
+import { ChartDateTime, ChartEngine, ChartGanttLayout, ChartGanttRows, ChartGanttTask } from "engine.slint";
+import { ChartTheme } from "theme.slint";
+
+// A Gantt chart: one row per task, with a bar from its start to its end on a
+// time axis. Tasks with the same `group` are placed together under the
+// group's heading, which shows the group's span. Tasks that end where they
+// start are milestones, drawn as diamonds. Rows share the height; when they
+// don't fit, they scroll.
+export component GanttChart {
+    in property <[ChartGanttTask]> tasks;
+    in property <string> title;
+    // Task times are seconds after `time-origin`, and the axis shows times
+    // and dates.
+    in property <ChartDateTime> time-origin;
+    // Offset of displayed times from UTC, in minutes.
+    in property <int> utc-offset: 0;
+    // A vertical line at `now`, in seconds after `time-origin`, such as
+    // today. Hidden outside the view.
+    in property <bool> show-now: false;
+    in property <float> now: 0;
+    in property <color> now-color: ChartTheme.dark ? #f87171 : #dc2626;
+    in property <bool> show-tooltip: true;
+    // Grow the bars in when the chart appears.
+    in property <bool> animated: true;
+    // Opacity of the part of a bar not yet done; the part done is solid.
+    in property <float> fill-opacity: ChartTheme.fill-opacity;
+    in property <length> bar-radius: 3px;
+    // The height of a row: the rows share the plot's height, within these.
+    in property <length> min-row-height: 20px;
+    in property <length> max-row-height: 40px;
+    // The title of the time axis.
+    in property <string> x-title;
+
+    // Zoom and pan along the time axis: the mouse wheel zooms around the
+    // mouse, dragging pans, double-clicking resets.
+    in property <bool> zoom-enabled: false;
+    // The visible part of the time axis, as fractions of the full range. Set
+    // them to zoom from code.
+    in-out property <float> view-start: 0;
+    in-out property <float> view-end: 1;
+    // The smallest visible part of the time axis, as a fraction.
+    in property <float> min-view: 0.001;
+    out property <bool> zoomed: root.view-start > 0 || root.view-end < 1;
+    // How far the rows are scrolled up, when they don't fit.
+    in-out property <length> scroll-y: 0;
+
+    // The task under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-index: root.hovered-row >= 0 && root.hovered-row < root.row-count
+        && plan.order[root.hovered-row] >= 0 ? plan.order[root.hovered-row] : -1;
+
+    callback task-clicked(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-index >= 0 ? root.tasks[root.hovered-index].label : "";
+
+    public function reset-zoom() {
+        root.view-start = 0;
+        root.view-end = 1;
+    }
+
+    // Zooms by `factor` (below 1 zooms in), keeping the time at `anchor`
+    // (a fraction of the plot width) under the mouse.
+    function zoom-around(anchor: float, factor: float) {
+        let span = root.view-end - root.view-start;
+        let new-span = clamp(span * factor, clamp(root.min-view, 0.000001, 1), 1);
+        let start = clamp(root.view-start + anchor * (span - new-span), 0, 1 - new-span);
+        root.view-start = start;
+        root.view-end = start + new-span;
+    }
+
+    // Moves the time window by `shift`, a fraction of the full range.
+    function pan(shift: float) {
+        let span = root.view-end - root.view-start;
+        root.view-start = clamp(root.view-start + shift, 0, 1 - span);
+        root.view-end = root.view-start + span;
+    }
+
+    // The next task's row from `from` in direction `dir`, past a heading;
+    // `from` itself at either end.
+    pure function next-task-row(from: int, dir: int) -> int {
+        let a = from + dir;
+        let b = a >= 0 && a < root.row-count && plan.order[a] < 0 ? a + dir : a;
+        b >= 0 && b < root.row-count ? b : from
+    }
+
+    // Scrolls the rows so that `row` is in view.
+    function show-row(row: int) {
+        if row * root.step < root.scroll {
+            root.scroll-y = row * root.step;
+        } else if (row + 1) * root.step > root.scroll + plot.height {
+            root.scroll-y = (row + 1) * root.step - plot.height;
+        }
+    }
+
+    private property <ChartGanttRows> plan: ChartEngine.gantt-rows(root.tasks);
+    private property <int> row-count: plan.order.length;
+    private property <length> step: max(1px, root.row-count == 0 ? root.max-row-height
+        : clamp(plot.height / root.row-count, root.min-row-height, max(root.min-row-height, root.max-row-height)));
+    private property <length> max-scroll: max(0px, root.row-count * root.step - plot.height);
+    private property <length> scroll: clamp(root.scroll-y, 0px, root.max-scroll);
+    // The row under the mouse, or selected with the keyboard.
+    private property <int> hovered-row: touch.has-hover ? floor((touch.mouse-y + root.scroll) / root.step)
+        : keys.has-focus ? root.key-row
+        : -1;
+    private property <int> key-row: -1;
+    // The view and scroll when a drag started, to pan relative to them.
+    private property <float> drag-view-start;
+    private property <length> drag-scroll;
+    private property <bool> dragged;
+
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+
+    private property <ChartGanttLayout> gantt: ChartEngine.gantt-layout({
+        tasks: root.tasks,
+        width: plot.width / 1px,
+        height: plot.height / 1px,
+        row-height: root.step / 1px,
+        scroll: root.scroll / 1px,
+        view-start: root.view-start,
+        view-end: root.view-end,
+        progress: root.progress,
+        font-size: ChartTheme.font-size / 1px,
+        time-origin: root.time-origin,
+        utc-offset: root.utc-offset,
+        show-now: root.show-now,
+        now: root.now,
+        palette: ChartTheme.colors,
+        locale: ChartTheme.locale,
+    });
+
+    min-width: 160px;
+    min-height: 120px;
+    preferred-width: 560px;
+    preferred-height: 360px;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        frame := Rectangle {
+            vertical-stretch: 1;
+
+            // Measures the labels, which don't depend on the chart size.
+            task-measure := Text {
+                visible: false;
+                text: plan.widest-label;
+                font-size: ChartTheme.font-size;
+            }
+            group-measure := Text {
+                visible: false;
+                text: plan.widest-group;
+                font-size: ChartTheme.font-size;
+                font-weight: 600;
+            }
+
+            // Tasks are indented under their group's heading. Long labels are
+            // cut short, so the bars keep most of the width.
+            property <length> indent: plan.grouped ? 12px : 0px;
+            property <length> label-width: min(self.width * 0.4,
+                max(task-measure.preferred-width + self.indent, group-measure.preferred-width) + 16px);
+            property <length> x-title-space: root.x-title != "" ? ChartTheme.font-size * 1.8 : 0px;
+
+            // The rows' backgrounds and labels, under the plot and beside it.
+            Rectangle {
+                y: plot.y;
+                width: plot.x + plot.width;
+                height: plot.height;
+                clip: true;
+
+                for row in gantt.rows: Rectangle {
+                    property <int> entry: plan.order[row.row];
+                    y: row.y * 1px;
+                    height: root.step;
+                    background: row.row == root.hovered-row && self.entry >= 0 ? ChartTheme.grid-color
+                        : self.entry < 0 ? ChartTheme.grid-color.with-alpha(ChartTheme.grid-color.alpha / 255 * 0.5)
+                        : transparent;
+                    Text {
+                        x: entry < 0 ? 4px : frame.indent + 4px;
+                        width: max(0px, frame.label-width - self.x - 8px);
+                        text: entry < 0 ? plan.groups[-1 - entry] : root.tasks[entry].label;
+                        color: ChartTheme.text-color;
+                        font-size: ChartTheme.font-size;
+                        font-weight: entry < 0 ? 600 : 400;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                }
+            }
+
+            plot := Rectangle {
+                x: frame.label-width;
+                y: 0;
+                width: max(0px, parent.width - self.x - 12px);
+                height: max(0px, parent.height - ChartTheme.font-size * 2 - frame.x-title-space);
+                clip: true;
+
+                for tick in gantt.ticks: Rectangle {
+                    x: tick.pos * 1px - 0.5px;
+                    width: 1px;
+                    background: ChartTheme.grid-color;
+                }
+                Rectangle {
+                    x: 0;
+                    width: 1px;
+                    background: ChartTheme.axis-color;
+                }
+                Rectangle {
+                    y: parent.height - 0.5px;
+                    height: 1px;
+                    background: ChartTheme.axis-color;
+                }
+
+                for bar in gantt.summaries: Rectangle {
+                    x: bar.x * 1px;
+                    y: bar.y * 1px;
+                    width: bar.width * 1px;
+                    height: bar.height * 1px;
+                    border-radius: min(self.height, self.width) / 2;
+                    background: bar.color.with-alpha(0.8);
+                }
+
+                for bar in gantt.bars: Rectangle {
+                    property <bool> hovered: bar.index == root.hovered-index;
+                    x: bar.x * 1px;
+                    y: bar.y * 1px;
+                    width: bar.width * 1px;
+                    height: bar.height * 1px;
+
+                    if !bar.milestone: Rectangle {
+                        border-radius: clamp(root.bar-radius, 0px, min(parent.width, parent.height) / 2);
+                        background: bar.color.with-alpha(hovered ? min(1, root.fill-opacity + 0.25) : root.fill-opacity);
+                        border-color: bar.color;
+                        border-width: min(1px, parent.width / 2);
+                        animate background { duration: 120ms; }
+
+                        Rectangle {
+                            x: 0;
+                            width: bar.done * 1px;
+                            border-radius: clamp(root.bar-radius, 0px, min(self.width, self.height) / 2);
+                            background: bar.color;
+                        }
+                    }
+                    if bar.milestone: Path {
+                        viewbox-x: 0;
+                        viewbox-y: 0;
+                        viewbox-width: 2;
+                        viewbox-height: 2;
+                        commands: "M 1 0 L 2 1 L 1 2 L 0 1 Z";
+                        fill: bar.color;
+                        stroke: hovered ? ChartTheme.text-color : ChartTheme.background;
+                        stroke-width: 1px;
+                    }
+                }
+
+                if gantt.show-now: Rectangle {
+                    x: gantt.now * 1px - 1px;
+                    width: 2px;
+                    background: root.now-color;
+                }
+
+                // Keyboard: the up and down arrows move through the tasks,
+                // left and right pan a zoomed chart, Enter clicks the
+                // selected task.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        if event.text == Key.UpArrow || event.text == Key.DownArrow
+                            || event.text == Key.Home || event.text == Key.End {
+                            if root.row-count == 0 {
+                                return reject;
+                            }
+                            let current = min(root.key-row, root.row-count);
+                            root.key-row = event.text == Key.Home || (event.text == Key.DownArrow && current < 0)
+                                ? root.next-task-row(-1, 1)
+                                : event.text == Key.End ? root.next-task-row(root.row-count, -1)
+                                : root.next-task-row(current, event.text == Key.UpArrow ? -1 : 1);
+                            root.show-row(root.key-row);
+                            return accept;
+                        }
+                        if root.zoom-enabled && (event.text == Key.LeftArrow || event.text == Key.RightArrow) {
+                            root.pan((root.view-end - root.view-start) * (event.text == Key.LeftArrow ? -0.1 : 0.1));
+                            return accept;
+                        }
+                        if event.text == Key.Return && root.hovered-index >= 0 {
+                            root.task-clicked(root.hovered-index);
+                            return accept;
+                        }
+                        reject
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-index >= 0 && !self.pressed ? pointer
+                            : (root.zoom-enabled && root.zoomed) || root.max-scroll > 0
+                                ? (self.pressed ? MouseCursor.grabbing : MouseCursor.grab) : default;
+                        pointer-event(event) => {
+                            if event.kind == PointerEventKind.down {
+                                root.drag-view-start = root.view-start;
+                                root.drag-scroll = root.scroll;
+                                root.dragged = false;
+                            }
+                        }
+                        // Dragging pans the time axis, and scrolls rows that
+                        // don't fit.
+                        moved => {
+                            if !self.pressed || plot.width <= 0 {
+                                return;
+                            }
+                            if abs(self.mouse-x - self.pressed-x) > 3px || abs(self.mouse-y - self.pressed-y) > 3px {
+                                root.dragged = true;
+                            }
+                            if root.zoom-enabled {
+                                let span = root.view-end - root.view-start;
+                                let shift = (self.mouse-x - self.pressed-x) / plot.width * span;
+                                root.view-start = clamp(root.drag-view-start - shift, 0, 1 - span);
+                                root.view-end = root.view-start + span;
+                            }
+                            if root.max-scroll > 0 {
+                                root.scroll-y = clamp(root.drag-scroll - (self.mouse-y - self.pressed-y), 0px, root.max-scroll);
+                            }
+                        }
+                        // The wheel zooms (with zoom-enabled) or scrolls the
+                        // rows (otherwise, or with Shift).
+                        scroll-event(event) => {
+                            if root.zoom-enabled && !event.modifiers.shift && plot.width > 0 {
+                                if event.delta-y != 0 {
+                                    root.zoom-around(self.mouse-x / plot.width, pow(1.002, -event.delta-y / 1px));
+                                }
+                                if event.delta-x != 0 {
+                                    root.pan(-event.delta-x / plot.width * (root.view-end - root.view-start));
+                                }
+                                return accept;
+                            }
+                            if root.max-scroll > 0 {
+                                let delta = event.delta-y != 0 ? event.delta-y : event.delta-x;
+                                root.scroll-y = clamp(root.scroll - delta, 0px, root.max-scroll);
+                                return accept;
+                            }
+                            reject
+                        }
+                        double-clicked => {
+                            if root.zoom-enabled {
+                                root.reset-zoom();
+                            }
+                        }
+                        clicked => {
+                            keys.focus();
+                            // A drag that panned the chart is not a click.
+                            if root.dragged {
+                                return;
+                            }
+                            if root.hovered-index >= 0 {
+                                root.key-row = root.hovered-row;
+                                root.task-clicked(root.hovered-index);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if keys.has-focus: Rectangle {
+                x: plot.x - 3px;
+                y: plot.y - 3px;
+                width: plot.width + 6px;
+                height: plot.height + 6px;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: ChartTheme.axis-color;
+            }
+
+            for tick in gantt.ticks: Text {
+                x: plot.x + tick.pos * 1px - self.width / 2;
+                y: plot.y + plot.height + 6px;
+                text: tick.label;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+            }
+
+            if root.x-title != "": Text {
+                x: plot.x;
+                width: plot.width;
+                y: plot.y + plot.height + ChartTheme.font-size * 1.6 + 6px;
+                text: root.x-title;
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                font-weight: 600;
+                horizontal-alignment: center;
+            }
+
+            if root.show-tooltip && root.hovered-index >= 0: Rectangle {
+                property <ChartGanttTask> task: root.tasks[root.hovered-index];
+                property <float> first: min(self.task.start, self.task.end);
+                property <float> last: max(self.task.start, self.task.end);
+                property <bool> milestone: self.first == self.last || self.task.start != self.task.start || self.task.end != self.task.end;
+                property <length> row-y: plot.y + (root.hovered-row + 0.5) * root.step - root.scroll;
+                property <length> anchor-x: plot.x + (touch.has-hover ? touch.mouse-x : plot.width * 0.5);
+                x: self.anchor-x + 14px + self.width > frame.width ? max(0px, self.anchor-x - 14px - self.width) : self.anchor-x + 14px;
+                y: clamp(self.row-y - self.height / 2, 0px, max(0px, frame.height - self.height));
+                width: self.preferred-width;
+                height: self.preferred-height;
+                background: ChartTheme.tooltip-background;
+                border-radius: 6px;
+
+                VerticalLayout {
+                    padding: 6px;
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    spacing: 4px;
+                    Text {
+                        text: (task.group != "" ? task.group + " › " : "") + task.label;
+                        color: ChartTheme.tooltip-text;
+                        font-size: ChartTheme.font-size;
+                        font-weight: 700;
+                    }
+                    // Start and end, then the duration and the share done.
+                    Text {
+                        text: milestone ? ChartEngine.format-time(root.time-origin, root.utc-offset, task.start == task.start ? task.start : task.end)
+                            : ChartEngine.format-time(root.time-origin, root.utc-offset, first) + " – "
+                                + ChartEngine.format-time(root.time-origin, root.utc-offset, last);
+                        color: ChartTheme.tooltip-text;
+                        font-size: ChartTheme.font-size;
+                    }
+                    if !milestone: Text {
+                        text: ChartEngine.format-duration(last - first)
+                            + (task.progress > 0 ? " · " + ChartEngine.format-percent(min(1, task.progress) * 100, 0) : "");
+                        color: ChartTheme.tooltip-text;
+                        font-size: ChartTheme.font-size;
+                    }
+                }
+            }
+        }
+    }
+}

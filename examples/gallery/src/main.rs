@@ -210,6 +210,8 @@ enum Shape {
     Dumbbell,
     /// One value on a gauge.
     Gauge,
+    /// A project plan, written in the gallery's .slint file.
+    Gantt,
     /// Sensors streaming new values.
     Live,
 }
@@ -678,6 +680,14 @@ const SAMPLES: &[Sample] = &[
         "GaugeChart: a filled arc with rounded ends, the same with a ring of bands, and a needle with ticks over the bands.",
         Shape::Gauge,
         &["Randomize"],
+    ),
+    sample(
+        "gantt",
+        "Business charts",
+        "Gantt",
+        "GanttChart: a release plan in four groups, with progress, milestones and a line at today. Scroll to zoom, drag to pan.",
+        Shape::Gantt,
+        &["Reset zoom"],
     ),
     sample(
         "pie-labels",
@@ -2084,6 +2094,11 @@ fn snapshots(
         ),
         ("waterfall", (700.0, 400.0), &[Key::RightArrow][..]),
         ("dumbbell", (700.0, 400.0), &[Key::DownArrow][..]),
+        (
+            "gantt",
+            (700.0, 300.0),
+            &[Key::DownArrow, Key::DownArrow][..],
+        ),
     ] {
         let sample = SAMPLES.iter().find(|s| s.id == id).unwrap();
         state.borrow_mut().select(sample);

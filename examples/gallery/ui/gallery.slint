@@ -9,6 +9,7 @@ import {
     ChartWaterfallStep,
     DumbbellChart,
     FunnelChart,
+    GanttChart,
     GaugeChart,
     SunburstChart,
     TreemapChart,
@@ -1162,6 +1163,37 @@ export component Gallery inherits Window {
                         labels: root.labels;
                         datasets <=> root.datasets;
                         show-values: true;
+                    }
+                    if root.sample == "gantt": GanttChart {
+                        property <float> day: 86400;
+                        title: "Release 3.0";
+                        // Monday 7 September 2026; task times are seconds after it.
+                        time-origin: { year: 2026, month: 9, day: 7 };
+                        tasks: [
+                            { label: "User research", group: "Design", start: 0, end: 10 * day, progress: 1 },
+                            { label: "Wireframes", group: "Design", start: 7 * day, end: 21 * day, progress: 1 },
+                            { label: "Visual design", group: "Design", start: 17 * day, end: 31 * day, progress: 1 },
+                            { label: "Design review", group: "Design", start: 31 * day, end: 31 * day },
+                            { label: "Backend API", group: "Build", start: 21 * day, end: 56 * day, progress: 0.9 },
+                            { label: "Database migration", group: "Build", start: 24 * day, end: 38 * day, progress: 1 },
+                            { label: "Web app", group: "Build", start: 28 * day, end: 63 * day, progress: 0.7 },
+                            { label: "Mobile apps (iOS and Android)", group: "Build", start: 35 * day, end: 70 * day, progress: 0.5 },
+                            { label: "Feature freeze", group: "Build", start: 70 * day, end: 70 * day },
+                            { label: "Automated tests", group: "Test", start: 42 * day, end: 77 * day, progress: 0.4 },
+                            { label: "QA and bug fixing", group: "Test", start: 56 * day, end: 84 * day },
+                            { label: "Public beta", group: "Test", start: 70 * day, end: 84 * day },
+                            { label: "Security audit", group: "Test", start: 63 * day, end: 73 * day },
+                            { label: "Docs and website", group: "Launch", start: 70 * day, end: 88 * day },
+                            { label: "Marketing campaign", group: "Launch", start: 77 * day, end: 95 * day },
+                            { label: "App store review", group: "Launch", start: 84 * day, end: 89 * day },
+                            { label: "Release", group: "Launch", start: 91 * day, end: 91 * day },
+                        ];
+                        // Today, 30 October 2026.
+                        show-now: true;
+                        now: 53 * day;
+                        zoom-enabled: true;
+                        view-start <=> root.view-start;
+                        view-end <=> root.view-end;
                     }
                     if root.sample == "gauge": GridLayout {
                         spacing: 8px;

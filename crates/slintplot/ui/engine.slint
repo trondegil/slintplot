@@ -526,6 +526,81 @@ export struct ChartDumbbellRequest {
     palette: [color],
 }
 
+// A task of a Gantt chart. Tasks with the same `group` are placed together,
+// under the group's heading.
+export struct ChartGanttTask {
+    label: string,
+    // Seconds after the chart's `time-origin`. A task that ends where it
+    // starts is a milestone.
+    start: float,
+    end: float,
+    group: string,
+    // Leave unset (transparent) to use the group's, or the theme's, color.
+    color: color,
+    // The share done, from 0 to 1.
+    progress: float,
+}
+
+// The rows of a Gantt chart, from the top: a task's index, or -1 - g for
+// the heading of group g.
+export struct ChartGanttRows {
+    order: [int],
+    groups: [string],
+    // Whether any task has a group: then tasks are indented under headings.
+    grouped: bool,
+    // The longest task label and group label, to measure.
+    widest-label: string,
+    widest-group: string,
+}
+
+// A row in view: its place in `order`, and its top.
+export struct ChartGanttRow { row: int, y: float }
+
+export struct ChartGanttBar {
+    // The task's index, or for a heading's span, the group's.
+    index: int,
+    row: int,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    // The width of the part done.
+    done: float,
+    color: color,
+    // A diamond in the box, instead of a bar.
+    milestone: bool,
+}
+
+export struct ChartGanttLayout {
+    rows: [ChartGanttRow],
+    bars: [ChartGanttBar],
+    // The groups' spans, on their headings.
+    summaries: [ChartGanttBar],
+    ticks: [ChartTick],
+    // The "now" line, when it is set and in view.
+    show-now: bool,
+    now: float,
+}
+
+export struct ChartGanttRequest {
+    tasks: [ChartGanttTask],
+    width: float,
+    height: float,
+    row-height: float,
+    // How far the rows are scrolled up, in pixels.
+    scroll: float,
+    view-start: float,
+    view-end: float,
+    progress: float,
+    font-size: float,
+    time-origin: ChartDateTime,
+    utc-offset: int,
+    show-now: bool,
+    now: float,
+    palette: [color],
+    locale: ChartLocale,
+}
+
 export global ChartEngine {
     pure callback value-axis(request: ChartAxisRequest) -> ChartAxis;
     // Whether a visible dataset is on the right value axis (`right`), or on
@@ -610,4 +685,13 @@ export global ChartEngine {
     pure callback dumbbell-layout(request: ChartDumbbellRequest) -> ChartDumbbellLayout;
     // The value at which a data point is drawn: itself, or its stacked total.
     pure callback plotted-value(datasets: [ChartDataset], chart: ChartKind, stacked: bool, dataset: int, index: int) -> float;
+    // Gantt charts: the rows, which don't depend on the chart size, and the
+    // rows in view with their bars.
+    pure callback gantt-rows(tasks: [ChartGanttTask]) -> ChartGanttRows;
+    pure callback gantt-layout(request: ChartGanttRequest) -> ChartGanttLayout;
+    pure callback format-time-span(seconds: float, locale: ChartLocale) -> string;
+    // A duration, such as "14 d", "2 d 6 h" or "3 h 20 min".
+    public pure function format-duration(seconds: float) -> string {
+        self.format-time-span(seconds, ChartTheme.locale)
+    }
 }

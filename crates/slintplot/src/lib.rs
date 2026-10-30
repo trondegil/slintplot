@@ -37,6 +37,7 @@
 //! ```
 
 pub mod funnel;
+pub mod gantt;
 pub mod gauge;
 pub mod heatmap;
 pub mod layout;
@@ -1166,6 +1167,97 @@ macro_rules! register {
                 })),
                 step: bell.step,
             }
+        });
+        // Gantt tasks, as the engine sees them.
+        fn gantt_tasks(tasks: &[ChartGanttTask]) -> Vec<$crate::gantt::Task> {
+            tasks
+                .iter()
+                .map(|t| $crate::gantt::Task {
+                    start: t.start.into(),
+                    end: t.end.into(),
+                    group: t.group.to_string(),
+                    progress: t.progress.into(),
+                })
+                .collect()
+        }
+        engine.on_gantt_rows(|tasks: ::slint::ModelRc<ChartGanttTask>| {
+            let items = tracked(&tasks);
+            let rows = $crate::gantt::rows(&gantt_tasks(&items));
+            let widest = |labels: Vec<String>| $crate::layout::widest_label(&labels);
+            ChartGanttRows {
+                order: model(rows.rows.iter().map(|r| match *r {
+                    $crate::gantt::Row::Task(i) => i as i32,
+                    $crate::gantt::Row::Heading(g) => -1 - g as i32,
+                })),
+                grouped: rows.groups.iter().any(|g| !g.is_empty()),
+                widest_label: widest(items.iter().map(|t| t.label.to_string()).collect()).into(),
+                widest_group: widest(rows.groups.clone()).into(),
+                groups: model(rows.groups.into_iter().map(::slint::SharedString::from)),
+            }
+        });
+        engine.on_gantt_layout(|req: ChartGanttRequest| {
+            let items = tracked(&req.tasks);
+            let tasks = gantt_tasks(&items);
+            let rows = $crate::gantt::rows(&tasks);
+            let palette = palette(&req.palette);
+            let locale = locale(&req.locale);
+            let started = $crate::profile::start();
+            let gantt = $crate::gantt::layout(&$crate::gantt::GanttRequest {
+                tasks: &tasks,
+                rows: &rows,
+                window: $crate::gantt::window(&tasks, (req.view_start, req.view_end)),
+                width: req.width,
+                height: req.height,
+                row_height: req.row_height,
+                scroll: req.scroll,
+                progress: req.progress,
+                font_size: req.font_size,
+                time: $crate::layout::TimeAxis {
+                    origin: seconds(&req.time_origin),
+                    utc_offset_minutes: req.utc_offset,
+                },
+                now: req.show_now.then_some(req.now.into()),
+                locale: &locale,
+            });
+            $crate::profile::record_layout(started.elapsed());
+            // Tasks take their group's color, unless they have their own.
+            let group_color =
+                |g: usize| color($crate::layout::resolve_color([0, 0, 0, 0], g, &palette));
+            let bar = |b: &$crate::gantt::Bar, color: ::slint::Color| ChartGanttBar {
+                index: b.index as i32,
+                row: b.row as i32,
+                x: b.x,
+                y: b.y,
+                width: b.width,
+                height: b.height,
+                done: b.done,
+                color,
+                milestone: b.milestone,
+            };
+            ChartGanttLayout {
+                rows: model(gantt.rows.iter().map(|r| ChartGanttRow {
+                    row: r.row as i32,
+                    y: r.y,
+                })),
+                bars: model(gantt.bars.iter().map(|b| {
+                    let own = rgba(items[b.index].color);
+                    bar(
+                        b,
+                        color($crate::layout::resolve_color(
+                            own,
+                            rows.group_of[b.index],
+                            &palette,
+                        )),
+                    )
+                })),
+                summaries: model(gantt.summaries.iter().map(|b| bar(b, group_color(b.index)))),
+                ticks: ticks(gantt.ticks),
+                show_now: gantt.now.is_some(),
+                now: gantt.now.unwrap_or(0.0),
+            }
+        });
+        engine.on_format_time_span(|seconds: f32, l: ChartLocale| {
+            $crate::gantt::duration(seconds.into(), &locale(&l)).into()
         });
         engine.on_value_range(|values: ::slint::ModelRc<f32>| {
             let (min, max) = $crate::heatmap::extent(tracked(&values).into_iter().map(f64::from))

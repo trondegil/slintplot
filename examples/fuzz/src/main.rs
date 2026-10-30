@@ -14,7 +14,7 @@ use slint::{Color, LogicalPosition, ModelRc, PhysicalSize, SharedString, VecMode
 
 slint::include_modules!();
 
-const CHARTS: i32 = 18;
+const CHARTS: i32 = 19;
 
 /// More memory than any chart should need: past it the fuzzer stops, rather
 /// than fill the machine's RAM and swap.
@@ -299,6 +299,32 @@ fn fill(ui: &Fuzz, rng: &mut Rng) {
         .collect();
     ui.set_bands(model(bands));
     ui.set_value(rng.number());
+    let gantt: Vec<ChartGanttTask> = (0..rng.len().min(3_000))
+        .map(|_| {
+            let start = if rng.chance(70) {
+                rng.unit() * 1e6
+            } else {
+                rng.number()
+            };
+            ChartGanttTask {
+                label: rng.text(),
+                start,
+                end: match rng.below(4) {
+                    0 => start,
+                    1 => rng.number(),
+                    _ => start + rng.unit() * 1e5,
+                },
+                group: if rng.chance(40) {
+                    "".into()
+                } else {
+                    format!("G{}", rng.below(5)).into()
+                },
+                color: rng.color(),
+                progress: rng.number(),
+            }
+        })
+        .collect();
+    ui.set_gantt_tasks(model(gantt));
 
     ui.set_stacked(rng.chance(40));
     ui.set_stacked_percent(rng.chance(25));
@@ -384,15 +410,30 @@ fn round(ui: &Fuzz, window: &MinimalSoftwareWindow, seed: u64, round: u64) {
                     delta_y: rng.unit() * 400.0 - 200.0,
                 }),
                 2 => {
-                    let key: SharedString = match rng.below(5) {
+                    let key: SharedString = match rng.below(7) {
                         0 => Key::LeftArrow.into(),
                         1 => Key::RightArrow.into(),
                         2 => Key::Home.into(),
                         3 => Key::End.into(),
+                        4 => Key::UpArrow.into(),
+                        5 => Key::DownArrow.into(),
                         _ => Key::Return.into(),
                     };
                     window.dispatch_event(WindowEvent::KeyPressed { text: key.clone() });
                     window.dispatch_event(WindowEvent::KeyReleased { text: key });
+                }
+                // A drag, which pans and scrolls.
+                3 => {
+                    let to = LogicalPosition::new(
+                        rng.unit() * size.0 as f32 * 1.2 - 5.0,
+                        rng.unit() * size.1 as f32 * 1.2 - 5.0,
+                    );
+                    window.dispatch_event(WindowEvent::PointerPressed { position, button });
+                    window.dispatch_event(WindowEvent::PointerMoved { position: to });
+                    window.dispatch_event(WindowEvent::PointerReleased {
+                        position: to,
+                        button,
+                    });
                 }
                 _ => {}
             }
