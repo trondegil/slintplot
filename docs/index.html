@@ -442,12 +442,13 @@ fn main() -> Result&lt;(), slint::PlatformError&gt; {
 <pre data-shot="line"><code>import { LineChart } from "@slintplot";
 
 LineChart {
-    title: "Temperature";
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    title: "Average temperature";
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     datasets: [
-        { label: "Oslo", values: [4, 6, 5, 8, 7], tension: 0.4 },
-        { label: "Bergen", values: [7, 8, 8, 9, 10], tension: 0.4, fill: true },
+        { label: "Oslo", values: [-4.3, -4.0, -0.2, 4.5, 10.8, 15.2, 16.4, 15.2, 10.8, 6.3, 0.7, -3.1], tension: 0.4 },
+        { label: "Bergen", values: [1.5, 1.3, 3.1, 5.9, 10.3, 13.2, 14.5, 14.5, 11.8, 8.6, 4.6, 2.3], tension: 0.4, fill: true },
     ];
+    value-suffix: " °C";
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -490,11 +491,12 @@ All properties are listed under <a href="#cartesian-properties">Cartesian proper
 <pre data-shot="area-stacked"><code>import { LineChart } from "@slintplot";
 
 LineChart {
-    labels: ["Q1", "Q2", "Q3", "Q4"];
+    title: "Electricity supply (GWh)";
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     datasets: [
-        { label: "Solar", values: [10, 25, 30, 12], fill: true },
-        { label: "Wind", values: [20, 15, 18, 26], fill: true },
-        { label: "Price", values: [5, 7, 6, 8], stepped: true },
+        { label: "Solar", values: [2, 5, 10, 15, 20, 22, 23, 19, 13, 7, 3, 1], fill: true },
+        { label: "Wind", values: [26, 23, 21, 16, 12, 10, 9, 11, 15, 20, 24, 27], fill: true },
+        { label: "Imports", values: [12, 12, 8, 8, 8, 5, 5, 5, 9, 9, 9, 14], stepped: true },
     ];
     stacked: true;
 }</code></pre>
@@ -507,10 +509,10 @@ LineChart {
 
 BarChart {
     title: "Visitors";
-    labels: ["Jan", "Feb", "Mar"];
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
     datasets: [
-        { label: "Desktop", values: [1200, 1350, 1100] },
-        { label: "Mobile", values: [2400, 2650, 2900] },
+        { label: "Desktop", values: [1200, 1350, 1100, 1480, 1620, 1390] },
+        { label: "Mobile", values: [2400, 2650, 2900, 3100, 3350, 3600] },
     ];
     bar-radius: 6px;
     bar-border-width: 2px;
@@ -559,10 +561,10 @@ BarChart {
 
 HorizontalBarChart {
     title: "Languages used (%)";
-    labels: ["JavaScript", "Python", "Rust"];
+    labels: ["JavaScript", "Python", "TypeScript", "Java", "C++", "Rust"];
     datasets: [
-        { label: "2025", values: [62, 51, 12] },
-        { label: "2026", values: [60, 55, 15] },
+        { label: "2025", values: [62, 51, 38, 30, 23, 12] },
+        { label: "2026", values: [60, 55, 43, 29, 23, 15] },
     ];
     legend-position: ChartLegendPosition.right;
 }</code></pre>
@@ -607,8 +609,13 @@ ScatterChart {
     datasets: [
         {
             label: "Group A",
-            points: [{ x: 158, y: 52 }, { x: 162, y: 57 }, { x: 165, y: 58 }, { x: 168, y: 64 }, { x: 170, y: 61 },
-                     { x: 172, y: 70 }, { x: 175, y: 72 }, { x: 177, y: 69 }, { x: 180, y: 82 }, { x: 184, y: 79 }],
+            points: [{ x: 158, y: 52 }, { x: 162, y: 57 }, { x: 165, y: 58 }, { x: 168, y: 64 }, { x: 170, y: 61 }, { x: 172, y: 70 },
+                     { x: 175, y: 72 }, { x: 177, y: 69 }, { x: 180, y: 82 }, { x: 184, y: 79 }, { x: 187, y: 86 }, { x: 191, y: 90 }],
+        },
+        {
+            label: "Group B",
+            points: [{ x: 152, y: 47 }, { x: 155, y: 51 }, { x: 157, y: 49 }, { x: 160, y: 55 }, { x: 161, y: 52 }, { x: 163, y: 58 },
+                     { x: 165, y: 54 }, { x: 166, y: 61 }, { x: 168, y: 59 }, { x: 170, y: 63 }, { x: 173, y: 66 }, { x: 176, y: 64 }],
         },
     ];
     x-title: "Height (cm)";
@@ -657,8 +664,13 @@ BubbleChart {
     datasets: [
         {  // r: the bubble radius in pixels
             label: "Retail",
-            points: [{ x: 20, y: 30, r: 15 }, { x: 35, y: 18, r: 8 }, { x: 48, y: 40, r: 24 },
-                     { x: 60, y: 25, r: 12 }, { x: 72, y: 46, r: 18 }, { x: 85, y: 34, r: 10 }],
+            points: [{ x: 20, y: 30, r: 15 }, { x: 35, y: 18, r: 8 }, { x: 48, y: 40, r: 24 }, { x: 60, y: 25, r: 12 },
+                     { x: 72, y: 46, r: 18 }, { x: 85, y: 34, r: 10 }, { x: 28, y: 44, r: 11 }, { x: 92, y: 20, r: 6 }],
+        },
+        {
+            label: "Online",
+            points: [{ x: 15, y: 12, r: 9 }, { x: 30, y: 36, r: 20 }, { x: 42, y: 22, r: 7 }, { x: 55, y: 48, r: 14 },
+                     { x: 66, y: 14, r: 22 }, { x: 78, y: 28, r: 9 }, { x: 88, y: 44, r: 16 }, { x: 52, y: 8, r: 6 }],
         },
     ];
 }</code></pre>
@@ -700,8 +712,11 @@ PieChart {
         { label: "Chrome", value: 64 },
         { label: "Safari", value: 19 },
         { label: "Edge", value: 5 },
-        { label: "Other", value: 12, color: transparent, hidden: false },
+        { label: "Firefox", value: 3 },
+        { label: "Samsung Internet", value: 3 },
+        { label: "Other", value: 6, color: transparent, hidden: false },
     ];
+    show-percentages: true;
 }</code></pre>
 <table id="pie-properties">
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -734,6 +749,8 @@ DoughnutChart {
         { label: "Search", value: 48 },
         { label: "Direct", value: 22 },
         { label: "Social", value: 17 },
+        { label: "Email", value: 8 },
+        { label: "Referral", value: 5 },
     ];
 }</code></pre>
 <table>
@@ -767,7 +784,8 @@ PolarAreaChart {
         { label: "North", value: 11 },
         { label: "East", value: 16 },
         { label: "South", value: 7 },
-        { label: "West", value: 3 },
+        { label: "West", value: 9 },
+        { label: "Central", value: 13 },
     ];
 }</code></pre>
 <table>
@@ -797,10 +815,10 @@ PolarAreaChart {
 
 RadarChart {
     title: "Skills";
-    labels: ["Speed", "Power", "Range", "Comfort", "Price"];
+    labels: ["Speed", "Power", "Range", "Comfort", "Safety", "Price"];
     datasets: [
-        { label: "Model A", values: [80, 65, 70, 50, 60], fill: true },
-        { label: "Model B", values: [55, 80, 60, 75, 70], fill: true },
+        { label: "Model A", values: [80, 65, 70, 50, 75, 60], fill: true },
+        { label: "Model B", values: [55, 80, 60, 75, 85, 70], fill: true },
     ];
 }</code></pre>
 <table>
@@ -828,10 +846,12 @@ RadarChart {
 <pre data-shot="combo-bar-line"><code>import { BarChart, ChartSeriesType } from "@slintplot";
 
 BarChart {
-    labels: ["Q1", "Q2", "Q3", "Q4"];
+    title: "Sales";
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     datasets: [
-        { label: "Sales", values: [12, 19, 8, 15] },
-        { label: "Average", values: [10, 14, 12, 13], series-type: ChartSeriesType.line },
+        { label: "2025", values: [12, 15, 11, 14, 17, 19, 16, 13, 18, 21, 24, 28] },
+        { label: "2026", values: [14, 16, 15, 18, 20, 22, 19, 17, 21, 25, 27, 31] },
+        { label: "Target", values: [15, 15, 16, 17, 18, 19, 19, 19, 20, 22, 24, 26], series-type: ChartSeriesType.line },
     ];
 }</code></pre>
 
@@ -847,13 +867,13 @@ the datasets take the theme's colors.</p>
 
 HorizontalBarChart {
     title: "How often do you work from home?";
-    labels: ["Engineering", "Sales", "Support"];
+    labels: ["Engineering", "Design", "Sales", "Marketing", "Support"];
     datasets: [
-        { label: "Every day", values: [24, 5, 8], color: #172f73 },
-        { label: "Most days", values: [30, 12, 14], color: #1d4ed8 },
-        { label: "Some days", values: [28, 34, 23], color: #3b7ef0 },
-        { label: "Rarely", values: [12, 28, 25], color: #5f9cf2 },
-        { label: "Never", values: [6, 21, 30], color: #86b6ef },
+        { label: "Every day", values: [24, 16, 5, 12, 8], color: #172f73 },
+        { label: "Most days", values: [30, 25, 12, 21, 14], color: #1d4ed8 },
+        { label: "Some days", values: [28, 34, 34, 35, 23], color: #3b7ef0 },
+        { label: "Rarely", values: [12, 15, 28, 18, 25], color: #5f9cf2 },
+        { label: "Never", values: [6, 10, 21, 14, 30], color: #86b6ef },
     ];
     show-values: true;
     fill-opacity: 1;
@@ -875,9 +895,15 @@ TimeSeriesChart {
     datasets: [
         {  // One point per hour: x is seconds after the time origin.
             label: "Oslo",
-            points: [{ x: 0, y: 8.5 },      { x: 3600, y: 8.1 },  { x: 7200, y: 7.8 },  { x: 10800, y: 7.6 },
-                     { x: 14400, y: 7.9 },  { x: 18000, y: 8.6 }, { x: 21600, y: 9.8 }, { x: 25200, y: 11.2 },
-                     { x: 28800, y: 12.5 }, { x: 32400, y: 13.4 }, { x: 36000, y: 13.9 }, { x: 39600, y: 14.1 }],
+            points: [{ x: 0, y: 8.5 },       { x: 3600, y: 8.1 },    { x: 7200, y: 7.8 },    { x: 10800, y: 7.6 },
+                     { x: 14400, y: 7.9 },   { x: 18000, y: 8.6 },   { x: 21600, y: 9.8 },   { x: 25200, y: 11.2 },
+                     { x: 28800, y: 12.5 },  { x: 32400, y: 13.4 },  { x: 36000, y: 13.9 },  { x: 39600, y: 14.1 }],
+        },
+        {
+            label: "Bergen",
+            points: [{ x: 0, y: 10.2 },      { x: 3600, y: 10.0 },   { x: 7200, y: 9.9 },    { x: 10800, y: 9.8 },
+                     { x: 14400, y: 9.9 },   { x: 18000, y: 10.3 },  { x: 21600, y: 10.9 },  { x: 25200, y: 11.6 },
+                     { x: 28800, y: 12.2 },  { x: 32400, y: 12.6 },  { x: 36000, y: 12.9 },  { x: 39600, y: 13.0 }],
         },
     ];
     value-suffix: " °C";
@@ -930,13 +956,15 @@ Missing values (NaN) are drawn as empty cells.</p>
 
 HeatmapChart {
     title: "Visits by weekday and hour";
-    x-labels: ["09", "10", "11", "12", "13", "14"];
-    y-labels: ["Mon", "Tue", "Wed", "Thu", "Fri"];
-    values: [12, 30, 45, 52, 38, 41,
-             10, 28, 49, 60, 42, 47,
-             14, 33, 51, 58, 40, 44,
-             11, 26, 43, 55, 36, 39,
-              8, 21, 35, 41, 27, 22];
+    x-labels: ["08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18"];
+    y-labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    values: [19, 25, 34, 45, 56, 61, 53, 37, 23, 16, 14,
+             16, 23, 36, 53, 62, 57, 45, 33, 24, 19, 16,
+             19, 25, 34, 45, 55, 59, 52, 37, 24, 16, 14,
+             16, 23, 35, 52, 63, 59, 45, 33, 24, 19, 16,
+             19, 26, 35, 45, 54, 58, 52, 38, 24, 17, 14,
+              7,  9, 14, 21, 25, 24, 19, 13, 10,  8,  7,
+              8, 11, 15, 19, 22, 23, 20, 15, 10,  7,  6];
     value-suffix: " visits";
 }</code></pre>
 <table>
@@ -1016,9 +1044,17 @@ TreemapChart {
     items: [
         { label: "India", value: 1464, group: "Asia" },
         { label: "China", value: 1416, group: "Asia" },
+        { label: "Indonesia", value: 285, group: "Asia" },
+        { label: "Pakistan", value: 255, group: "Asia" },
+        { label: "Bangladesh", value: 175, group: "Asia" },
         { label: "Nigeria", value: 237, group: "Africa" },
+        { label: "Ethiopia", value: 135, group: "Africa" },
+        { label: "Egypt", value: 118, group: "Africa" },
         { label: "United States", value: 347, group: "Americas" },
         { label: "Brazil", value: 212, group: "Americas", color: transparent },  // transparent: the group's color
+        { label: "Mexico", value: 132, group: "Americas" },
+        { label: "Russia", value: 144, group: "Europe" },
+        { label: "Germany", value: 84, group: "Europe" },
     ];
     value-suffix: " M";
 }</code></pre>
@@ -1057,11 +1093,25 @@ SunburstChart {
         { label: "South Asia", parent: 0 },           // 1
         { label: "India", value: 1464, parent: 1 },
         { label: "Pakistan", value: 255, parent: 1 },
-        { label: "East Asia", parent: 0 },            // 4
-        { label: "China", value: 1416, parent: 4 },
-        { label: "Europe", parent: -1, color: transparent },  // 6; transparent: the theme's next color
-        { label: "Germany", value: 84, parent: 6 },
-        { label: "France", value: 66, parent: 6, hidden: false },
+        { label: "Bangladesh", value: 175, parent: 1 },
+        { label: "East Asia", parent: 0 },            // 5
+        { label: "China", value: 1416, parent: 5 },
+        { label: "Japan", value: 123, parent: 5 },
+        { label: "Southeast Asia", parent: 0 },       // 8
+        { label: "Indonesia", value: 285, parent: 8 },
+        { label: "Philippines", value: 116, parent: 8 },
+        { label: "Africa", parent: -1 },              // 11
+        { label: "Nigeria", value: 237, parent: 11 },
+        { label: "Ethiopia", value: 135, parent: 11 },
+        { label: "Egypt", value: 118, parent: 11 },
+        { label: "Americas", parent: -1 },            // 15
+        { label: "United States", value: 347, parent: 15 },
+        { label: "Brazil", value: 212, parent: 15 },
+        { label: "Mexico", value: 132, parent: 15 },
+        { label: "Europe", parent: -1, color: transparent },  // 19; transparent: the theme's next color
+        { label: "Russia", value: 144, parent: 19 },
+        { label: "Germany", value: 84, parent: 19 },
+        { label: "France", value: 66, parent: 19, hidden: false },
     ];
     value-suffix: " M";
 }</code></pre>
@@ -1102,6 +1152,7 @@ FunnelChart {
         { label: "Visited the site", value: 12400 },
         { label: "Viewed a product", value: 7350 },
         { label: "Added to cart", value: 3120 },
+        { label: "Started checkout", value: 1840 },
         { label: "Purchased", value: 1150, color: transparent, hidden: false },  // transparent: the fade
     ];
 }</code></pre>
@@ -1143,6 +1194,10 @@ WaterfallChart {
         { label: "Cost of sales", value: -185 },
         { label: "Gross profit", total: true },
         { label: "Marketing", value: -48 },
+        { label: "R&amp;D", value: -62 },
+        { label: "Admin", value: -31 },
+        { label: "Operating profit", total: true },
+        { label: "Tax", value: -22 },
         { label: "Net profit", total: true },
     ];
     show-values: true;
@@ -1188,10 +1243,10 @@ and works with more than two datasets too. With exactly two, the tooltip also sh
 
 DumbbellChart {
     title: "Life expectancy at birth (years)";
-    labels: ["Japan", "India", "Nigeria"];
+    labels: ["Japan", "Norway", "China", "United States", "Brazil", "India", "South Africa", "Nigeria"];
     datasets: [
-        { label: "2000", values: [81.1, 62.7, 46.3] },
-        { label: "2023", values: [84.7, 72.0, 54.5] },
+        { label: "2000", values: [81.1, 78.7, 71.4, 76.6, 70.1, 62.7, 56.0, 46.3] },
+        { label: "2023", values: [84.7, 83.3, 78.6, 78.4, 75.8, 72.0, 65.0, 54.5] },
     ];
     show-values: true;
     bar-color: gray;                                  // default: between the grid and axis colors
@@ -1292,9 +1347,11 @@ GaugeChart {
 <pre data-shot="axes-log"><code>import { LineChart } from "@slintplot";
 
 LineChart {
-    labels: ["Q1", "Q2", "Q3", "Q4"];
+    title: "Users";
+    labels: ["2019", "2020", "2021", "2022", "2023", "2024", "2025", "2026"];
     datasets: [
-        { label: "Users", values: [12, 340, 2900, 61000] },
+        { label: "Users", values: [12, 85, 340, 1200, 2900, 9800, 26000, 61000], tension: 0.3 },
+        { label: "Paying", values: [1, 6, 30, 95, 260, 800, 2300, 5900], tension: 0.3 },
     ];
     logarithmic: true;
     y-title: "Users (log scale)";
@@ -1317,10 +1374,11 @@ It works in <code>LineChart</code>, <code>BarChart</code>, <code>ScatterChart</c
 <pre data-shot="axes-two"><code>import { BarChart, ChartSeriesType } from "@slintplot";
 
 BarChart {
-    labels: ["Jan", "Feb", "Mar", "Apr"];
+    title: "Temperature and rainfall, Oslo";
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     datasets: [
-        { label: "Temperature", values: [-1.5, -1.2, 1.2, 5.5], series-type: ChartSeriesType.line },
-        { label: "Rainfall", values: [86, 136, 88, 103], right-axis: true },
+        { label: "Temperature", values: [-4.3, -4.0, -0.2, 4.5, 10.8, 15.2, 16.4, 15.2, 10.8, 6.3, 0.7, -3.1], series-type: ChartSeriesType.line, tension: 0.4 },
+        { label: "Rainfall", values: [49, 36, 47, 41, 53, 65, 81, 89, 90, 84, 73, 55], right-axis: true },
     ];
     y-title: "Temperature";
     value-suffix: " °C";
@@ -1337,9 +1395,10 @@ each slice, or its share with <code>show-percentages: true</code>; slices too th
 <pre data-shot="axes-format"><code>import { BarChart } from "@slintplot";
 
 BarChart {
-    labels: ["Jan", "Feb", "Mar"];
+    title: "Revenue";
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
     datasets: [
-        { label: "Revenue", values: [7869, 5941, 5946] },
+        { label: "Revenue", values: [7869, 5941, 5946, 8210, 9120, 8655] },
     ];
     show-values: true;
     x-title: "Month";
