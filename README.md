@@ -28,8 +28,8 @@ to the mouse.
 
 - **Cartesian charts.** Line, bar, horizontal bar, scatter and bubble charts, with stacked, mixed, stepped and filled variants.
 - **Radial charts.** Pie, doughnut, polar area and radar charts.
-- **Time and heatmaps.** Time series with date axes, matrix heatmaps and GitHub-style calendar heatmaps.
-- **Hierarchies and business.** Treemaps, sunbursts, funnels, waterfalls, dumbbells and gauges.
+- **Time and heatmaps.** Time series with date axes, candlestick and OHLC charts, Gantt charts, matrix heatmaps and GitHub-style calendar heatmaps.
+- **Hierarchies and business.** Treemaps, sunbursts, funnels, waterfalls, dumbbells, gauges and bullet charts.
 - **Interactive.** Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.
 - **Large datasets.** Min-max decimation and on-demand data reading for millions of points.
 
