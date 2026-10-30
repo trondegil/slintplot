@@ -102,6 +102,7 @@ export component GanttChart {
     private property <length> scroll: clamp(root.scroll-y, 0px, root.max-scroll);
     // The row under the mouse, or selected with the keyboard.
     private property <int> hovered-row: touch.has-hover ? floor((touch.mouse-y + root.scroll) / root.step)
+        : label-touch.has-hover ? floor((label-touch.mouse-y + root.scroll) / root.step)
         : keys.has-focus ? root.key-row
         : -1;
     private property <int> key-row: -1;
@@ -200,6 +201,26 @@ export component GanttChart {
                         font-weight: entry < 0 ? 600 : 400;
                         vertical-alignment: center;
                         overflow: elide;
+                    }
+                }
+
+                // Hovering or clicking a task's label is the same as its bar.
+                label-touch := TouchArea {
+                    width: frame.label-width;
+                    clicked => {
+                        keys.focus();
+                        if root.hovered-index >= 0 {
+                            root.key-row = root.hovered-row;
+                            root.task-clicked(root.hovered-index);
+                        }
+                    }
+                    scroll-event(event) => {
+                        let delta = event.delta-y != 0 ? event.delta-y : event.delta-x;
+                        if root.max-scroll > 0 && delta != 0 {
+                            root.scroll-y = clamp(root.scroll - delta, 0px, root.max-scroll);
+                            return accept;
+                        }
+                        reject
                     }
                 }
             }

@@ -1214,6 +1214,9 @@ export component Gallery inherits Window {
                         now: 53 * day;
                         show-values: true;
                         zoom-enabled: true;
+                        task-clicked(index) => {
+                            root.status = "task-clicked: " + self.tasks[index].label;
+                        }
                         view-start <=> root.view-start;
                         view-end <=> root.view-end;
                     }

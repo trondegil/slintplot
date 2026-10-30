@@ -1010,7 +1010,7 @@ GanttChart {
   <tr><td><code>zoomed</code> <span class="tag">out</span></td><td><code>bool</code></td><td></td><td>Whether the chart is zoomed in</td></tr>
   <tr><td><code>scroll-y</code> <span class="tag">in-out</span></td><td><code>length</code></td><td><code>0</code></td><td>How far the rows are scrolled up, when they don't fit</td></tr>
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The task under the mouse or selected with the keyboard, or -1</td></tr>
-  <tr><td><code>task-clicked(index)</code></td><td>callback</td><td></td><td>A task was clicked, or chosen with Enter; <code>index</code> is its place in <code>tasks</code></td></tr>
+  <tr><td><code>task-clicked(index)</code></td><td>callback</td><td></td><td>A task's bar or label was clicked, or the task chosen with Enter; <code>index</code> is its place in <code>tasks</code></td></tr>
   <tr><td><code>reset-zoom()</code></td><td>function</td><td></td><td>Shows the whole time axis again</td></tr>
 </table>
 <p>The time axis spans all tasks, with a little room at both ends. The up and down arrow keys move through the tasks, scrolling them
