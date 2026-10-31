@@ -164,8 +164,9 @@ const CHANNELS: [(&str, f32); 6] = [
     ("Social media", 5.0),
     ("Forum", 3.0),
 ];
+// Product categories, not colors: the slices take the theme's colors.
 const SLICE_NAMES: [&str; 8] = [
-    "Red", "Orange", "Green", "Blue", "Purple", "Teal", "Pink", "Grey",
+    "Books", "Games", "Music", "Movies", "Apps", "Toys", "Sports", "Garden",
 ];
 
 /// The data actions most samples offer.
