@@ -199,8 +199,9 @@ fn import_line(code: &str) -> String {
 fn callback_declaration(name: &str) -> Option<&'static str> {
     match name {
         "edit-task" => Some(
-            "    // The gallery opens a dialog here that edits the task; see\n\
-             \x20   // TaskEditor in examples/gallery/ui/gallery.slint.\n\
+            "    // This is simplified code: in the gallery, clicking a task opens a dialog\n\
+             \x20   // that edits it. The full example code, with the dialog (TaskEditor), is on\n\
+             \x20   // GitHub: https://github.com/trondegil/slintplot/blob/main/examples/gallery/ui/gallery.slint\n\
              \x20   callback edit-task(index: int);\n",
         ),
         _ => None,
