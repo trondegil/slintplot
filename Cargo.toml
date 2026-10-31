@@ -13,10 +13,11 @@ slint = "1.18"
 slint-build = "1.18"
 slintplot = { path = "crates/slintplot", version = "0.3" }
 
-# The browser gallery: smaller download at the cost of a slower build.
+# The browser gallery: the smallest download, at the cost of a slower build
+# (the website workflow shrinks it further with wasm-opt).
 [profile.web]
 inherits = "release"
-opt-level = "s"
+opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"

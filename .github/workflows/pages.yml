@@ -2,10 +2,19 @@
 # browser into docs/demo.
 name: Website
 
-# Deployed by hand (Actions > Website > Run workflow) when crates are
-# released, so the site documents the published version, not main.
+# Deployed when a release tagged `apps-v*` is published, together with the
+# apps (see apps.yml), or by hand (Actions > Website > Run workflow) to update
+# the page between releases. The gallery is built with SlintPlot from
+# crates.io, so the demo shows the published library; publish the crate
+# before the release.
 on:
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or branch to build, such as apps-v0.3.0; empty builds the branch the workflow runs from
+        required: false
 
 permissions:
   contents: read
@@ -16,24 +25,47 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  # wasm-opt, which shrinks the gallery after the Rust compiler.
+  BINARYEN: version_133
+
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'apps-v')
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.ref || github.ref }}
       - run: rustup target add wasm32-unknown-unknown
+      - name: SlintPlot from crates.io
+        # The workspace's path dependency becomes the published version it
+        # names, and the library leaves the workspace.
+        run: |
+          sed -i -E 's|^slintplot = \{ path = "crates/slintplot", version = "([^"]+)" \}|slintplot = "\1"|; s|"crates/slintplot", ||' Cargo.toml
+          grep -Eq '^slintplot = "[0-9.]+"$' Cargo.toml
+          cargo tree -p slintplot-gallery --target wasm32-unknown-unknown -e normal -i slintplot --depth 0
       - name: wasm-bindgen version
         id: bindgen
         # The command-line tool must match the wasm-bindgen crate exactly.
-        run: echo "version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')" >> "$GITHUB_OUTPUT"
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-bindgen@${{ steps.bindgen.outputs.version }}
+      - name: wasm-opt
+        run: |
+          curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/$BINARYEN/binaryen-$BINARYEN-x86_64-linux.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/binaryen-$BINARYEN/bin" >> "$GITHUB_PATH"
       - name: Build the gallery
         run: |
-          cargo build --profile web --locked --target wasm32-unknown-unknown -p slintplot-gallery
+          cargo build --profile web --target wasm32-unknown-unknown -p slintplot-gallery
           wasm-bindgen --target web --no-typescript --out-dir docs/demo --out-name gallery \
             target/wasm32-unknown-unknown/web/slintplot-gallery.wasm
+          # The features Rust enables for wasm32, which wasm-opt must keep.
+          wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext \
+            --enable-mutable-globals --enable-reference-types --enable-multivalue \
+            docs/demo/gallery_bg.wasm -o docs/demo/gallery_bg.wasm
+          echo "Gallery: $(stat -c%s docs/demo/gallery_bg.wasm) bytes, $(gzip -9c docs/demo/gallery_bg.wasm | wc -c) gzipped" >> "$GITHUB_STEP_SUMMARY"
           # New file links for each build, so browsers don't keep an old one.
           build=$(sha256sum docs/demo/gallery_bg.wasm | cut -c1-12)
           sed -i "s/?v=BUILD/?v=$build/g" docs/demo/index.html
