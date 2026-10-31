@@ -1,11 +1,11 @@
-//! The code panel's code: a sample's Slint code from ui/gallery.slint (see
+//! The code panel's files: a sample's Slint code from ui/gallery.slint (see
 //! build.rs), in a window that declares the gallery properties it reads, with
-//! the values they have now, so it runs as it is.
+//! the values they have now, and the rest of a Rust project that runs it.
 
-use slint::{Color, Model, ModelRc, SharedString};
+use slint::{Color, Model, ModelRc, SharedString, VecModel};
 
 use crate::{
-    ChartCandle, ChartDataset, ChartLegendPosition, ChartSeriesType, ChartSlice,
+    ChartCandle, CodeFile, ChartDataset, ChartLegendPosition, ChartSeriesType, ChartSlice,
     ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, ChartXY, Gallery, SAMPLE_CODE,
     SLINTPLOT_NAMES,
 };
@@ -17,8 +17,122 @@ const MAX_ITEMS: usize = 1000;
 /// List items this short fill the lines; longer ones get a line each.
 const SHORT: usize = 40;
 
+/// Charts that are not in a release on crates.io yet.
+const UNRELEASED: &[&str] =
+    &["BulletChart", "CandlestickChart", "GanttChart", "MatrixChart", "RadialBarChart"];
+
+/// The code panel's tabs for the sample `id`: its Slint code with the
+/// gallery's current data, and the Rust project around it.
+pub fn sample_files(ui: &Gallery, id: &str) -> ModelRc<CodeFile> {
+    let slint = sample_code(ui, id);
+    let unreleased: Vec<&str> =
+        UNRELEASED.iter().copied().filter(|chart| words(&slint).contains(chart)).collect();
+    let files = [
+        ("ui/app.slint", slint.clone()),
+        ("src/main.rs", MAIN_RS.to_string()),
+        ("build.rs", BUILD_RS.to_string()),
+        ("Cargo.toml", cargo_toml(id, &unreleased)),
+        ("How to run", how_to_run(&unreleased, slint.contains("debug(self.status)"))),
+    ];
+    let files = files.map(|(name, code)| CodeFile { name: name.into(), code: code.into() });
+    ModelRc::new(VecModel::from(files.to_vec()))
+}
+
+const MAIN_RS: &str = "\
+slint::include_modules!();
+
+fn main() -> Result<(), slint::PlatformError> {
+    let app = Example::new()?;
+    // Connects the charts to SlintPlot's Rust code.
+    slintplot::register!(app);
+    app.run()
+}
+";
+
+const BUILD_RS: &str = "\
+// Compiles ui/app.slint, with SlintPlot's charts importable as \"@slintplot\".
+fn main() {
+    let config = slint_build::CompilerConfiguration::new().with_library_paths(
+        std::collections::HashMap::from([(\"slintplot\".into(), slintplot::library_path())]),
+    );
+    slint_build::compile_with_config(\"ui/app.slint\", config).unwrap();
+}
+";
+
+/// The project's Cargo.toml: SlintPlot from crates.io, or from GitHub for
+/// charts it doesn't have yet.
+fn cargo_toml(id: &str, unreleased: &[&str]) -> String {
+    let (note, slintplot) = if unreleased.is_empty() {
+        (String::new(), "\"0.2\"")
+    } else {
+        (
+            format!(
+                "# {} {} not in a release on crates.io yet: SlintPlot comes from GitHub.\n",
+                unreleased.join(" and "),
+                if unreleased.len() == 1 { "is" } else { "are" }
+            ),
+            "{ git = \"https://github.com/trondegil/slintplot\" }",
+        )
+    };
+    format!(
+        "[package]\n\
+         name = \"{id}-example\"\n\
+         version = \"0.1.0\"\n\
+         edition = \"2021\"\n\n\
+         {note}\
+         [dependencies]\n\
+         slint = \"1.18\"\n\
+         slintplot = {slintplot}\n\n\
+         [build-dependencies]\n\
+         slint-build = \"1.18\"\n\
+         slintplot = {slintplot}\n"
+    )
+}
+
+/// The steps from the other tabs to a running chart.
+fn how_to_run(unreleased: &[&str], prints_clicks: bool) -> String {
+    let mut text = String::from(
+        "\
+This chart runs as a small Rust app made of the files in the other tabs.
+
+1. Make a new project:
+
+       cargo new my-chart
+       cd my-chart
+
+2. Replace Cargo.toml with the Cargo.toml tab.
+3. Save the build.rs tab as build.rs, next to Cargo.toml.
+4. Save the ui/app.slint tab as ui/app.slint.
+5. Replace src/main.rs with the src/main.rs tab.
+6. Run it:
+
+       cargo run
+",
+    );
+    if prints_clicks {
+        text.push_str("\nClicks on the chart are printed in the terminal.\n");
+    }
+    if !unreleased.is_empty() {
+        text.push_str(&format!(
+            "\n{} {} not in a release on crates.io yet, so Cargo.toml takes SlintPlot\n\
+             from GitHub.\n",
+            unreleased.join(" and "),
+            if unreleased.len() == 1 { "is" } else { "are" }
+        ));
+    }
+    text.push_str(
+        "\n\
+On Linux, Slint needs the fontconfig and xkbcommon development packages first\n\
+(libfontconfig-dev and libxkbcommon-dev on Debian and Ubuntu).
+
+More in Getting started: https://slintplot.dev/#getting-started
+",
+    );
+    text
+}
+
 /// The Slint code of the sample `id`, with the gallery's current data.
-pub fn sample_code(ui: &Gallery, id: &str) -> String {
+fn sample_code(ui: &Gallery, id: &str) -> String {
     let Some(body) = template(id) else {
         return String::new();
     };
@@ -31,21 +145,23 @@ pub fn sample_code(ui: &Gallery, id: &str) -> String {
     if body.contains("root.status") {
         properties.push_str("    // What was clicked, written by the chart's callbacks.\n");
         properties.push_str("    property <string> status;\n");
+        properties.push_str("    changed status => {\n        debug(self.status);\n    }\n");
     }
     let mut window = String::from("export component Example inherits Window {\n");
     window.push_str("    preferred-width: 720px;\n    preferred-height: 480px;\n");
     if !properties.is_empty() {
         window.push_str(&properties);
     }
-    window.push('\n');
+    // In a layout, the chart fills the window.
+    window.push_str("\n    VerticalLayout {\n        padding: 16px;\n\n");
     for line in body.lines() {
         if !line.is_empty() {
-            window.push_str("    ");
+            window.push_str("        ");
         }
         window.push_str(line);
         window.push('\n');
     }
-    window.push_str("}\n");
+    window.push_str("    }\n}\n");
     // ChartEngine is exported so that slintplot::register! can connect it.
     let code = format!("export {{ ChartEngine }}\n\n{window}");
     format!("{}\n{code}", import_line(&code))
@@ -74,12 +190,16 @@ pub fn properties_read(body: &str) -> Vec<String> {
     names
 }
 
+/// The words of `code`.
+fn words(code: &str) -> Vec<&str> {
+    code.split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect()
+}
+
 /// The import statement of the SlintPlot names `code` uses.
 fn import_line(code: &str) -> String {
-    let words: Vec<&str> = code
-        .split(|c: char| !c.is_ascii_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .collect();
+    let words = words(code);
     // The gallery doesn't import the enum the dataset values may use.
     let mut used: Vec<&str> = SLINTPLOT_NAMES
         .iter()

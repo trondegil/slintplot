@@ -22,7 +22,7 @@ include!(concat!(env!("OUT_DIR"), "/sample_code.rs"));
 
 /// Opens the code panel on the current sample's code, with its data now.
 fn open_code(ui: &Gallery) {
-    ui.set_code(code::sample_code(ui, &ui.get_sample()).into());
+    ui.set_code_files(code::sample_files(ui, &ui.get_sample()));
     ui.set_code_open(true);
 }
 

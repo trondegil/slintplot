@@ -13,9 +13,11 @@ slintplot-gallery --snapshot <dir>   # render every sample to PNG, without a win
 ![The gallery app](https://slintplot.dev/screenshots/light.png)
 
 `ui/gallery.slint` has a working example of every chart. The code button
-(`</>`) at the top right shows the sample's code, taken from that file at build
-time, as a complete window with the data the chart shows at that moment, so it
-runs as it is when you paste it. A Copy button copies it. Clicking a chart shows the click callback and what
+(`</>`) at the top right shows the sample as a small Rust app, a file per tab:
+`ui/app.slint`, the sample's code taken from that file at build time, as a
+complete window with the data the chart shows at that moment; `src/main.rs`,
+`build.rs` and `Cargo.toml`; and How to run, the steps from the files to a
+running chart. Copy copies the tab shown. Clicking a chart shows the click callback and what
 was clicked, such as `slice-clicked: Safari, 19`, at the bottom right.
 
 On Linux, Slint needs the fontconfig and xkbcommon development packages first

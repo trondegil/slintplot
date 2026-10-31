@@ -55,6 +55,12 @@ global Look {
     out property <color> hover: root.dark ? #ffffff12 : #0000000b;
 }
 
+// A tab of the code panel: a file of the project that runs the sample.
+export struct CodeFile {
+    name: string,
+    code: string,
+}
+
 // A row of the sample list: a category header, or a sample.
 export struct SampleEntry {
     id: string,
@@ -693,11 +699,41 @@ component CodeButton inherits Rectangle {
     }
 }
 
-// The Slint code of the current sample, over the gallery, with a button that
-// copies it. Closes with Escape, the close button or a click beside it.
+// A tab of the code panel, underlined while it is shown.
+component CodeTab inherits Rectangle {
+    in property <string> text;
+    in property <bool> current;
+    callback clicked();
+
+    horizontal-stretch: 0;
+    min-width: label.preferred-width + 24px;
+    label := Text {
+        text: root.text;
+        color: root.current ? Look.text : Look.secondary;
+        font-size: 13px;
+        font-weight: root.current ? 600 : 400;
+    }
+    Rectangle {
+        y: parent.height - self.height;
+        height: 2px;
+        background: root.current ? Look.accent : touch.has-hover ? Look.border : transparent;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// The current sample's code and the Rust project that runs it, a file per
+// tab, over the gallery, with a button that copies the shown file. Closes
+// with Escape, the close button or a click beside it.
 component CodePanel inherits Rectangle {
     in property <string> title;
-    in property <string> code;
+    in property <[CodeFile]> files;
+    // The tab shown.
+    in-out property <int> current;
     // Smaller margins on phone-sized windows.
     in property <bool> narrow;
     // A monospace font of the system.
@@ -716,8 +752,8 @@ component CodePanel inherits Rectangle {
     }
     Rectangle {
         width: min(880px, root.width - (root.narrow ? 24px : 96px));
-        // As tall as the code, with room for the header and a scroll bar.
-        height: min(root.height - (root.narrow ? 24px : 96px), code-text.preferred-height + 96px);
+        // A fixed height, so it doesn't change from tab to tab.
+        height: min(root.height - (root.narrow ? 24px : 96px), 760px);
         border-radius: 12px;
         border-width: 1px;
         border-color: Look.border;
@@ -759,7 +795,7 @@ component CodePanel inherits Rectangle {
                             code-text.select-all();
                             code-text.copy();
                             code-text.clear-selection();
-                            root.copy-text(root.code);
+                            root.copy-text(root.files[root.current].code);
                             root.copied = true;
                         }
                     }
@@ -767,6 +803,18 @@ component CodePanel inherits Rectangle {
                         text: "Close";
                         clicked => {
                             root.close();
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    height: 34px;
+                    padding-left: 4px;
+                    alignment: start;
+                    for file[i] in root.files: CodeTab {
+                        text: file.name;
+                        current: i == root.current;
+                        clicked => {
+                            root.current = i;
                         }
                     }
                 }
@@ -783,7 +831,7 @@ component CodePanel inherits Rectangle {
                         y: 12px;
                         width: self.preferred-width;
                         height: self.preferred-height;
-                        text: root.code;
+                        text: root.files[root.current].code;
                         read-only: true;
                         single-line: false;
                         wrap: no-wrap;
@@ -835,8 +883,9 @@ export component Gallery inherits Window {
     // Buttons for the current sample.
     in property <[string]> actions;
     in-out property <string> status;
-    // The Slint code of the current sample's charts, for the code panel.
-    in property <string> code;
+    // The code panel's tabs: the current sample's Slint code with its data,
+    // and the Rust project that runs it.
+    in property <[CodeFile]> code-files;
     in-out property <bool> code-open;
     // A monospace font for the code, set per system from Rust; the browser
     // only has Inter.
@@ -1805,7 +1854,7 @@ export component Gallery inherits Window {
 
     if root.code-open && !root.chart-only: CodePanel {
         title: "Code: " + root.sample-title;
-        code: root.code;
+        files: root.code-files;
         narrow: root.narrow;
         font-family: root.code-font;
         close => {
