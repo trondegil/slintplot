@@ -5,9 +5,9 @@
 use slint::{Color, Model, ModelRc, SharedString, VecModel};
 
 use crate::{
-    ChartCandle, ChartGanttTask, CodeFile, ChartDataset, ChartLegendPosition, ChartSeriesType, ChartSlice,
-    ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, ChartXY, Gallery, SAMPLE_CODE,
-    SLINTPLOT_NAMES,
+    ChartCandle, ChartDataset, ChartGanttTask, ChartLegendPosition, ChartSeriesType, ChartSlice,
+    ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, ChartXY, CodeFile, Gallery,
+    SAMPLE_CODE, SLINTPLOT_NAMES,
 };
 
 /// Lines are wrapped at this width.
@@ -26,9 +26,15 @@ pub fn sample_files(ui: &Gallery, id: &str) -> ModelRc<CodeFile> {
         ("src/main.rs", MAIN_RS.to_string()),
         ("build.rs", BUILD_RS.to_string()),
         ("Cargo.toml", cargo_toml(id)),
-        ("How to run", how_to_run(slint.contains("debug(self.status)"))),
+        (
+            "How to run",
+            how_to_run(slint.contains("debug(self.status)")),
+        ),
     ];
-    let files = files.map(|(name, code)| CodeFile { name: name.into(), code: code.into() });
+    let files = files.map(|(name, code)| CodeFile {
+        name: name.into(),
+        code: code.into(),
+    });
     ModelRc::new(VecModel::from(files.to_vec()))
 }
 
@@ -56,7 +62,9 @@ fn main() {
 /// The project's Cargo.toml, with SlintPlot of the gallery's version: its
 /// major and minor number.
 fn cargo_toml(id: &str) -> String {
-    let version = env!("CARGO_PKG_VERSION").rsplit_once('.').map_or("", |(minor, _)| minor);
+    let version = env!("CARGO_PKG_VERSION")
+        .rsplit_once('.')
+        .map_or("", |(minor, _)| minor);
     format!(
         "[package]\n\
          name = \"{id}-example\"\n\
@@ -191,7 +199,10 @@ fn import_line(code: &str) -> String {
     if line.len() <= WIDTH {
         return line;
     }
-    format!("import {{\n    {},\n}} from \"@slintplot\";\n", used.join(",\n    "))
+    format!(
+        "import {{\n    {},\n}} from \"@slintplot\";\n",
+        used.join(",\n    ")
+    )
 }
 
 /// The declaration of the gallery callback `name`, if it is one, so that the
@@ -326,7 +337,10 @@ impl Lit {
                     }
                 } else {
                     for item in items {
-                        out.push_str(&format!("{inner}{},\n", item.render_at(indent + 4, inner.len())));
+                        out.push_str(&format!(
+                            "{inner}{},\n",
+                            item.render_at(indent + 4, inner.len())
+                        ));
                     }
                 }
                 if *more > 0 {
@@ -340,7 +354,10 @@ impl Lit {
                 let mut out = String::from("{\n");
                 for (name, value) in fields {
                     let start = inner.len() + name.len() + 2;
-                    out.push_str(&format!("{inner}{name}: {},\n", value.render_at(indent + 4, start)));
+                    out.push_str(&format!(
+                        "{inner}{name}: {},\n",
+                        value.render_at(indent + 4, start)
+                    ));
                 }
                 out + &close + "}"
             }
@@ -361,7 +378,9 @@ trait ToLit {
 /// The items of `model`, up to `MAX_ITEMS`.
 fn list<T: ToLit + Clone + 'static>(model: ModelRc<T>) -> Lit {
     let shown = model.row_count().min(MAX_ITEMS);
-    let items = (0..shown).filter_map(|i| model.row_data(i)).map(|item| item.lit());
+    let items = (0..shown)
+        .filter_map(|i| model.row_data(i))
+        .map(|item| item.lit());
     Lit::List(items.collect(), model.row_count() - shown)
 }
 
@@ -539,8 +558,15 @@ mod tests {
     fn values_are_slint_literals() {
         assert_eq!(f32::NAN.lit().flat(), "0 / 0");
         assert_eq!(2.5f32.lit().flat(), "2.5");
-        assert_eq!(SharedString::from("a \"b\"").lit().flat(), "\"a \\\"b\\\"\"");
-        let slice = ChartSlice { label: "Web".into(), value: 12.0, ..Default::default() };
+        assert_eq!(
+            SharedString::from("a \"b\"").lit().flat(),
+            "\"a \\\"b\\\"\""
+        );
+        let slice = ChartSlice {
+            label: "Web".into(),
+            value: 12.0,
+            ..Default::default()
+        };
         assert_eq!(slice.lit().flat(), "{ label: \"Web\", value: 12 }");
     }
 }

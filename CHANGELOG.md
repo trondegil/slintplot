@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 ### Added
 
@@ -58,12 +58,40 @@
   column)` reports clicks. The circles grow in and resize when the values
   change. Cells smaller than a few pixels merge into blocks, so a 500 by
   500 matrix stays fast.
+- `ChartTheme.increase-color` and `decrease-color`: a green and a red for
+  rises and falls that suit the palette (a light and a dark blue in the mono
+  palette). Candlestick and waterfall charts use them.
+- `ChartLocale` texts for the new charts: `open`, `high`, `low`, `close` and
+  `volume` for candlesticks, `target`, `of-target` and `off-scale` for bullet
+  charts, and `up-to` for bands without a label, in the 14 languages.
+
+### Changed
+
+- Waterfall charts take their rise and fall colors from the theme, so they
+  follow the palette. The default palette's colors are the same as before.
+
+### Breaking changes
+
+- Slint: `ChartLocale` has new fields. Rust code that builds one needs
+  `..Default::default()`.
 
 ### Fixed
 
 - A time series with `fill: true` lost its fill when it had more than two
   points per pixel, for example a week of 15-minute values on a phone. The
   decimated line now keeps its area, like the line chart.
+
+### Example apps
+
+- **Gallery:** samples of the five new charts. Clicking a chart writes what
+  was clicked, with its value, at the bottom right. The code button opens the
+  sample as a small app that runs as it is: tabs with `ui/app.slint`, with
+  the data the chart shows, `src/main.rs`, `build.rs`, `Cargo.toml` and how
+  to run it, each with a Copy button. Clicking a task in the Gantt sample
+  opens a dialog that changes its name, group, dates and progress. The pie,
+  doughnut and polar area samples' slices are product categories instead of
+  color names that didn't match their colors.
+- **Stress test:** built with this release.
 
 ## 0.2.2
 

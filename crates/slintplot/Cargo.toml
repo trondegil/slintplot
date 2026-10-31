@@ -1,6 +1,6 @@
 [package]
 name = "slintplot"
-version = "0.2.2"
+version = "0.3.0"
 description = "Native, interactive charts for Slint"
 license.workspace = true
 edition.workspace = true

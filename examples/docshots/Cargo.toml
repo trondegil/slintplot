@@ -1,6 +1,6 @@
 [package]
 name = "slintplot-docshots"
-version = "0.2.2"
+version = "0.3.0"
 description = "Renders the website's chart screenshots from the code examples next to them"
 license.workspace = true
 edition.workspace = true

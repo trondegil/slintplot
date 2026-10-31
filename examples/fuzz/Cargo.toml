@@ -1,6 +1,6 @@
 [package]
 name = "slintplot-fuzz"
-version = "0.2.2"
+version = "0.3.0"
 description = "Feeds every SlintPlot chart random and malformed data, to check that nothing panics"
 license.workspace = true
 edition.workspace = true

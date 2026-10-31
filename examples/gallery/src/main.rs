@@ -3,11 +3,11 @@
 //! `cargo run -p gallery` opens it; `cargo run -p gallery -- --snapshot <dir>`
 //! renders every sample to PNG files instead.
 
+mod code;
 #[cfg(not(target_arch = "wasm32"))]
 mod dock_icon;
 #[cfg(not(target_arch = "wasm32"))]
 mod snapshot;
-mod code;
 mod stream_model;
 
 use std::cell::{Cell, RefCell};
