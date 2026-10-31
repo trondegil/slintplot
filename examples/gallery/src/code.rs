@@ -17,22 +17,16 @@ const MAX_ITEMS: usize = 1000;
 /// List items this short fill the lines; longer ones get a line each.
 const SHORT: usize = 40;
 
-/// Charts that are not in a release on crates.io yet.
-const UNRELEASED: &[&str] =
-    &["BulletChart", "CandlestickChart", "GanttChart", "MatrixChart", "RadialBarChart"];
-
 /// The code panel's tabs for the sample `id`: its Slint code with the
 /// gallery's current data, and the Rust project around it.
 pub fn sample_files(ui: &Gallery, id: &str) -> ModelRc<CodeFile> {
     let slint = sample_code(ui, id);
-    let unreleased: Vec<&str> =
-        UNRELEASED.iter().copied().filter(|chart| words(&slint).contains(chart)).collect();
     let files = [
         ("ui/app.slint", slint.clone()),
         ("src/main.rs", MAIN_RS.to_string()),
         ("build.rs", BUILD_RS.to_string()),
-        ("Cargo.toml", cargo_toml(id, &unreleased)),
-        ("How to run", how_to_run(&unreleased, slint.contains("debug(self.status)"))),
+        ("Cargo.toml", cargo_toml(id)),
+        ("How to run", how_to_run(slint.contains("debug(self.status)"))),
     ];
     let files = files.map(|(name, code)| CodeFile { name: name.into(), code: code.into() });
     ModelRc::new(VecModel::from(files.to_vec()))
@@ -59,38 +53,26 @@ fn main() {
 }
 ";
 
-/// The project's Cargo.toml: SlintPlot from crates.io, or from GitHub for
-/// charts it doesn't have yet.
-fn cargo_toml(id: &str, unreleased: &[&str]) -> String {
-    let (note, slintplot) = if unreleased.is_empty() {
-        (String::new(), "\"0.2\"")
-    } else {
-        (
-            format!(
-                "# {} {} not in a release on crates.io yet: SlintPlot comes from GitHub.\n",
-                unreleased.join(" and "),
-                if unreleased.len() == 1 { "is" } else { "are" }
-            ),
-            "{ git = \"https://github.com/trondegil/slintplot\" }",
-        )
-    };
+/// The project's Cargo.toml, with SlintPlot of the gallery's version: its
+/// major and minor number.
+fn cargo_toml(id: &str) -> String {
+    let version = env!("CARGO_PKG_VERSION").rsplit_once('.').map_or("", |(minor, _)| minor);
     format!(
         "[package]\n\
          name = \"{id}-example\"\n\
          version = \"0.1.0\"\n\
          edition = \"2021\"\n\n\
-         {note}\
          [dependencies]\n\
          slint = \"1.18\"\n\
-         slintplot = {slintplot}\n\n\
+         slintplot = \"{version}\"\n\n\
          [build-dependencies]\n\
          slint-build = \"1.18\"\n\
-         slintplot = {slintplot}\n"
+         slintplot = \"{version}\"\n"
     )
 }
 
 /// The steps from the other tabs to a running chart.
-fn how_to_run(unreleased: &[&str], prints_clicks: bool) -> String {
+fn how_to_run(prints_clicks: bool) -> String {
     let mut text = String::from(
         "\
 This chart runs as a small Rust app made of the files in the other tabs.
@@ -111,14 +93,6 @@ This chart runs as a small Rust app made of the files in the other tabs.
     );
     if prints_clicks {
         text.push_str("\nClicks on the chart are printed in the terminal.\n");
-    }
-    if !unreleased.is_empty() {
-        text.push_str(&format!(
-            "\n{} {} not in a release on crates.io yet, so Cargo.toml takes SlintPlot\n\
-             from GitHub.\n",
-            unreleased.join(" and "),
-            if unreleased.len() == 1 { "is" } else { "are" }
-        ));
     }
     text.push_str(
         "\n\
@@ -500,6 +474,13 @@ mod tests {
                 assert!(property_type(&name).is_some(), "{}: root.{name}", sample.id);
             }
         }
+    }
+
+    #[test]
+    fn cargo_toml_takes_slintplot_of_the_gallerys_version() {
+        let version = env!("CARGO_PKG_VERSION");
+        let minor = &version[..version.rfind('.').unwrap()];
+        assert!(cargo_toml("bar").contains(&format!("slintplot = \"{minor}\"\n")));
     }
 
     #[test]
