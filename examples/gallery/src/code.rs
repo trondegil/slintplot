@@ -46,7 +46,9 @@ pub fn sample_code(ui: &Gallery, id: &str) -> String {
         window.push('\n');
     }
     window.push_str("}\n");
-    format!("{}\n{window}", import_line(&window))
+    // ChartEngine is exported so that slintplot::register! can connect it.
+    let code = format!("export {{ ChartEngine }}\n\n{window}");
+    format!("{}\n{code}", import_line(&code))
 }
 
 /// The sample's code from ui/gallery.slint, if it has any.
