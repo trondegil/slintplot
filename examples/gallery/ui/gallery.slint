@@ -922,7 +922,11 @@ component TaskEditor inherits Rectangle {
         drop-shadow-color: #00000040;
         // Clicks on the dialog don't close it.
         TouchArea { }
+        // Has the focus when the dialog opens, for Escape and Enter.
         FocusScope {
+            init => {
+                self.focus();
+            }
             key-pressed(event) => {
                 if event.text == Key.Escape {
                     root.close();
@@ -945,13 +949,8 @@ component TaskEditor inherits Rectangle {
                 }
                 EditorRow {
                     label: "Name";
-                    name-edit := LineEdit {
+                    LineEdit {
                         text <=> root.name;
-                        // Typing replaces the name.
-                        init => {
-                            self.focus();
-                            self.select-all();
-                        }
                         accepted => {
                             root.done();
                         }
