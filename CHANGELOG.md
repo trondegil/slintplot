@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Example apps
+
+- **Gallery:** builds without Slint's binding loop warnings. The window
+  shrinks to phone width, so a browser window made narrower switches to the
+  phone layout instead of cutting off the page; the layout switches at 900px
+  instead of 720px, where the sample list and header no longer fit beside the
+  chart.
+
 ## 0.3.0
 
 ### Added

@@ -1053,6 +1053,9 @@ export component Gallery inherits Window {
     icon: @image-url("../icon.png");
     preferred-width: 1280px;
     preferred-height: 820px;
+    // Phone width, rather than the wide layout's minimum, so the window can
+    // shrink below the width where the narrow layout takes over.
+    min-width: 320px;
     // Windows and Linux: the app draws the frame, with rounded corners over
     // a transparent window.
     no-frame: WindowFrame.drawn;
@@ -1121,9 +1124,12 @@ export component Gallery inherits Window {
         ? ["English", "Dansk", "Deutsch", "Español", "Français", "Italiano", "Nederlands", "Norsk", "Polski", "Português", "Suomi", "Svenska", "日本語", "中文"]
         : ["English", "Dansk", "Deutsch", "Español", "Français", "Italiano", "Nederlands", "Norsk", "Polski", "Português", "Suomi", "Svenska"];
 
-    // Phone-sized windows: the sample list opens over the chart from the
-    // menu button, and the header, buttons and gauges wrap.
-    private property <bool> narrow: self.width < 720px;
+    // Phone and small tablet windows, under 900px, where the sample list
+    // and the header don't fit beside the chart: the sample list opens over
+    // the chart from the menu button, and the header, buttons and gauges wrap. Set when the
+    // width changes rather than bound to it: the layout depends on it, and
+    // the window's size on the layout.
+    private property <bool> narrow;
     // The sample list beside the chart, on wide windows.
     in-out property <bool> show-samples: true;
     // The sample list over the chart, on narrow windows.
@@ -1175,8 +1181,12 @@ export component Gallery inherits Window {
         ChartTheme.title-font-size = self.narrow ? 14px : 15px;
     }
     init => {
+        self.narrow = self.width < 900px;
         self.fit-text();
         self.apply-look();
+    }
+    changed width => {
+        self.narrow = self.width < 900px;
     }
     changed narrow => {
         self.fit-text();
