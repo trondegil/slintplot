@@ -156,7 +156,7 @@ bars with `series-type`, such as an average line over bars. See
 - **[Axes](https://slintplot.dev/#axes).** Titles, fixed ranges, logarithmic scales, prefixes, suffixes and decimals, and a second value axis on the right with ticks lined up with the first.
 - **[Data labels](https://slintplot.dev/#data-labels).** On bars, points and pie slices, as values or percentages.
 - **[Interaction](https://slintplot.dev/#interaction).** Tooltips and hover highlights, a clickable legend that hides datasets or slices, click callbacks, and keyboard navigation with accessibility labels.
-- **Zoom and pan.** In line, bar, scatter, time series and Gantt charts, with the mouse wheel, by dragging, or from code.
+- **Zoom and pan.** In line, bar, scatter, time series, candlestick and Gantt charts, with the mouse wheel, by dragging, or from code.
 - **[Themes](https://slintplot.dev/#theming).** Five built-in palettes (Modern, Material, Corporate, Mono and Pastel) with light and dark variants, or your own colors. Dark mode follows Slint's `Palette`.
 - **[Languages](https://slintplot.dev/#languages).** Numbers and dates in the conventions of 14 languages, or your own.
 - **[Streaming](https://slintplot.dev/#streaming) and [large datasets](https://slintplot.dev/#large-datasets).** Charts read values from the models on demand, and decimation draws a million-point line as one span per pixel column.
