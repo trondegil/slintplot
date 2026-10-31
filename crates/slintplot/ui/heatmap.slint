@@ -390,9 +390,9 @@ export component CalendarHeatmap {
             flick := Flickable {
                 x: root.label-width;
                 width: parent.width - root.label-width;
-                viewport-width: root.step * root.calendar.weeks;
+                content-width: root.step * root.calendar.weeks;
                 // Starts at the latest weeks, until scrolled.
-                viewport-x: min(0px, self.width - self.viewport-width);
+                content-x: min(0px, self.width - self.content-width);
 
                 grid := Rectangle {
                     x: 0;
@@ -477,7 +477,7 @@ export component CalendarHeatmap {
             }
 
             if keys.has-focus: Rectangle {
-                x: max(0px, flick.x + flick.viewport-x - 3px);
+                x: max(0px, flick.x + flick.content-x - 3px);
                 y: grid.y - 3px;
                 width: min(grid.width + 6px, flick.width + 6px);
                 height: grid.height + 6px;
@@ -489,7 +489,7 @@ export component CalendarHeatmap {
             if root.show-tooltip && root.hovered-index >= 0: Rectangle {
                 // At the mouse, or above the day selected with the keyboard.
                 property <int> day: root.hovered-index + root.first-weekday;
-                property <length> anchor-x: flick.x + flick.viewport-x + (touch.has-hover ? touch.mouse-x : (floor(self.day / 7) + 0.5) * root.step);
+                property <length> anchor-x: flick.x + flick.content-x + (touch.has-hover ? touch.mouse-x : (floor(self.day / 7) + 0.5) * root.step);
                 property <length> anchor-y: grid.y + (touch.has-hover ? touch.mouse-y : mod(self.day, 7) * root.step);
                 property <float> value: root.values[root.hovered-index];
                 x: clamp(self.anchor-x - self.width / 2, 0px, max(0px, area.width - self.width));

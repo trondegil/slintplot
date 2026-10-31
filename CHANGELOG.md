@@ -69,6 +69,9 @@
 
 - Waterfall charts take their rise and fall colors from the theme, so they
   follow the palette. The default palette's colors are the same as before.
+- The calendar heatmap uses Slint's `content-x` and `content-width`, so
+  building with SlintPlot no longer warns about the deprecated `viewport-x`
+  and `viewport-width`.
 
 ### Breaking changes
 
