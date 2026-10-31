@@ -10,7 +10,10 @@ slintplot-gallery                    # open the app
 slintplot-gallery --snapshot <dir>   # render every sample to PNG, without a window
 ```
 
-![The gallery app](https://slintplot.dev/screenshots/light.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/screenshots/tour-anim-dark.webp">
+  <img src="https://slintplot.dev/screenshots/tour-anim.webp" alt="The gallery app: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list">
+</picture>
 
 `ui/gallery.slint` has a working example of every chart. The code button
 (`</>`) at the top right shows the sample as a small Rust app, a file per tab:
