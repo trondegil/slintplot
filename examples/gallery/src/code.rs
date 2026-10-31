@@ -5,7 +5,7 @@
 use slint::{Color, Model, ModelRc, SharedString, VecModel};
 
 use crate::{
-    ChartCandle, CodeFile, ChartDataset, ChartLegendPosition, ChartSeriesType, ChartSlice,
+    ChartCandle, ChartGanttTask, CodeFile, ChartDataset, ChartLegendPosition, ChartSeriesType, ChartSlice,
     ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, ChartXY, Gallery, SAMPLE_CODE,
     SLINTPLOT_NAMES,
 };
@@ -112,6 +112,10 @@ fn sample_code(ui: &Gallery, id: &str) -> String {
     };
     let mut properties = String::new();
     for name in properties_read(body) {
+        if let Some(callback) = callback_declaration(&name) {
+            properties.push_str(callback);
+            continue;
+        }
         let (ty, value) = property(ui, &name);
         let start = format!("    property <{ty}> {name}: ");
         properties.push_str(&format!("{start}{};\n", value.render(start.len())));
@@ -190,6 +194,19 @@ fn import_line(code: &str) -> String {
     format!("import {{\n    {},\n}} from \"@slintplot\";\n", used.join(",\n    "))
 }
 
+/// The declaration of the gallery callback `name`, if it is one, so that the
+/// code that calls it compiles.
+fn callback_declaration(name: &str) -> Option<&'static str> {
+    match name {
+        "edit-task" => Some(
+            "    // The gallery opens a dialog here that edits the task; see\n\
+             \x20   // TaskEditor in examples/gallery/ui/gallery.slint.\n\
+             \x20   callback edit-task(index: int);\n",
+        ),
+        _ => None,
+    }
+}
+
 /// The type of the gallery property `name`, and its value now.
 fn property(ui: &Gallery, name: &str) -> (&'static str, Lit) {
     let value = match name {
@@ -207,6 +224,7 @@ fn property(ui: &Gallery, name: &str) -> (&'static str, Lit) {
         "sun" => list(ui.get_sun()),
         "steps" => list(ui.get_steps()),
         "candles" => list(ui.get_candles()),
+        "gantt-tasks" => list(ui.get_gantt_tasks()),
         "gauge-value" => ui.get_gauge_value().lit(),
         "view-start" => ui.get_view_start().lit(),
         "view-end" => ui.get_view_end().lit(),
@@ -236,6 +254,7 @@ pub fn property_type(name: &str) -> Option<&'static str> {
         "sun" => "[ChartSunburstItem]",
         "steps" => "[ChartWaterfallStep]",
         "candles" => "[ChartCandle]",
+        "gantt-tasks" => "[ChartGanttTask]",
         "gauge-value" | "view-start" | "view-end" => "float",
         "calendar-colors" => "int",
         "legend-position" => "ChartLegendPosition",
@@ -425,6 +444,33 @@ impl ToLit for ChartLegendPosition {
     }
 }
 
+/// Gantt task times in whole days are written as days of 86400 seconds.
+impl ToLit for ChartGanttTask {
+    fn lit(&self) -> Lit {
+        let time = |seconds: f32| {
+            let days = seconds / 86400.0;
+            if seconds != 0.0 && days.fract() == 0.0 {
+                Lit::Atom(format!("{days} * 86400"))
+            } else {
+                seconds.lit()
+            }
+        };
+        let mut fields = vec![("label", self.label.lit())];
+        if !self.group.is_empty() {
+            fields.push(("group", self.group.lit()));
+        }
+        fields.push(("start", time(self.start)));
+        fields.push(("end", time(self.end)));
+        if self.progress != 0.0 {
+            fields.push(("progress", self.progress.lit()));
+        }
+        if self.color.alpha() != 0 {
+            fields.push(("color", self.color.lit()));
+        }
+        Lit::Struct(fields)
+    }
+}
+
 /// Struct literals with the fields that differ from their defaults.
 macro_rules! struct_lit {
     ($($ty:ident { $($field:ident: $name:literal),* })*) => {$(
@@ -457,6 +503,7 @@ struct_lit! {
         label: "label", value: "value", parent: "parent", color: "color", hidden: "hidden"
     }
     ChartWaterfallStep { label: "label", value: "value", total: "total" }
+
     ChartCandle {
         x: "x", open: "open", high: "high", low: "low", close: "close", volume: "volume"
     }
@@ -471,7 +518,11 @@ mod tests {
         for sample in crate::SAMPLES {
             let body = template(sample.id).unwrap_or_else(|| panic!("no code for {}", sample.id));
             for name in properties_read(body) {
-                assert!(property_type(&name).is_some(), "{}: root.{name}", sample.id);
+                assert!(
+                    property_type(&name).is_some() || callback_declaration(&name).is_some(),
+                    "{}: root.{name}",
+                    sample.id
+                );
             }
         }
     }

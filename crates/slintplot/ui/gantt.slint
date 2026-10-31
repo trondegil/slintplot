@@ -180,6 +180,7 @@ export component GanttChart {
 
             // The rows' backgrounds and labels, under the plot and beside it.
             Rectangle {
+                x: 0;
                 y: plot.y;
                 width: plot.x + plot.width;
                 height: plot.height;
@@ -206,6 +207,7 @@ export component GanttChart {
 
                 // Hovering or clicking a task's label is the same as its bar.
                 label-touch := TouchArea {
+                    x: 0;
                     width: frame.label-width;
                     clicked => {
                         keys.focus();

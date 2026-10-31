@@ -17,7 +17,9 @@ slintplot-gallery --snapshot <dir>   # render every sample to PNG, without a win
 `ui/app.slint`, the sample's code taken from that file at build time, as a
 complete window with the data the chart shows at that moment; `src/main.rs`,
 `build.rs` and `Cargo.toml`; and How to run, the steps from the files to a
-running chart. Copy copies the tab shown. Clicking a chart shows the click callback and what
+running chart. Copy copies the tab shown. In the Gantt sample, clicking a task
+opens a dialog that edits its name, group, dates and progress, and the chart
+updates when you save. Clicking a chart shows the click callback and what
 was clicked, such as `slice-clicked: Safari, 19`, at the bottom right.
 
 On Linux, Slint needs the fontconfig and xkbcommon development packages first

@@ -26,6 +26,28 @@ fn open_code(ui: &Gallery) {
     ui.set_code_open(true);
 }
 
+/// The Gantt sample's release plan: label, group, start and end in days
+/// after 15 December 2026, and the share done.
+const RELEASE_PLAN: [(&str, &str, f32, f32, f32); 17] = [
+    ("User research", "Design", 0.0, 10.0, 1.0),
+    ("Wireframes", "Design", 7.0, 21.0, 1.0),
+    ("Visual design", "Design", 17.0, 31.0, 0.6),
+    ("Design review", "Design", 31.0, 31.0, 1.0),
+    ("Backend API", "Build", 21.0, 56.0, 0.9),
+    ("Database migration", "Build", 24.0, 38.0, 1.0),
+    ("Web app", "Build", 28.0, 63.0, 0.7),
+    ("Mobile apps (iOS and Android)", "Build", 35.0, 70.0, 0.5),
+    ("Feature freeze", "Build", 70.0, 70.0, 0.0),
+    ("Automated tests", "Test", 42.0, 77.0, 0.4),
+    ("QA and bug fixing", "Test", 56.0, 84.0, 0.0),
+    ("Public beta", "Test", 70.0, 84.0, 0.0),
+    ("Security audit", "Test", 63.0, 73.0, 0.0),
+    ("Docs and website", "Launch", 70.0, 88.0, 0.0),
+    ("Marketing campaign", "Launch", 77.0, 95.0, 0.0),
+    ("App store review", "Launch", 84.0, 89.0, 0.0),
+    ("Release", "Launch", 91.0, 91.0, 0.0),
+];
+
 const MONTHS: [&str; 12] = [
     "January",
     "February",
@@ -776,9 +798,9 @@ const SAMPLES: &[Sample] = &[
         "gantt",
         "Business charts",
         "Gantt",
-        "GanttChart: a release plan in four groups, with progress written after each bar, milestones and a line at today. Scroll to zoom, drag to pan.",
+        "GanttChart: a release plan in four groups, with progress written after each bar, milestones and a line at today. Click a task to edit it. Scroll to zoom, drag to pan.",
         Shape::Gantt,
-        &["Reset zoom"],
+        &["Reset"],
     ),
     sample(
         "pie-labels",
@@ -869,6 +891,7 @@ struct State {
     sun: Rc<VecModel<ChartSunburstItem>>,
     steps: Rc<VecModel<ChartWaterfallStep>>,
     candles: Rc<VecModel<ChartCandle>>,
+    gantt: Rc<VecModel<ChartGanttTask>>,
     /// Whether Randomize was pressed, for samples that start with real data.
     randomized: bool,
     live: Live,
@@ -1578,7 +1601,26 @@ impl State {
         self.tree_items(false);
         self.business_data(false);
 
+        // The release plan as it was, without the task editor's changes.
+        self.gantt.set_vec(if sample.shape == Shape::Gantt {
+            let day = 86400.0;
+            RELEASE_PLAN
+                .iter()
+                .map(|&(label, group, start, end, progress)| ChartGanttTask {
+                    label: label.into(),
+                    group: group.into(),
+                    start: start * day,
+                    end: end * day,
+                    progress,
+                    ..Default::default()
+                })
+                .collect()
+        } else {
+            Vec::new()
+        });
+
         let Some(ui) = self.ui.upgrade() else { return };
+        ui.set_editing_task(-1);
         ui.set_sample(sample.id.into());
         ui.set_sample_title(sample.title.into());
         ui.set_description(sample.description.into());
@@ -1892,7 +1934,7 @@ impl State {
                 ui.set_decimate(false);
                 ui.set_status("Without decimation, 100,000-point lines are slow to draw.".into());
             }
-            "Reset zoom" => self.select(self.sample),
+            "Reset zoom" | "Reset" => self.select(self.sample),
             _ => {}
         }
     }
@@ -1954,6 +1996,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         sun: Rc::new(VecModel::default()),
         steps: Rc::new(VecModel::default()),
         candles: Rc::new(VecModel::default()),
+        gantt: Rc::new(VecModel::default()),
         randomized: false,
         live: Live {
             rate: 30,
@@ -1979,6 +2022,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         ui.set_sun(s.sun.clone().into());
         ui.set_steps(s.steps.clone().into());
         ui.set_candles(s.candles.clone().into());
+        ui.set_gantt_tasks(s.gantt.clone().into());
     }
     state.borrow_mut().select(&SAMPLES[0]);
 
