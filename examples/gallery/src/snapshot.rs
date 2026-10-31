@@ -18,6 +18,14 @@ pub const HEIGHT: u32 = 820;
 thread_local! {
     /// The window's size in pixels, changed by `resize`.
     static SIZE: Cell<(u32, u32)> = const { Cell::new((WIDTH, HEIGHT)) };
+    /// The headless window's clock: it moves only when `settle` moves it, so
+    /// animations and timers don't depend on how fast the machine renders.
+    static NOW: Cell<Duration> = const { Cell::new(Duration::ZERO) };
+}
+
+/// The window's size in pixels.
+pub fn size() -> (u32, u32) {
+    SIZE.get()
 }
 
 /// Changes the window's size for the following renders.
@@ -32,6 +40,10 @@ impl Platform for Headless {
     fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, slint::PlatformError> {
         Ok(self.0.clone())
     }
+
+    fn duration_since_start(&self) -> Duration {
+        NOW.get()
+    }
 }
 
 /// Installs the headless platform. Must run before any component is created.
@@ -42,9 +54,9 @@ pub fn install() -> Rc<MinimalSoftwareWindow> {
     window
 }
 
-/// Lets timers and animations run for `duration` of wall-clock time.
+/// Lets timers and animations run for `duration`.
 pub fn settle(duration: Duration) {
-    std::thread::sleep(duration);
+    NOW.set(NOW.get() + duration);
     slint::platform::update_timers_and_animations();
 }
 

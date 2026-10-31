@@ -5,3 +5,4 @@
 /docs/demo/gallery.js
 /docs/demo/gallery_bg.wasm
 /docs/**/*.webp
+!/docs/screenshots/tour-anim*.webp

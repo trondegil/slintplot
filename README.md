@@ -34,8 +34,8 @@ to the mouse.
 - **Large datasets.** Min-max decimation and on-demand data reading for millions of points.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/screenshots/light-dark.png">
-  <img src="https://slintplot.dev/screenshots/light.png" alt="The gallery app: a bar chart with axis titles, data labels and currency formatting">
+  <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/screenshots/tour-anim-dark.webp">
+  <img src="https://slintplot.dev/screenshots/tour-anim.webp" alt="The gallery app: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list">
 </picture>
 
 *The gallery app shows every chart type with live data, themes and dark mode.
@@ -240,6 +240,7 @@ cargo run --release -p slintplot-stress -- --bench             # headless timing
 cargo run --release -p slintplot-stress -- --snapshot docs/screenshots  # the stress test screenshots
 cargo run --release -p slintplot-gallery -- --docs docs/screenshots     # the website's gallery pictures
 cargo run --release -p slintplot-docshots -- docs/screenshots/charts   # the chart pictures, from the page's code
+docs/make-video.sh                                                     # the gallery animation at the top of the website and README
 ```
 
 Each code example on the website with a screenshot is marked `<pre data-shot="name">`

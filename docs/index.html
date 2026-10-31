@@ -177,7 +177,7 @@
   .placeholder strong { display: block; color: var(--text); margin-bottom: 4px; }
   .shot { margin: 14px 0 20px; }
   .shot figcaption { margin-top: 8px; font-size: 14px; color: var(--text-muted); }
-  .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
+  .shot img, .shot video { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
   .swatches { display: flex; gap: 4px; }
   .swatches span { width: 18px; height: 18px; border-radius: 4px; display: inline-block; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
@@ -368,7 +368,7 @@
   <div class="card"><h2>Interactive</h2><p>Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.</p></div>
   <div class="card"><h2>Large datasets</h2><p>Min-max decimation and on-demand data reading for millions of points.</p></div>
 </div>
-<figure class="shot"><img width="1280" height="820" class="when-light" src="screenshots/light.webp" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy"><img width="1280" height="820" class="when-dark" src="screenshots/light-dark.webp" alt="The gallery: a bar chart with axis titles, data labels and currency formatting" loading="lazy">
+<figure class="shot"><video class="tour when-light" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour.mp4" type="video/mp4"></video><video class="tour when-dark" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour-dark.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour-dark.mp4" type="video/mp4"></video>
   <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
   <a href="demo/">Try it in your browser</a>, install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
   <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.3.0">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
@@ -2537,6 +2537,25 @@ built with; new products and newer SlintPlot versions need an active license. Yo
     });
   };
   pickLogo();
+  // The gallery's animation: only the theme's video plays, once it's on
+  // screen, and none for visitors who ask for less motion; they see its first
+  // frame.
+  const tours = document.querySelectorAll("video.tour");
+  const lessMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  let tourInView = false;
+  const playTour = () => tours.forEach((video) => {
+    if (tourInView && !lessMotion.matches && video.offsetParent !== null) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  });
+  new IntersectionObserver((entries) => {
+    tourInView = entries[entries.length - 1].isIntersecting;
+    playTour();
+  }).observe(tours[0].parentElement);
+  lessMotion.addEventListener("change", playTour);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", playTour);
   // The theme button: switches between light and dark, and remembers it.
   document.querySelectorAll(".theme-button").forEach((themeButton) => themeButton.addEventListener("click", () => {
     const dark = root.dataset.theme
@@ -2545,6 +2564,7 @@ built with; new products and newer SlintPlot versions need an active license. Yo
     root.dataset.theme = dark ? "light" : "dark";
     try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
     pickLogo();
+    playTour();
   }));
   // A copy button on every code example.
   document.querySelectorAll("main pre").forEach((pre) => {

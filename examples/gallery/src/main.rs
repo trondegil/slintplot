@@ -9,6 +9,8 @@ mod dock_icon;
 #[cfg(not(target_arch = "wasm32"))]
 mod snapshot;
 mod stream_model;
+#[cfg(not(target_arch = "wasm32"))]
+mod video;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -2092,16 +2094,22 @@ fn run_live_timer(timer: &slint::Timer, running: &Cell<u32>, state: &Rc<RefCell<
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    // `--docs`: the website's screenshots, rather than every snapshot.
+    // `--docs`: the website's screenshots, rather than every snapshot;
+    // `--video`: the frames of the website's animation.
     let mut docs_dir = None;
+    let mut video_dir = None;
     let snapshot_dir = match (args.next().as_deref(), args.next()) {
         (Some("--snapshot"), Some(dir)) => Some(std::path::PathBuf::from(dir)),
         (Some("--docs"), Some(dir)) => {
             docs_dir = Some(std::path::PathBuf::from(dir));
             docs_dir.clone()
         }
+        (Some("--video"), Some(dir)) => {
+            video_dir = Some(std::path::PathBuf::from(dir));
+            video_dir.clone()
+        }
         (None, _) => None,
-        _ => return Err("usage: gallery [--snapshot <dir> | --docs <dir>]".into()),
+        _ => return Err("usage: gallery [--snapshot <dir> | --docs <dir> | --video <dir>]".into()),
     };
     let headless = snapshot_dir.as_ref().map(|_| snapshot::install());
     // macOS: keep the system frame, so the window has the system's buttons
@@ -2123,6 +2131,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (ui, state) = gallery()?;
     match (headless, snapshot_dir) {
         (Some(window), Some(dir)) if docs_dir.is_some() => docs(&ui, &state, &window, &dir),
+        (Some(window), Some(dir)) if video_dir.is_some() => video(&ui, &state, &window, &dir),
         (Some(window), Some(dir)) => snapshots(&ui, &state, &window, &dir),
         _ => {
             init_window_frame(&ui);
@@ -2323,6 +2332,67 @@ fn docs(
         snapshot::render(window);
         snapshot::settle(Duration::from_millis(1100));
         snapshot::save(window, &dir.join(format!("{name}.png")))?;
+    }
+    Ok(())
+}
+
+/// Renders the frames of the website's animation of the gallery into
+/// `dir/light` and `dir/dark`: hovering the bars of the page's first picture,
+/// randomizing them, and opening the radial bar and Gantt charts.
+#[cfg(not(target_arch = "wasm32"))]
+fn video(
+    ui: &Gallery,
+    state: &Rc<RefCell<State>>,
+    window: &Rc<slint::platform::software_renderer::MinimalSoftwareWindow>,
+    dir: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use video::Step::*;
+    ui.show()?;
+    snapshot::resize(window, snapshot::WIDTH, snapshot::HEIGHT);
+    let steps = [
+        Wait(0.8),
+        // Tooltips on the bars.
+        Move(529.0, 420.0, 1.0),
+        Wait(0.6),
+        Move(905.0, 430.0, 1.4),
+        Wait(0.6),
+        // New values, twice.
+        Move(325.0, 769.0, 1.1),
+        Wait(0.2),
+        Click,
+        Wait(1.3),
+        Click,
+        Wait(1.3),
+        // The radial bar chart grows in; a tooltip on a ring.
+        Move(69.0, 584.0, 1.1),
+        Wait(0.2),
+        Click,
+        Wait(1.2),
+        Move(560.0, 300.0, 0.8),
+        Wait(1.0),
+        // Down the sample list to the Gantt chart; a tooltip on a task.
+        Move(120.0, 500.0, 0.8),
+        Scroll(-3000.0, 1.2),
+        Wait(0.3),
+        Move(60.0, 664.0, 0.6),
+        Wait(0.2),
+        Click,
+        Wait(1.2),
+        Move(700.0, 330.0, 0.9),
+        Wait(1.2),
+        Move(1150.0, 770.0, 1.0),
+    ];
+    for (dark, name) in [(false, "light"), (true, "dark")] {
+        ui.set_dark_mode(dark);
+        // The page's first picture, with the same data.
+        state.borrow_mut().rng = Rng(SEED);
+        let first = SAMPLES.iter().find(|s| s.id == "axes-format").unwrap();
+        state.borrow_mut().select(first);
+        snapshot::render(window);
+        snapshot::settle(Duration::from_millis(1100));
+        video::record(window, &dir.join(name), (1150.0, 770.0), &steps, 0.8)?;
+        // The sample list back at the top.
+        snapshot::scroll(window, 120.0, 400.0, 5000.0);
     }
     Ok(())
 }
