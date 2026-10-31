@@ -2002,6 +2002,12 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
     ui.on_dark_mode_changed(move || s.borrow_mut().recolor_survey());
     let s = state.clone();
     ui.on_language_changed(move || s.borrow_mut().relabel());
+    let weak = ui.as_weak();
+    ui.on_show_code(move || {
+        if let Some(ui) = weak.upgrade() {
+            open_code(&ui);
+        }
+    });
     #[cfg(not(target_arch = "wasm32"))]
     ui.on_open_url(|url| open_in_browser(&url));
     Ok((ui, state))
@@ -2208,12 +2214,6 @@ fn main() {
     ui.set_cjk_fonts(false);
     ui.on_open_url(|url| open_page(url.as_str()));
     ui.on_copy_text(|text| copy_to_clipboard(text.as_str()));
-    let weak = ui.as_weak();
-    ui.on_show_code(move || {
-        if let Some(ui) = weak.upgrade() {
-            open_code(ui);
-        }
-    });
     ui.run().expect("the event loop");
 }
 
