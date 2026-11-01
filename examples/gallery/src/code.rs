@@ -236,14 +236,10 @@ fn property(ui: &Gallery, name: &str) -> (&'static str, Lit) {
         "sun" => list(ui.get_sun()),
         "steps" => list(ui.get_steps()),
         "candles" => list(ui.get_candles()),
-        "run-values" => list(ui.get_run_values()),
-        "visit-values" => list(ui.get_visit_values()),
-        "run-days" => list(ui.get_run_days()),
-        "run-slots" => list(ui.get_run_slots()),
-        "visit-days" => list(ui.get_visit_days()),
-        "visit-hours" => list(ui.get_visit_hours()),
-        "run-total" => ui.get_run_total().lit(),
-        "visit-total" => ui.get_visit_total().lit(),
+        "ring-values" => list(ui.get_ring_values()),
+        "ring-x-labels" => list(ui.get_ring_x_labels()),
+        "ring-y-labels" => list(ui.get_ring_y_labels()),
+        "ring-totals" => list(ui.get_ring_totals()),
         "gantt-tasks" => list(ui.get_gantt_tasks()),
         "gauge-value" => ui.get_gauge_value().lit(),
         "view-start" => ui.get_view_start().lit(),
@@ -266,11 +262,9 @@ fn property(ui: &Gallery, name: &str) -> (&'static str, Lit) {
 pub fn property_type(name: &str) -> Option<&'static str> {
     Some(match name {
         "narrow" | "ohlc" | "skip-gaps" | "decimate" => "bool",
-        "labels" | "row-labels" | "run-days" | "run-slots" | "visit-days" | "visit-hours" => {
-            "[string]"
-        }
-        "run-values" | "visit-values" => "[[float]]",
-        "run-total" | "visit-total" => "string",
+        "labels" | "row-labels" | "ring-totals" => "[string]",
+        "ring-values" => "[[[float]]]",
+        "ring-x-labels" | "ring-y-labels" => "[[string]]",
         "datasets" => "[ChartDataset]",
         "slices" | "channels" => "[ChartSlice]",
         "grid" | "growth" | "bullet-values" => "[float]",

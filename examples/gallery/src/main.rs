@@ -175,6 +175,18 @@ const RUN_CLASSES: [(&str, u32); 3] = [
     ("Failed", 0xe0636b),
 ];
 const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const SHORT_MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// One segmented ring chart's data in the gallery.
+struct RingSample {
+    values: Vec<Vec<f32>>,
+    x_labels: Vec<String>,
+    y_labels: Vec<String>,
+    /// The text in the middle.
+    total: String,
+}
 const SLICE_NAMES: [&str; 8] = [
     "Books", "Games", "Music", "Movies", "Apps", "Toys", "Sports", "Garden",
 ];
@@ -549,7 +561,7 @@ const SAMPLES: &[Sample] = &[
         "segmented-ring",
         "New",
         "Segmented ring charts",
-        "SegmentedRingChart: a heatmap bent into rings. The values are a matrix: one ring per row and one segment per column, so the chart takes the matrix's size. Runs every half hour for a week, colored by class (0 on its own, 1 needed you, 2 failed), with today's runs still to come left empty; and website visits by hour and weekday on a color scale. Randomize gives the runs a new size, 3 to 7 days of 12 to 96 runs.",
+        "SegmentedRingChart: a heatmap bent into rings, one ring per row of the matrix and one segment per column; each chart takes its size from its data. Runs by class (7 × 48), visits on a scale (7 × 24), a year of uptime with a ring per month of 28 to 31 days, ten years of temperatures on a diverging scale (10 × 12), three habits over 30 days, and one ring of pipeline steps. Randomize gives new data, and the runs a new size.",
         Shape::SegmentedRing,
         &["Randomize"],
     ),
@@ -1245,26 +1257,63 @@ impl State {
     }
 
     /// Fills the heatmap or calendar values of the current sample.
-    /// The segmented ring samples' matrices. The first starts as a week of
-    /// runs every half hour; randomized, it gets a new size, from 3 to 7 days
-    /// of runs every 15 minutes to every 2 hours, so the rings follow the
-    /// matrix. Today, the inner ring, has only run up to the time of day.
+    /// The segmented ring samples: six matrices of different sizes, one per
+    /// chart, with their column and row labels and the text in the middle.
+    /// Randomize gives new data, and the runs a new size.
     fn ring_data(&mut self, randomize: bool) {
         let Some(ui) = self.ui.upgrade() else {
             return;
         };
+        let charts = [
+            self.ring_runs(randomize),
+            self.ring_visits(),
+            self.ring_uptime(),
+            self.ring_temperature(),
+            self.ring_habits(),
+            self.ring_pipeline(),
+        ];
+        let strings = |items: Vec<String>| -> ModelRc<SharedString> {
+            ModelRc::new(VecModel::from(
+                items
+                    .into_iter()
+                    .map(SharedString::from)
+                    .collect::<Vec<_>>(),
+            ))
+        };
+        let mut values = Vec::new();
+        let mut x_labels = Vec::new();
+        let mut y_labels = Vec::new();
+        let mut totals = Vec::new();
+        for chart in charts {
+            values.push(ModelRc::new(VecModel::from(
+                chart.values.into_iter().map(floats).collect::<Vec<_>>(),
+            )));
+            x_labels.push(strings(chart.x_labels));
+            y_labels.push(strings(chart.y_labels));
+            totals.push(SharedString::from(chart.total));
+        }
+        ui.set_ring_values(ModelRc::new(VecModel::from(values)));
+        ui.set_ring_x_labels(ModelRc::new(VecModel::from(x_labels)));
+        ui.set_ring_y_labels(ModelRc::new(VecModel::from(y_labels)));
+        ui.set_ring_totals(ModelRc::new(VecModel::from(totals)));
+    }
+
+    /// Runs every half hour for a week, by class: 0 on its own, 1 needed
+    /// you, 2 failed. Today, the inner ring, has only run up to the time of
+    /// day. Randomized, from 3 to 7 days of runs every 15 minutes to every 2
+    /// hours.
+    fn ring_runs(&mut self, randomize: bool) -> RingSample {
         let (days, per_day) = if randomize {
-            let days = 3 + (self.rng.next() * 5.0) as usize;
-            let per_day = [12, 24, 48, 96][(self.rng.next() * 4.0) as usize % 4];
-            (days.min(7), per_day)
+            let days = (3 + (self.rng.next() * 5.0) as usize).min(7);
+            (days, [12, 24, 48, 96][(self.rng.next() * 4.0) as usize % 4])
         } else {
             (7, 48)
         };
         let now = (per_day as f32 * (0.45 + self.rng.next() * 0.4)) as usize;
         let mut runs = 0;
-        let rows: Vec<ModelRc<f32>> = (0..days)
+        let values = (0..days)
             .map(|day| {
-                let row: Vec<f32> = (0..per_day)
+                (0..per_day)
                     .map(|slot| {
                         if day == days - 1 && slot >= now || self.rng.next() < 0.03 {
                             return f32::NAN;
@@ -1273,36 +1322,34 @@ impl State {
                         let r = self.rng.next();
                         if r < 0.03 {
                             2.0
-                        } else if r < 0.15 {
+                        } else if r < 0.13 {
                             1.0
                         } else {
                             0.0
                         }
                     })
-                    .collect();
-                floats(row)
+                    .collect()
             })
             .collect();
         let minutes = 24 * 60 / per_day;
-        let slots: Vec<SharedString> = (0..per_day)
-            .map(|slot| {
-                let m = slot * minutes;
-                format!("{:02}:{:02}", m / 60, m % 60).into()
-            })
-            .collect();
-        let day_names: Vec<SharedString> = WEEKDAYS[7 - days..].iter().map(|&d| d.into()).collect();
-        ui.set_run_values(ModelRc::new(VecModel::from(rows)));
-        ui.set_run_days(ModelRc::new(VecModel::from(day_names)));
-        ui.set_run_slots(ModelRc::new(VecModel::from(slots)));
-        ui.set_run_total(runs.to_string().into());
+        RingSample {
+            values,
+            x_labels: (0..per_day)
+                .map(|slot| format!("{:02}:{:02}", slot * minutes / 60, slot * minutes % 60))
+                .collect(),
+            y_labels: WEEKDAYS[7 - days..].iter().map(|d| d.to_string()).collect(),
+            total: runs.to_string(),
+        }
+    }
 
-        // Visits by hour and weekday: busy in the working day, quieter at
-        // the weekend.
+    /// Website visits by weekday and hour, on a scale: busy in the working
+    /// day, quieter at the weekend.
+    fn ring_visits(&mut self) -> RingSample {
         let mut total = 0.0;
-        let visits: Vec<ModelRc<f32>> = (0..7)
+        let values = (0..7)
             .map(|day| {
                 let weekend = if day >= 5 { 0.55 } else { 1.0 };
-                let row: Vec<f32> = (0..24)
+                (0..24)
                     .map(|hour| {
                         let h = hour as f32;
                         let day_curve = (-(h - 13.0).powi(2) / 18.0).exp();
@@ -1316,20 +1363,147 @@ impl State {
                         total += v;
                         v
                     })
-                    .collect();
-                floats(row)
+                    .collect()
             })
             .collect();
-        let hours: Vec<SharedString> = (0..24).map(|h| format!("{h}").into()).collect();
-        ui.set_visit_values(ModelRc::new(VecModel::from(visits)));
-        ui.set_visit_days(ModelRc::new(VecModel::from(
-            WEEKDAYS
-                .iter()
-                .map(|&d| d.into())
-                .collect::<Vec<SharedString>>(),
-        )));
-        ui.set_visit_hours(ModelRc::new(VecModel::from(hours)));
-        ui.set_visit_total(format!("{:.1}k", total / 1000.0).into());
+        RingSample {
+            values,
+            x_labels: (0..24).map(|h| h.to_string()).collect(),
+            y_labels: WEEKDAYS.iter().map(|d| d.to_string()).collect(),
+            total: format!("{:.1}k", total / 1000.0),
+        }
+    }
+
+    /// A year of a service's days, one ring per month: rows as long as the
+    /// months, so the rings are ragged. 0 up, 1 degraded, 2 down.
+    fn ring_uptime(&mut self) -> RingSample {
+        const LENGTHS: [usize; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        let mut bad = 0.0;
+        let values: Vec<Vec<f32>> = LENGTHS
+            .iter()
+            .map(|&days| {
+                (0..days)
+                    .map(|_| {
+                        let r = self.rng.next();
+                        if r < 0.012 {
+                            bad += 1.0;
+                            2.0
+                        } else if r < 0.05 {
+                            bad += 0.25;
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (1..=31).map(|d| d.to_string()).collect(),
+            y_labels: SHORT_MONTHS.iter().map(|m| m.to_string()).collect(),
+            total: format!("{:.1}%", 100.0 - bad / 365.0 * 100.0),
+        }
+    }
+
+    /// Ten years of monthly temperatures against the normal, in degrees,
+    /// on a diverging scale: warming over the years.
+    fn ring_temperature(&mut self) -> RingSample {
+        let values: Vec<Vec<f32>> = (0..10)
+            .map(|year| {
+                (0..12)
+                    .map(|_| {
+                        let v = -0.4 + year as f32 * 0.14 + (self.rng.next() - 0.5) * 1.4;
+                        (v * 10.0).round() / 10.0
+                    })
+                    .collect()
+            })
+            .collect();
+        let last: f32 = values[9].iter().sum::<f32>() / 12.0;
+        RingSample {
+            values,
+            x_labels: SHORT_MONTHS.iter().map(|m| m.to_string()).collect(),
+            y_labels: (2016..2026).map(|y| y.to_string()).collect(),
+            total: format!("{last:+.1}°"),
+        }
+    }
+
+    /// Three habits over 30 days: 0 done, 1 skipped; the last days are
+    /// still to come.
+    fn ring_habits(&mut self) -> RingSample {
+        let today = 22;
+        let values: Vec<Vec<f32>> = (0..3)
+            .map(|_| {
+                (0..30)
+                    .map(|day| {
+                        if day >= today {
+                            f32::NAN
+                        } else if self.rng.next() < 0.18 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        // Days in a row, up to today, with every habit done.
+        let streak = (0..today)
+            .rev()
+            .take_while(|&d| values.iter().all(|row| row[d] == 0.0))
+            .count();
+        RingSample {
+            values,
+            x_labels: (1..=30).map(|d| format!("Day {d}")).collect(),
+            y_labels: ["Exercise", "Reading", "Meditation"]
+                .map(String::from)
+                .to_vec(),
+            total: streak.to_string(),
+        }
+    }
+
+    /// A release pipeline: one ring of 20 steps. 0 passed, 1 running,
+    /// 2 failed; the steps after the running one are still to come.
+    fn ring_pipeline(&mut self) -> RingSample {
+        const STEPS: [&str; 20] = [
+            "Checkout",
+            "Cache",
+            "Format",
+            "Lint",
+            "Build",
+            "Unit tests",
+            "Docs",
+            "Integration",
+            "Fuzz",
+            "Screenshots",
+            "Package",
+            "Sign",
+            "Upload",
+            "Staging",
+            "Smoke tests",
+            "Approve",
+            "Canary",
+            "Rollout",
+            "Verify",
+            "Notify",
+        ];
+        let running = 8 + (self.rng.next() * 9.0) as usize;
+        let values = vec![
+            (0..STEPS.len())
+                .map(|i| match i {
+                    _ if i < running && self.rng.next() < 0.1 => 2.0,
+                    _ if i < running => 0.0,
+                    _ if i == running => 1.0,
+                    _ => f32::NAN,
+                })
+                .collect(),
+        ];
+        RingSample {
+            values,
+            x_labels: STEPS.map(String::from).to_vec(),
+            y_labels: vec!["Release 0.4".into()],
+            total: format!("{running}/{}", STEPS.len()),
+        }
     }
 
     fn grid_values(&mut self) {
