@@ -4,19 +4,21 @@
 
 ### Added
 
-- `SegmentedRingChart`: concentric rings cut into short segments, each a
-  unit of the total. The items fill the segments in turn, sweeping round
-  from `start-angle` across all the rings, or ring by ring with
-  `fill-by-ring`, clockwise or not. `max-value` sets the value of all the
-  segments; the ones past the last item stay as a faint track. `rings` and
-  `segments` set how many there are; inner rings get fewer, so the segments
-  keep their length. The total, or `center-value`, is written in the middle
-  over `center-label`, and hovering an item shows its value and label there
-  instead, with a tooltip. A dot marks the start, and `glow` adds a soft
-  light in the middle. Segments light up in turn when the chart appears and
-  the items' ends move to new values. The arrow keys, Home, End and Enter
-  work, and `slice-clicked` reports clicks. Items are `ChartSlice`s, as in
-  pie charts.
+- `SegmentedRingChart`: a heatmap bent into concentric rings. `values` is a
+  matrix (`[[float]]`), one row per ring, the first outermost, and one
+  segment per column, going round from `start-angle`, either way. The matrix
+  sets the size: as many rings as rows and as many segments as the longest
+  row, so data of any shape fits without settings; shorter rows and missing
+  values (NaN) are left as a faint track. Cells are colored on a scale, as in
+  `HeatmapChart` (`color`, `diverging`, `fixed-range`), with a color scale
+  legend, or by class: with `classes` set, each value is a class index, and
+  the classes make a legend that hides them. `x-labels` go round the
+  outside, thinned where they don't fit, and `y-labels` name the rings in the
+  tooltip. `center-text` and `center-label` are written in the middle, and
+  hovering a cell shows it there instead. A dot can mark the start, and
+  `glow` adds a soft light in the middle. The cells sweep in when the chart
+  appears; the arrow keys go round and between the rings, and
+  `cell-clicked(row, column)` reports clicks.
 
 ### Example apps
 

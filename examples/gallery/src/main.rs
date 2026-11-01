@@ -167,15 +167,14 @@ const CHANNELS: [(&str, f32); 6] = [
     ("Forum", 3.0),
 ];
 // Product categories, not colors: the slices take the theme's colors.
-/// The segmented ring sample: a day of automated runs, by outcome.
-const RUNS: [(&str, f32); 3] = [("On its own", 471.0), ("Needed you", 58.0), ("Failed", 9.0)];
-/// The segmented ring sample: support tickets this week, by channel.
-const TICKETS: [(&str, f32); 4] = [
-    ("Email", 120.0),
-    ("Chat", 85.0),
-    ("Phone", 40.0),
-    ("Forum", 15.0),
+/// The segmented ring sample: how automated runs ended, as classes, in
+/// lime, orange and red.
+const RUN_CLASSES: [(&str, u32); 3] = [
+    ("On its own", 0xc6f432),
+    ("Needed you", 0xf0904a),
+    ("Failed", 0xe0636b),
 ];
+const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SLICE_NAMES: [&str; 8] = [
     "Books", "Games", "Music", "Movies", "Apps", "Toys", "Sports", "Garden",
 ];
@@ -550,7 +549,7 @@ const SAMPLES: &[Sample] = &[
         "segmented-ring",
         "New",
         "Segmented ring charts",
-        "SegmentedRingChart: concentric rings of short segments, each a unit of the total, filled by the items in turn as they sweep round from 12 o'clock. Runs a day out of a capacity of 600, counterclockwise with custom colors and a glow, and tickets by channel filling every segment in the theme's colors (fill-by-ring fills each ring before the next instead). Hover an item to see it in the middle; Randomize moves the items to new values.",
+        "SegmentedRingChart: a heatmap bent into rings. The values are a matrix: one ring per row and one segment per column, so the chart takes the matrix's size. Runs every half hour for a week, colored by class (0 on its own, 1 needed you, 2 failed), with today's runs still to come left empty; and website visits by hour and weekday on a color scale. Randomize gives the runs a new size, 3 to 7 days of 12 to 96 runs.",
         Shape::SegmentedRing,
         &["Randomize"],
     ),
@@ -1246,6 +1245,93 @@ impl State {
     }
 
     /// Fills the heatmap or calendar values of the current sample.
+    /// The segmented ring samples' matrices. The first starts as a week of
+    /// runs every half hour; randomized, it gets a new size, from 3 to 7 days
+    /// of runs every 15 minutes to every 2 hours, so the rings follow the
+    /// matrix. Today, the inner ring, has only run up to the time of day.
+    fn ring_data(&mut self, randomize: bool) {
+        let Some(ui) = self.ui.upgrade() else {
+            return;
+        };
+        let (days, per_day) = if randomize {
+            let days = 3 + (self.rng.next() * 5.0) as usize;
+            let per_day = [12, 24, 48, 96][(self.rng.next() * 4.0) as usize % 4];
+            (days.min(7), per_day)
+        } else {
+            (7, 48)
+        };
+        let now = (per_day as f32 * (0.45 + self.rng.next() * 0.4)) as usize;
+        let mut runs = 0;
+        let rows: Vec<ModelRc<f32>> = (0..days)
+            .map(|day| {
+                let row: Vec<f32> = (0..per_day)
+                    .map(|slot| {
+                        if day == days - 1 && slot >= now || self.rng.next() < 0.03 {
+                            return f32::NAN;
+                        }
+                        runs += 1;
+                        let r = self.rng.next();
+                        if r < 0.03 {
+                            2.0
+                        } else if r < 0.15 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect();
+                floats(row)
+            })
+            .collect();
+        let minutes = 24 * 60 / per_day;
+        let slots: Vec<SharedString> = (0..per_day)
+            .map(|slot| {
+                let m = slot * minutes;
+                format!("{:02}:{:02}", m / 60, m % 60).into()
+            })
+            .collect();
+        let day_names: Vec<SharedString> = WEEKDAYS[7 - days..].iter().map(|&d| d.into()).collect();
+        ui.set_run_values(ModelRc::new(VecModel::from(rows)));
+        ui.set_run_days(ModelRc::new(VecModel::from(day_names)));
+        ui.set_run_slots(ModelRc::new(VecModel::from(slots)));
+        ui.set_run_total(runs.to_string().into());
+
+        // Visits by hour and weekday: busy in the working day, quieter at
+        // the weekend.
+        let mut total = 0.0;
+        let visits: Vec<ModelRc<f32>> = (0..7)
+            .map(|day| {
+                let weekend = if day >= 5 { 0.55 } else { 1.0 };
+                let row: Vec<f32> = (0..24)
+                    .map(|hour| {
+                        let h = hour as f32;
+                        let day_curve = (-(h - 13.0).powi(2) / 18.0).exp();
+                        let evening = 0.5 * (-(h - 20.0).powi(2) / 6.0).exp();
+                        let v = (40.0
+                            + 900.0
+                                * weekend
+                                * (day_curve + evening)
+                                * (0.8 + 0.4 * self.rng.next()))
+                        .round();
+                        total += v;
+                        v
+                    })
+                    .collect();
+                floats(row)
+            })
+            .collect();
+        let hours: Vec<SharedString> = (0..24).map(|h| format!("{h}").into()).collect();
+        ui.set_visit_values(ModelRc::new(VecModel::from(visits)));
+        ui.set_visit_days(ModelRc::new(VecModel::from(
+            WEEKDAYS
+                .iter()
+                .map(|&d| d.into())
+                .collect::<Vec<SharedString>>(),
+        )));
+        ui.set_visit_hours(ModelRc::new(VecModel::from(hours)));
+        ui.set_visit_total(format!("{:.1}k", total / 1000.0).into());
+    }
+
     fn grid_values(&mut self) {
         let values: Vec<f32> = match self.sample.shape {
             Shape::Matrix => (0..7 * 24)
@@ -1611,16 +1697,16 @@ impl State {
         let slices: Vec<ChartSlice> = match sample.shape {
             Shape::Slices => (0..5).map(|i| self.slice(i)).collect(),
             Shape::RadialBar => bars(&GOALS),
-            Shape::SegmentedRing => bars(&RUNS)
-                .into_iter()
-                .zip([0xc6f432, 0xf0904a, 0xe0636b])
-                .map(|(s, rgb)| ChartSlice {
+            Shape::SegmentedRing => RUN_CLASSES
+                .iter()
+                .map(|&(label, rgb)| ChartSlice {
+                    label: label.into(),
                     color: slint::Color::from_rgb_u8(
                         (rgb >> 16) as u8,
                         (rgb >> 8) as u8,
                         rgb as u8,
                     ),
-                    ..s
+                    ..Default::default()
                 })
                 .collect(),
             _ => Vec::new(),
@@ -1628,9 +1714,11 @@ impl State {
         self.slices.set_vec(slices);
         self.channels.set_vec(match sample.shape {
             Shape::RadialBar => bars(&CHANNELS),
-            Shape::SegmentedRing => bars(&TICKETS),
             _ => Vec::new(),
         });
+        if sample.shape == Shape::SegmentedRing {
+            self.ring_data(false);
+        }
         self.grid_values();
         self.tree_items(false);
         self.business_data(false);
@@ -1864,21 +1952,7 @@ impl State {
                     }
                 }
             }
-            "Randomize" if self.sample.shape == Shape::SegmentedRing => {
-                let runs = [(380.0, 560.0), (10.0, 90.0), (0.0, 25.0)];
-                for (row, &(lo, hi)) in runs.iter().enumerate() {
-                    if let Some(mut s) = self.slices.row_data(row) {
-                        s.value = self.rng.range(lo, hi).round();
-                        self.slices.set_row_data(row, s);
-                    }
-                }
-                for row in 0..self.channels.row_count() {
-                    if let Some(mut s) = self.channels.row_data(row) {
-                        s.value = self.rng.range(5.0, 150.0).round();
-                        self.channels.set_row_data(row, s);
-                    }
-                }
-            }
+            "Randomize" if self.sample.shape == Shape::SegmentedRing => self.ring_data(true),
             "Randomize"
                 if matches!(
                     self.sample.shape,

@@ -1092,6 +1092,15 @@ export component Gallery inherits Window {
     in-out property <[ChartDataset]> datasets;
     in-out property <[ChartSlice]> slices;
     in-out property <[ChartSlice]> channels;
+    // The segmented ring samples' matrices and labels.
+    in property <[[float]]> run-values;
+    in property <[string]> run-days;
+    in property <[string]> run-slots;
+    in property <string> run-total;
+    in property <[[float]]> visit-values;
+    in property <[string]> visit-days;
+    in property <[string]> visit-hours;
+    in property <string> visit-total;
     in property <[string]> row-labels;
     in property <[float]> grid;
     in property <[float]> growth;
@@ -1827,30 +1836,34 @@ export component Gallery inherits Window {
                             row: 0;
                             col: 0;
                             title: "Automated runs";
-                            slices <=> root.slices;
-                            max-value: 600;
+                            values: root.run-values;
+                            x-labels: root.run-slots;
+                            y-labels: root.run-days;
+                            classes <=> root.slices;
                             clockwise: false;
+                            show-labels: false;
+                            show-marker: true;
                             glow: true;
-                            center-label: "RUNS A DAY";
-                            value-decimals: 0;
-                            slice-clicked(index) => {
-                                root.status = "slice-clicked: " + self.slices[index].label + ", "
-                                    + ChartEngine.format-value(self.slices[index].value, { decimals: 0 });
+                            center-text: root.run-total;
+                            center-label: "RUNS";
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + " " + self.x-labels[column];
                             }
                         }
                         SegmentedRingChart {
                             row: root.narrow ? 1 : 0;
                             col: root.narrow ? 0 : 1;
-                            title: "Support tickets this week";
-                            slices <=> root.channels;
-                            rings: 4;
-                            segments: 48;
-                            show-marker: false;
-                            center-label: "TICKETS";
+                            title: "Website visits by hour";
+                            values: root.visit-values;
+                            x-labels: root.visit-hours;
+                            y-labels: root.visit-days;
+                            segment-gap: 0.12;
+                            ring-gap: 0.25;
+                            center-text: root.visit-total;
+                            center-label: "VISITS";
                             value-decimals: 0;
-                            slice-clicked(index) => {
-                                root.status = "slice-clicked: " + self.slices[index].label + ", "
-                                    + ChartEngine.format-value(self.slices[index].value, { decimals: 0 });
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + " " + self.x-labels[column] + ":00";
                             }
                         }
                     }

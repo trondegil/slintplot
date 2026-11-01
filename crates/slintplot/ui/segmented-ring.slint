@@ -1,56 +1,67 @@
-import { ChartEngine, ChartFormat, ChartLegendItem, ChartSegmentedRingItem, ChartSegmentedRingLayout, ChartSlice } from "engine.slint";
+import { ChartEngine, ChartFormat, ChartLegendItem, ChartRange, ChartSegmentedRingLayout, ChartSegmentedRingPaint, ChartSlice, ChartXY } from "engine.slint";
 import { ChartTheme, ChartTexts } from "theme.slint";
 import { ChartLegendPosition, LegendFrame } from "legend.slint";
 import { TooltipFrame, TooltipLine } from "tooltip.slint";
 
-// A segmented ring chart: concentric rings cut into short segments, each a
-// unit of the total. The items fill the segments in turn from
-// `start-angle`, sweeping round across all the rings, or ring by ring from
-// the outside; the segments past the last item stay empty, as a faint
-// track. The total, or the hovered item, is written
-// in the middle.
+// A segmented ring chart: a heatmap bent into concentric rings. `values` is
+// a matrix, one row per ring, the first outermost, and each column is a
+// segment of every ring, going round from `start-angle`. The matrix sets the
+// size: as many rings as rows, and as many segments as the longest row has
+// values; shorter rows leave the rest of their ring empty.
+//
+// Cells are colored on a scale, as in HeatmapChart, or, when `classes` is
+// set, by class: each value is the index of its class, such as 0 for "Ok"
+// and 1 for "Failed", and the classes make the legend. Missing values (NaN)
+// are empty segments, a faint track.
 export component SegmentedRingChart {
-    in-out property <[ChartSlice]> slices;
+    in property <[[float]]> values;
+    // The columns' labels, written round the outside, and the rows'
+    // labels, for the tooltip.
+    in property <[string]> x-labels;
+    in property <[string]> y-labels;
+    // Color by class instead of on a scale; leave empty for a scale.
+    in-out property <[ChartSlice]> classes;
     in property <string> title;
-    // The number of rings, and of segments in the outer ring; inner rings
-    // have fewer, so that the segments keep their length.
-    in property <int> rings: 5;
-    in property <int> segments: 60;
-    // The value of all segments together; 0 for the total of the values, so
-    // that they fill every segment.
-    in property <float> max-value: 0;
-    // Where the first segment starts, in degrees clockwise from 12 o'clock,
-    // and which way the items fill the rings.
+    // The scale, as in HeatmapChart: the color of the largest value, with
+    // smaller values fading out; or, `diverging`, `negative-color` below
+    // `center-value` and `color` above it.
+    in property <color> color: ChartTheme.colors[0];
+    in property <bool> diverging: false;
+    in property <float> center-value: 0;
+    in property <color> negative-color: ChartTheme.colors[2];
+    // A fixed range of the scale, instead of fitting the data.
+    in property <bool> fixed-range: false;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    // Where the first column starts, in degrees clockwise from 12 o'clock,
+    // and which way the columns go.
     in property <float> start-angle: 0;
     in property <bool> clockwise: true;
-    // Fill each ring before the next, from the outside, rather than sweep
-    // round across all of them.
-    in property <bool> fill-by-ring: false;
     // The empty middle, as a share of the radius.
     in property <float> cutout: 0.45;
     // The gap between the rings, as a share of their width, and between the
     // segments, as a share of the angle each takes.
     in property <float> ring-gap: 0.5;
     in property <float> segment-gap: 0.3;
-    // One color for every item without its own; leave unset (transparent)
-    // for the theme's colors in turn.
-    in property <color> color;
     // The empty segments; leave unset for a faint gray.
     in property <color> track-color;
-    // The text in the middle: the value, or the total when empty, and a
-    // caption under it. Hovering an item shows its value and label instead.
+    // The column labels round the outside; every second, third, ... when
+    // they don't all fit.
+    in property <bool> show-labels: true;
+    // The text in the middle, and a caption under it. Hovering a cell shows
+    // it there instead.
     in property <bool> show-center: true;
-    in property <string> center-value;
+    in property <string> center-text;
     in property <string> center-label;
     // A dot at the start, outside the outer ring.
-    in property <bool> show-marker: true;
-    // A soft glow of the first color in the middle.
+    in property <bool> show-marker: false;
+    // A soft glow in the middle, of the first class's color or the scale's.
     in property <bool> glow: false;
+    // The classes, or the color scale.
     in property <bool> show-legend: true;
     in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
     in property <bool> show-tooltip: true;
-    // Light the segments up in turn when the chart appears, and move the
-    // items' ends when the values change.
+    // Sweep the cells in when the chart appears.
     in property <bool> animated: true;
     // How values are written: a prefix and suffix, and a fixed number of
     // decimals (-1: automatic).
@@ -58,36 +69,75 @@ export component SegmentedRingChart {
     in property <string> value-suffix;
     in property <int> value-decimals: -1;
 
-    // The item under the mouse, or selected with the arrow keys; -1 if none.
-    out property <int> hovered-index: chart.visible.length == 0 ? -1
-        : touch.has-hover ? ChartEngine.segmented-ring-hit(chart, touch.mouse-x / 1px, touch.mouse-y / 1px)
-        : keys.has-focus && root.key-position >= 0 ? chart.visible[min(root.key-position, chart.visible.length - 1)]
-        : -1;
+    // The cell under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-row: root.hovered-cell < 0 ? -1 : floor(root.hovered-cell / chart.columns);
+    out property <int> hovered-column: root.hovered-cell < 0 ? -1 : mod(root.hovered-cell, chart.columns);
 
-    callback slice-clicked(index: int);
+    callback cell-clicked(row: int, column: int);
     callback legend-toggled(index: int);
 
     accessible-role: image;
     accessible-label: root.title;
-    accessible-description: root.hovered-index >= 0 ? root.describe(root.hovered-index)
-        : root.center-text() + (root.center-label != "" ? " " + root.center-label : "");
+    accessible-description: root.hovered-cell >= 0 ? root.place-text() + ": " + root.value-text()
+        : root.center-text + (root.center-label != "" ? " " + root.center-label : "");
 
-    // The selected item's place among the visible ones.
-    private property <int> key-position: -1;
+    private property <bool> by-class: root.classes.length > 0;
+    private property <ChartRange> data-range: ChartEngine.matrix-range(root.values);
+    private property <float> low: root.fixed-range ? root.min-value : root.data-range.min;
+    private property <float> high: root.fixed-range ? root.max-value : root.data-range.max;
     private property <ChartFormat> format: {
         prefix: root.value-prefix,
         suffix: root.value-suffix,
         decimals: root.value-decimals,
     };
-    pure function share(index: int) -> string {
-        ChartEngine.format-percent(root.slices[index].value / max(chart.total, 0.000001) * 100, 1)
+    // The scale fades towards this, as in HeatmapChart.
+    private property <color> empty: ChartTheme.dark ? #2b2f36 : #eef0f3;
+    private property <color> track: root.track-color.alpha > 0 ? root.track-color
+        : ChartTheme.text-color.with-alpha(ChartTheme.dark ? 0.12 : 0.09);
+    private property <[ChartLegendItem]> legend: ChartEngine.slice-legend(root.classes, ChartTheme.colors);
+    private property <color> glow-color: root.by-class ? root.legend[0].color : root.color;
+
+    // The cell selected with the arrow keys.
+    private property <int> key-cell: -1;
+    private property <int> hovered-cell: chart.columns <= 0 ? -1
+        : touch.has-hover ? ChartEngine.segmented-ring-hit(chart, touch.mouse-x / 1px, touch.mouse-y / 1px)
+        : keys.has-focus && root.key-cell >= 0 ? min(root.key-cell, chart.rows * chart.columns - 1)
+        : -1;
+    private property <float> hovered-value: root.hovered-cell < 0 ? 0 : ChartEngine.matrix-value(root.values, root.hovered-row, root.hovered-column);
+
+    // A value's class, or -1 for none.
+    pure function class-of(value: float) -> int {
+        value != value || round(value) < 0 || round(value) >= root.classes.length ? -1 : round(value)
     }
-    pure function describe(index: int) -> string {
-        root.slices[index].label + ": " + ChartEngine.format-value(root.slices[index].value, root.format)
-            + " (" + root.share(index) + ")"
+    // A cell's color, as drawn; transparent for an empty cell.
+    pure function cell-color(value: float) -> color {
+        if value != value {
+            return transparent;
+        }
+        if root.by-class {
+            let class = root.class-of(value);
+            return class < 0 || root.classes[class].hidden ? transparent : root.legend[class].color;
+        }
+        let s = root.strength(value);
+        s < 0 ? root.negative-color.mix(root.empty, 0.12 - s * 0.88) : root.color.mix(root.empty, root.diverging ? s : 0.12 + s * 0.88)
     }
-    pure function center-text() -> string {
-        root.center-value != "" ? root.center-value : ChartEngine.format-value(chart.total, root.format)
+    pure function strength(value: float) -> float {
+        if root.diverging {
+            let reach = max(abs(root.high - root.center-value), abs(root.low - root.center-value));
+            return reach > 0 ? clamp((value - root.center-value) / reach, -1, 1) : 0;
+        }
+        root.high > root.low ? clamp((value - root.low) / (root.high - root.low), 0, 1) : 1
+    }
+    // The hovered cell's row and column, by label or number.
+    pure function place-text() -> string {
+        (root.hovered-row < root.y-labels.length ? root.y-labels[root.hovered-row] : root.hovered-row + 1)
+            + ", " + (root.hovered-column < root.x-labels.length ? root.x-labels[root.hovered-column] : root.hovered-column + 1)
+    }
+    // The hovered cell's value, or its class.
+    pure function value-text() -> string {
+        root.hovered-value != root.hovered-value ? ChartTexts.no-data
+            : root.by-class ? (root.class-of(root.hovered-value) < 0 ? ChartTexts.no-data : root.classes[root.class-of(root.hovered-value)].label)
+            : ChartEngine.format-value(root.hovered-value, root.format)
     }
 
     private property <float> progress: 0;
@@ -98,34 +148,44 @@ export component SegmentedRingChart {
     init => {
         progress = 1;
     }
-    private property <color> track: root.track-color.alpha > 0 ? root.track-color
-        : ChartTheme.text-color.with-alpha(ChartTheme.dark ? 0.12 : 0.09);
-    private property <[color]> palette: root.color.alpha > 0 ? [root.color] : ChartTheme.colors;
-    private property <[ChartLegendItem]> legend: ChartEngine.slice-legend(root.slices, root.palette);
+    private property <length> label-width: root.show-labels && root.x-labels.length > 0 ? label-measure.preferred-width : 0px;
     private property <ChartSegmentedRingLayout> chart: ChartEngine.segmented-ring-layout({
-        slices: root.slices,
+        values: root.values,
         width: area.width / 1px,
         height: area.height / 1px,
         start-angle: root.start-angle,
         clockwise: root.clockwise,
-        by-ring: root.fill-by-ring,
-        rings: root.rings,
-        segments: root.segments,
-        max: root.max-value,
         cutout: root.cutout,
         ring-gap: root.ring-gap,
         segment-gap: root.segment-gap,
+        label-width: root.label-width / 1px,
+        label-height: label-measure.preferred-height / 1px,
         marker: root.show-marker,
-        palette: root.palette,
     });
-    // How far the items reach as they light up.
-    private property <float> shown: chart.filled * root.progress;
-    private property <color> first-color: chart.visible.length > 0 ? chart.items[chart.visible[0]].color : ChartTheme.colors[0];
+    private property <ChartSegmentedRingPaint> paint: ChartEngine.segmented-ring-paint(chart, {
+        values: root.values,
+        classes: root.classes,
+        palette: ChartTheme.colors,
+        low: root.low,
+        high: root.high,
+        diverging: root.diverging,
+        center: root.center-value,
+        color: root.color,
+        negative-color: root.negative-color,
+        empty: root.empty,
+        progress: root.progress,
+    });
 
     min-width: 120px;
     min-height: 120px;
     preferred-width: 360px;
     preferred-height: 400px;
+
+    label-measure := Text {
+        visible: false;
+        text: ChartEngine.widest-label(root.x-labels);
+        font-size: ChartTheme.font-size * 0.9;
+    }
 
     VerticalLayout {
         padding: 8px;
@@ -142,10 +202,10 @@ export component SegmentedRingChart {
         LegendFrame {
             vertical-stretch: 1;
             items: root.legend;
-            show-legend: root.show-legend;
+            show-legend: root.show-legend && root.by-class;
             position: root.legend-position;
             toggled(index) => {
-                root.slices[index].hidden = !root.slices[index].hidden;
+                root.classes[index].hidden = !root.classes[index].hidden;
                 root.legend-toggled(index);
             }
 
@@ -157,9 +217,8 @@ export component SegmentedRingChart {
                     y: (chart.center-y - chart.radius) * 1px;
                     width: chart.radius * 2px;
                     height: chart.radius * 2px;
-                    border-radius: self.width / 2;
                     // Fades out by the circle's edge, before the corners.
-                    background: @radial-gradient(circle, root.first-color.with-alpha(ChartTheme.dark ? 0.16 : 0.12) 0%, root.first-color.with-alpha(0.04) 45%, transparent 68%);
+                    background: @radial-gradient(circle, root.glow-color.with-alpha(ChartTheme.dark ? 0.16 : 0.12) 0%, root.glow-color.with-alpha(0.04) 45%, transparent 68%);
                 }
 
                 Path {
@@ -168,31 +227,29 @@ export component SegmentedRingChart {
                     width: area.width;
                     height: area.height;
                     fit: fill;
-                    commands: ChartEngine.segmented-ring-path(chart, 0, chart.capacity);
+                    commands: paint.track;
                     fill: root.track;
                 }
 
-                // Repeated over the items themselves, so that an item keeps
-                // its element, and its ends move, when its value changes.
-                for slice[i] in root.slices: Path {
-                    property <ChartSegmentedRingItem> item: i < chart.items.length ? chart.items[i] : { position: -1 };
-                    property <bool> dimmed: root.hovered-index >= 0 && root.hovered-index != i;
-                    property <float> from: self.item.from;
-                    property <float> to: self.item.to;
-                    animate from, to {
-                        duration: root.animated ? 500ms : 0ms;
-                        easing: ease-in-out;
-                    }
-                    visible: self.item.visible;
+                for group in paint.groups: Path {
                     viewbox-width: area.width / 1px;
                     viewbox-height: area.height / 1px;
                     width: area.width;
                     height: area.height;
                     fit: fill;
-                    commands: ChartEngine.segmented-ring-path(chart, min(self.from, root.shown), min(self.to, root.shown));
-                    fill: self.item.color;
-                    opacity: self.dimmed ? 0.3 : 1;
-                    animate opacity { duration: 120ms; }
+                    commands: group.path;
+                    fill: group.color;
+                }
+
+                if root.hovered-cell >= 0: Path {
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    width: area.width;
+                    height: area.height;
+                    fit: fill;
+                    commands: ChartEngine.segmented-ring-cell(chart, root.hovered-row, root.hovered-column);
+                    stroke: ChartTheme.text-color;
+                    stroke-width: 1.5px;
                 }
 
                 if chart.marker-size > 0: Rectangle {
@@ -201,12 +258,26 @@ export component SegmentedRingChart {
                     width: chart.marker-size * 1px;
                     height: self.width;
                     border-radius: self.width / 2;
-                    background: root.first-color;
+                    background: root.glow-color;
+                }
+
+                if root.show-labels: Rectangle {
+                    for label[column] in root.x-labels: Text {
+                        property <ChartXY> spot: ChartEngine.segmented-ring-label(chart, column);
+                        visible: column < chart.columns && mod(column, max(1, chart.label-skip)) == 0;
+                        x: self.spot.x * 1px - self.preferred-width / 2;
+                        y: self.spot.y * 1px - self.preferred-height / 2;
+                        text: label;
+                        color: root.hovered-column == column ? ChartTheme.text-color : ChartTheme.text-color.with-alpha(0.7);
+                        font-size: ChartTheme.font-size * 0.9;
+                        font-weight: root.hovered-column == column ? 700 : 400;
+                    }
                 }
 
                 if root.show-center && chart.inner-radius > 12: VerticalLayout {
                     property <length> room: chart.inner-radius * 1.5px;
-                    property <bool> hovered: root.hovered-index >= 0 && root.hovered-index < root.slices.length;
+                    property <bool> hovered: root.hovered-cell >= 0;
+                    property <color> cell: root.cell-color(root.hovered-value);
                     x: chart.center-x * 1px - self.room / 2;
                     y: chart.center-y * 1px - self.preferred-height / 2;
                     width: self.room;
@@ -214,16 +285,17 @@ export component SegmentedRingChart {
                     spacing: 2px;
                     alignment: center;
 
-                    Text {
-                        text: hovered ? ChartEngine.format-value(root.slices[root.hovered-index].value, root.format) : root.center-text();
-                        color: hovered ? chart.items[root.hovered-index].color : ChartTheme.text-color;
-                        font-size: clamp(room * 0.3, 12px, 64px);
+                    if hovered || root.center-text != "": Text {
+                        text: hovered ? root.value-text() : root.center-text;
+                        color: hovered && cell.alpha > 0 ? cell : ChartTheme.text-color;
+                        // Class names are longer than numbers.
+                        font-size: clamp(room * (hovered && root.by-class ? 0.14 : 0.3), 12px, 64px);
                         font-weight: 700;
                         horizontal-alignment: center;
                         overflow: elide;
                     }
                     if hovered || root.center-label != "": Text {
-                        text: hovered ? root.slices[root.hovered-index].label : root.center-label;
+                        text: hovered ? root.place-text() : root.center-label;
                         color: ChartTheme.text-color.with-alpha(0.75);
                         font-size: clamp(room * 0.09, 9px, ChartTheme.font-size * 1.3);
                         font-weight: 600;
@@ -233,25 +305,35 @@ export component SegmentedRingChart {
                     }
                 }
 
-                // Keyboard: the arrow keys move through the items, Enter
-                // clicks the selected one.
+                // Keyboard: Left and Right go round a ring, Up and Down move
+                // out and in, Home and End go to the first and last cell, and
+                // Enter clicks.
                 keys := FocusScope {
                     key-pressed(event) => {
-                        let count = chart.visible.length;
+                        let count = chart.rows * chart.columns;
                         if count == 0 {
                             return reject;
                         }
-                        let current = root.key-position < 0 ? 0 : min(root.key-position, count - 1);
-                        if event.text == Key.DownArrow || event.text == Key.RightArrow {
-                            root.key-position = root.key-position < 0 ? 0 : mod(current + 1, count);
-                        } else if event.text == Key.UpArrow || event.text == Key.LeftArrow {
-                            root.key-position = mod(current - 1 + count, count);
+                        let current = root.key-cell < 0 ? 0 : min(root.key-cell, count - 1);
+                        let row = floor(current / chart.columns);
+                        let column = mod(current, chart.columns);
+                        if root.key-cell < 0 && (event.text == Key.LeftArrow || event.text == Key.RightArrow
+                            || event.text == Key.UpArrow || event.text == Key.DownArrow) {
+                            root.key-cell = 0;
+                        } else if event.text == Key.RightArrow {
+                            root.key-cell = row * chart.columns + mod(column + 1, chart.columns);
+                        } else if event.text == Key.LeftArrow {
+                            root.key-cell = row * chart.columns + mod(column - 1 + chart.columns, chart.columns);
+                        } else if event.text == Key.UpArrow {
+                            root.key-cell = row > 0 ? current - chart.columns : current;
+                        } else if event.text == Key.DownArrow {
+                            root.key-cell = row < chart.rows - 1 ? current + chart.columns : current;
                         } else if event.text == Key.Home {
-                            root.key-position = 0;
+                            root.key-cell = 0;
                         } else if event.text == Key.End {
-                            root.key-position = count - 1;
-                        } else if event.text == Key.Return && root.key-position >= 0 {
-                            root.slice-clicked(chart.visible[current]);
+                            root.key-cell = count - 1;
+                        } else if event.text == Key.Return && root.key-cell >= 0 {
+                            root.cell-clicked(row, column);
                         } else {
                             return reject;
                         }
@@ -259,12 +341,12 @@ export component SegmentedRingChart {
                     }
 
                     touch := TouchArea {
-                        mouse-cursor: root.hovered-index >= 0 ? pointer : default;
+                        mouse-cursor: root.hovered-cell >= 0 ? pointer : default;
                         clicked => {
                             keys.focus();
-                            if root.hovered-index >= 0 {
-                                root.key-position = chart.items[root.hovered-index].position;
-                                root.slice-clicked(root.hovered-index);
+                            if root.hovered-cell >= 0 {
+                                root.key-cell = root.hovered-cell;
+                                root.cell-clicked(root.hovered-row, root.hovered-column);
                             }
                         }
                     }
@@ -276,20 +358,48 @@ export component SegmentedRingChart {
                     border-color: ChartTheme.axis-color;
                 }
 
-                if root.show-tooltip && touch.has-hover && root.hovered-index >= 0 && root.hovered-index < chart.items.length: TooltipFrame {
-                    property <int> index: root.hovered-index;
+                if root.show-tooltip && touch.has-hover && root.hovered-cell >= 0: TooltipFrame {
                     x: touch.mouse-x + 14px + self.width > area.width ? max(0px, touch.mouse-x - 14px - self.width) : touch.mouse-x + 14px;
                     y: clamp(touch.mouse-y - self.height / 2, 0px, max(0px, area.height - self.height));
                     width: self.preferred-width;
                     height: self.preferred-height;
-                    title: root.slices[self.index].label;
+                    title: root.place-text();
 
                     TooltipLine {
-                        swatch: chart.items[index].color;
-                        text: ChartEngine.format-value(root.slices[index].value, root.format) + " (" + root.share(index) + ")";
+                        swatch: root.cell-color(root.hovered-value);
+                        text: root.value-text();
                         bold: true;
                     }
                 }
+            }
+        }
+
+        // The color scale from the smallest to the largest value.
+        if root.show-legend && !root.by-class: HorizontalLayout {
+            alignment: center;
+            spacing: 8px;
+            Text {
+                text: ChartEngine.format-value(root.low, root.format);
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                vertical-alignment: center;
+            }
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 160px;
+                    height: 10px;
+                    border-radius: 5px;
+                    background: root.diverging
+                        ? @linear-gradient(90deg, root.negative-color 0%, root.empty 50%, root.color 100%)
+                        : @linear-gradient(90deg, root.color.mix(root.empty, 0.12) 0%, root.color 100%);
+                }
+            }
+            Text {
+                text: ChartEngine.format-value(root.high, root.format);
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                vertical-alignment: center;
             }
         }
     }

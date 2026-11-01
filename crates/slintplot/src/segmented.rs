@@ -1,60 +1,43 @@
-//! Geometry for segmented ring charts: concentric rings cut into short
-//! segments, each segment a unit of the total. The items fill the segments
-//! in turn from the start angle, sweeping round across all the rings, or
-//! ring by ring from the outside; the segments past the last item are left
-//! empty, as a faint track.
+//! Geometry for segmented ring charts: a heatmap bent into concentric
+//! rings. Each row of the matrix is a ring, the first outermost, and each
+//! column a segment of every ring, going round from the start angle. The
+//! matrix sets the size: as many rings as rows, and as many segments as the
+//! longest row has values. A cell is colored on a scale by its value, as in
+//! a heatmap, or by the class its value names; missing cells are left as a
+//! faint track.
 
 use std::f32::consts::TAU;
 
+use crate::layout::Rgba;
 use crate::pie::{point, slice_path};
 
+/// The most rings and segments per ring, so that a huge matrix can't make
+/// the chart unusably slow.
+pub const MAX_ROWS: usize = 50;
+pub const MAX_COLUMNS: usize = 720;
+
 pub struct SegmentedRequest<'a> {
-    /// The values, NaN where missing.
-    pub values: &'a [f64],
-    /// Items left out, such as those hidden from the legend.
-    pub hidden: &'a [bool],
+    /// The matrix, one row per ring; rows may differ in length, and NaN is
+    /// a missing value.
+    pub values: &'a [Vec<f64>],
     pub width: f32,
     pub height: f32,
-    /// Where the segments start, in degrees clockwise from 12 o'clock, and
-    /// which way they go.
+    /// Where the first column starts, in degrees clockwise from 12 o'clock,
+    /// and which way the columns go.
     pub start_angle: f32,
     pub clockwise: bool,
-    /// Fill each ring before the next, from the outside, rather than sweep
-    /// round across all of them.
-    pub by_ring: bool,
-    /// The number of rings, and of segments in the outer ring; inner rings
-    /// have fewer, in proportion to their size.
-    pub rings: i32,
-    pub segments: i32,
-    /// The value of all segments together; 0 or less for the total of the
-    /// values, so that they fill every segment.
-    pub max: f64,
     /// The empty middle, as a share of the radius; the gap between rings, as
     /// a share of their width; and the gap between segments, as a share of
     /// the angle each takes.
     pub cutout: f32,
     pub ring_gap: f32,
     pub segment_gap: f32,
+    /// The size of the widest column label, written round the outside; 0
+    /// for none.
+    pub label_width: f32,
+    pub label_height: f32,
     /// Leave room for a dot at the start, outside the outer ring.
     pub marker: bool,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Ring {
-    pub outer: f32,
-    pub inner: f32,
-    /// Its number of segments, and the place of the first in the fill
-    /// order.
-    pub count: usize,
-    pub first: usize,
-}
-
-/// The segments an item fills, `from` up to `to`, in the fill order.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Span {
-    pub index: usize,
-    pub from: usize,
-    pub to: usize,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -69,16 +52,13 @@ pub struct Segmented {
     pub direction: f32,
     /// The gap between segments, as a share of the angle each takes.
     pub segment_gap: f32,
-    pub by_ring: bool,
-    /// The rings, outermost first.
-    pub rings: Vec<Ring>,
-    /// The visible items, in fill order.
-    pub spans: Vec<Span>,
-    /// The number of segments, and the value of each.
-    pub capacity: usize,
-    pub unit: f64,
-    /// The total of the visible values.
-    pub total: f64,
+    pub columns: usize,
+    /// One (outer, inner) per row, outermost first.
+    pub rings: Vec<(f32, f32)>,
+    /// Where the middles of the column labels go, and how many columns
+    /// from one label to the next, so that they don't overlap.
+    pub label_radius: f32,
+    pub label_skip: usize,
     /// The dot at the start: its center and diameter (0 for none).
     pub marker: (f32, f32, f32),
 }
@@ -87,9 +67,25 @@ fn finite_or(v: f32, fallback: f32) -> f32 {
     if v.is_finite() { v } else { fallback }
 }
 
+/// The size of a matrix as (rows, columns): every row, and the longest,
+/// within the limits; at least one of each.
+pub fn dimensions(values: &[Vec<f64>]) -> (usize, usize) {
+    let rows = values.len().clamp(1, MAX_ROWS);
+    let columns = values
+        .iter()
+        .take(MAX_ROWS)
+        .map(Vec::len)
+        .max()
+        .unwrap_or(0)
+        .clamp(1, MAX_COLUMNS);
+    (rows, columns)
+}
+
 pub fn layout(req: &SegmentedRequest) -> Segmented {
     let size = |v: f32| finite_or(v, 0.0).max(0.0);
     let (width, height) = (size(req.width), size(req.height));
+    let (label_w, label_h) = (size(req.label_width), size(req.label_height));
+    let labels = label_w > 0.0 && label_h > 0.0;
     let start = finite_or(req.start_angle, 0.0)
         .rem_euclid(360.0)
         .to_radians();
@@ -97,77 +93,30 @@ pub fn layout(req: &SegmentedRequest) -> Segmented {
     let cutout = finite_or(req.cutout, 0.45).clamp(0.0, 0.9);
     let ring_gap = finite_or(req.ring_gap, 0.5).clamp(0.0, 3.0);
     let segment_gap = finite_or(req.segment_gap, 0.3).clamp(0.0, 0.9);
-    let n = req.rings.clamp(1, 20) as usize;
-    let outer_count = req.segments.clamp(3, 500) as usize;
+    let (rows, columns) = dimensions(req.values);
 
-    // The ring width as a share of the radius; the marker takes a little
-    // more than a ring outside it.
-    let share = (1.0 - cutout) / (n as f32 + (n as f32 - 1.0) * ring_gap);
-    let margin = if req.marker { 1.2 } else { 0.0 };
+    // The ring width as a share of the radius: the rings share what the
+    // cutout leaves. The marker takes a little more than a ring outside
+    // them, and the labels their size.
+    let share = (1.0 - cutout) / (rows as f32 + (rows as f32 - 1.0) * ring_gap);
+    // Few rings stay narrow, at the outside.
+    let share = share.min(0.2);
+    let marker_room = if req.marker { 1.2 } else { 0.3 };
+    let pad = label_h * 0.4;
+    let label_room = if labels {
+        pad + label_w.max(label_h)
+    } else {
+        0.0
+    };
     let half = width.min(height) / 2.0;
-    let radius = half / (1.0 + margin * share);
+    let radius = ((half - label_room) / (1.0 + marker_room * share)).max(0.0);
     let w = radius * share;
     let center = (width / 2.0, height / 2.0);
 
-    // Inner rings keep the segments' length: fewer of them, by radius.
-    let mid0 = radius - w / 2.0;
-    let mut rings = Vec::with_capacity(n);
-    let mut first = 0;
-    for k in 0..n {
-        let outer = radius - k as f32 * w * (1.0 + ring_gap);
-        let mid = outer - w / 2.0;
-        let count = if mid0 > 0.0 {
-            ((outer_count as f32 * mid / mid0).round() as usize).max(3)
-        } else {
-            outer_count
-        };
-        rings.push(Ring {
-            outer,
-            inner: (outer - w).max(0.0),
-            count,
-            first,
-        });
-        first += count;
-    }
-    let capacity = first;
-
-    let shown: Vec<usize> = (0..req.values.len())
-        .filter(|&i| !req.hidden.get(i).copied().unwrap_or(false))
-        .collect();
-    let value = |i: usize| {
-        let v = req.values[i];
-        if v.is_finite() && v > 0.0 { v } else { 0.0 }
-    };
-    let total: f64 = shown.iter().map(|&i| value(i)).sum();
-    let total = if total.is_finite() { total } else { f64::MAX };
-    let max = if req.max > 0.0 && req.max.is_finite() {
-        req.max
-    } else {
-        total
-    };
-    let unit = if max > 0.0 {
-        max / capacity as f64
-    } else {
-        1.0
-    };
-    let unit = if unit > 0.0 && unit.is_finite() {
-        unit
-    } else {
-        1.0
-    };
-
-    // Rounding the running total keeps the segments of all the items
-    // together as close to the total as the units allow.
-    let mut sum = 0.0;
-    let mut from = 0;
-    let spans = shown
-        .iter()
-        .map(|&index| {
-            sum += value(index);
-            let to = ((sum / unit).round().min(capacity as f64) as usize).max(from);
-            let span = Span { index, from, to };
-            from = to;
-            span
+    let rings: Vec<(f32, f32)> = (0..rows)
+        .map(|k| {
+            let outer = radius - k as f32 * w * (1.0 + ring_gap);
+            (outer.max(0.0), (outer - w).max(0.0))
         })
         .collect();
 
@@ -178,284 +127,412 @@ pub fn layout(req: &SegmentedRequest) -> Segmented {
     } else {
         (center.0, center.1, 0.0)
     };
+    let label_radius = radius + marker_room * w + pad + label_w.max(label_h) / 2.0;
+    let arc = TAU * label_radius / columns as f32;
+    let label_skip = if labels && arc > 0.0 {
+        ((label_w + label_h * 0.5) / arc).ceil().max(1.0) as usize
+    } else {
+        1
+    }
+    .min(columns);
 
     Segmented {
         center,
         radius,
-        inner_radius: rings.last().map_or(0.0, |r| r.inner),
+        inner_radius: rings.last().map_or(0.0, |r| r.1),
         start,
         direction,
         segment_gap,
-        by_ring: req.by_ring,
+        columns,
         rings,
-        spans,
-        capacity,
-        unit,
-        total,
+        label_radius,
+        label_skip,
         marker,
     }
 }
 
-/// The angles of a ring's segment `slot`, the smaller first.
-fn segment_angles(start: f32, direction: f32, count: usize, slot: usize, gap: f32) -> (f32, f32) {
-    let pitch = TAU / count as f32;
-    let a = start + direction * slot as f32 * pitch;
-    let b = start + direction * (slot + 1) as f32 * pitch;
-    let (lo, hi) = (a.min(b), a.max(b));
-    let trim = pitch * gap / 2.0;
-    (lo + trim, hi - trim)
+/// The angles of a column's segments, the smaller first.
+pub fn column_angles(chart: &Segmented, column: usize) -> (f32, f32) {
+    let pitch = TAU / chart.columns.max(1) as f32;
+    let a = chart.start + chart.direction * column as f32 * pitch;
+    let b = chart.start + chart.direction * (column + 1) as f32 * pitch;
+    let trim = pitch * chart.segment_gap / 2.0;
+    (a.min(b) + trim, a.max(b) - trim)
 }
 
-/// The segments in the fill order, as (ring, slot): ring by ring, or by
-/// the angle of their middles, the outer ring first at the same angle.
-pub fn order(rings: &[Ring], by_ring: bool) -> Vec<(usize, usize)> {
-    let mut out: Vec<(usize, usize)> = rings
-        .iter()
-        .enumerate()
-        .flat_map(|(k, r)| (0..r.count).map(move |slot| (k, slot)))
-        .collect();
-    if !by_ring {
-        // Compare (slot + 0.5) / count exactly, in integers.
-        out.sort_by(|&(ka, sa), &(kb, sb)| {
-            let (ca, cb) = (rings[ka].count as u64, rings[kb].count as u64);
-            ((2 * sa as u64 + 1) * cb)
-                .cmp(&((2 * sb as u64 + 1) * ca))
-                .then(ka.cmp(&kb))
-        });
+/// The angle of the middle of a column.
+pub fn column_middle(chart: &Segmented, column: usize) -> f32 {
+    let (a, b) = column_angles(chart, column);
+    (a + b) / 2.0
+}
+
+fn push_cell(out: &mut String, chart: &Segmented, row: usize, column: usize) {
+    let Some(&(outer, inner)) = chart.rings.get(row) else {
+        return;
+    };
+    let (a, b) = column_angles(chart, column);
+    if outer > inner && b > a && column < chart.columns {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(&slice_path(chart.center, outer, inner, a, b));
     }
-    out
 }
 
-/// The segments from `from` up to `to` in the fill order, as one path.
-/// Fractions are rounded, so that animated ends step from segment to
-/// segment.
-pub fn path(chart: &Segmented, from: f32, to: f32) -> String {
+/// The segment of one cell, as a path.
+pub fn cell_path(chart: &Segmented, row: usize, column: usize) -> String {
     let mut out = String::new();
-    let Segmented {
-        center,
-        start,
-        direction,
-        segment_gap: gap,
-        ref rings,
-        by_ring,
-        ..
-    } = *chart;
-    let all = [center.0, center.1, start, direction, gap, from, to];
-    if all.iter().any(|v| !v.is_finite()) {
-        return out;
-    }
-    let order = order(rings, by_ring);
-    let from = (from.round().max(0.0) as usize).min(order.len());
-    let to = (to.round().max(0.0) as usize).min(order.len());
-    for &(k, slot) in order.get(from..to).unwrap_or_default() {
-        let r = &rings[k];
-        if r.outer <= r.inner {
-            continue;
-        }
-        let (a, b) = segment_angles(start, direction, r.count, slot, gap);
-        if b > a {
-            if !out.is_empty() {
-                out.push(' ');
-            }
-            out.push_str(&slice_path(center, r.outer, r.inner, a, b));
-        }
+    if chart.center.0.is_finite() && chart.center.1.is_finite() {
+        push_cell(&mut out, chart, row, column);
     }
     out
 }
 
-/// The place in the fill order of the segment at `(x, y)`, gaps included.
-pub fn segment_at(chart: &Segmented, x: f32, y: f32) -> Option<usize> {
+/// The cell at `(x, y)`, as (row, column), gaps included.
+pub fn hit(chart: &Segmented, x: f32, y: f32) -> Option<(usize, usize)> {
     let (dx, dy) = (x - chart.center.0, y - chart.center.1);
     let distance = (dx * dx + dy * dy).sqrt();
-    // Half a gap around each ring belongs to it.
-    let k = chart.rings.iter().position(|r| {
-        let pad = (r.outer - r.inner) * 0.25;
-        distance >= r.inner - pad && distance <= r.outer + pad
+    // Part of the gap round each ring belongs to it.
+    let row = chart.rings.iter().position(|&(outer, inner)| {
+        let pad = (outer - inner) * 0.25;
+        outer > inner && distance >= inner - pad && distance <= outer + pad
     })?;
-    let ring = &chart.rings[k];
     let along = ((dx.atan2(-dy) - chart.start) * chart.direction).rem_euclid(TAU);
-    let slot = ((along / TAU * ring.count as f32) as usize).min(ring.count.max(1) - 1);
-    if chart.by_ring {
-        Some(ring.first + slot)
-    } else {
-        order(&chart.rings, false)
-            .iter()
-            .position(|&s| s == (k, slot))
+    let columns = chart.columns.max(1);
+    let column = ((along / TAU * columns as f32) as usize).min(columns - 1);
+    Some((row, column))
+}
+
+/// How cells are colored.
+pub enum Coloring<'a> {
+    /// On a scale from `low` to `high`, as in a heatmap: from a faint
+    /// `color` to the full one, or with `diverging`, from `negative` through
+    /// `empty` at `center` to `color`.
+    Scale {
+        low: f64,
+        high: f64,
+        diverging: bool,
+        center: f64,
+        color: Rgba,
+        negative: Rgba,
+        empty: Rgba,
+    },
+    /// By class: a value is the index of its class, and the cell takes its
+    /// color. Hidden classes, and values that name none, are left empty.
+    Classes {
+        colors: &'a [Rgba],
+        hidden: &'a [bool],
+    },
+}
+
+fn mix(from: Rgba, to: Rgba, t: f32) -> Rgba {
+    let t = t.clamp(0.0, 1.0);
+    let m = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * t).round() as u8;
+    [
+        m(from[0], to[0]),
+        m(from[1], to[1]),
+        m(from[2], to[2]),
+        m(from[3], to[3]),
+    ]
+}
+
+/// The steps of a color scale, so that cells of nearly the same value
+/// share a path.
+const SCALE_STEPS: f64 = 32.0;
+
+/// A cell's color, or `None` for an empty cell.
+pub fn cell_color(value: f64, coloring: &Coloring) -> Option<Rgba> {
+    if !value.is_finite() {
+        return None;
+    }
+    match *coloring {
+        Coloring::Scale {
+            low,
+            high,
+            diverging,
+            center,
+            color,
+            negative,
+            empty,
+        } => {
+            let s = if diverging {
+                let reach = (high - center).abs().max((low - center).abs());
+                if reach > 0.0 {
+                    ((value - center) / reach).clamp(-1.0, 1.0)
+                } else {
+                    0.0
+                }
+            } else if high > low {
+                ((value - low) / (high - low)).clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            let s = if s.is_finite() { s } else { 0.0 };
+            let s = ((s * SCALE_STEPS).round() / SCALE_STEPS) as f32;
+            // Even the smallest value is visibly colored.
+            Some(if s < 0.0 {
+                mix(empty, negative, 0.12 - s * 0.88)
+            } else if diverging {
+                mix(empty, color, s)
+            } else {
+                mix(empty, color, 0.12 + s * 0.88)
+            })
+        }
+        Coloring::Classes { colors, hidden } => {
+            let class = value.round();
+            if class < 0.0 || class >= colors.len() as f64 {
+                return None;
+            }
+            let class = class as usize;
+            (!hidden.get(class).copied().unwrap_or(false)).then(|| colors[class])
+        }
     }
 }
 
-/// The item whose segment is at `(x, y)`.
-pub fn hit(chart: &Segmented, x: f32, y: f32) -> Option<usize> {
-    let k = segment_at(chart, x, y)?;
-    chart
-        .spans
-        .iter()
-        .find(|s| k >= s.from && k < s.to)
-        .map(|s| s.index)
+/// The cells as one path per color, and the empty ones, missing cells
+/// included, as the track. Only the first `progress` (0 to 1) of the columns
+/// are colored, so that the chart can sweep in.
+pub fn paint(
+    chart: &Segmented,
+    values: &[Vec<f64>],
+    coloring: &Coloring,
+    progress: f32,
+) -> (String, Vec<(Rgba, String)>) {
+    let mut track = String::new();
+    let mut groups: Vec<(Rgba, String)> = Vec::new();
+    if !chart.center.0.is_finite() || !chart.center.1.is_finite() {
+        return (track, groups);
+    }
+    let lit = (finite_or(progress, 1.0).clamp(0.0, 1.0) * chart.columns as f32).ceil() as usize;
+    for row in 0..chart.rings.len() {
+        for column in 0..chart.columns {
+            let value = values
+                .get(row)
+                .and_then(|r| r.get(column))
+                .copied()
+                .unwrap_or(f64::NAN);
+            let color = if column < lit {
+                cell_color(value, coloring)
+            } else {
+                None
+            };
+            let out = match color {
+                None => &mut track,
+                Some(c) => match groups.iter().position(|g| g.0 == c) {
+                    Some(i) => &mut groups[i].1,
+                    None => {
+                        groups.push((c, String::new()));
+                        &mut groups.last_mut().unwrap().1
+                    }
+                },
+            };
+            push_cell(out, chart, row, column);
+        }
+    }
+    (track, groups)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn request<'a>(values: &'a [f64], hidden: &'a [bool]) -> SegmentedRequest<'a> {
+    fn request(values: &[Vec<f64>]) -> SegmentedRequest<'_> {
         SegmentedRequest {
             values,
-            hidden,
             width: 400.0,
             height: 300.0,
             start_angle: 0.0,
             clockwise: true,
-            by_ring: true,
-            rings: 5,
-            segments: 60,
-            max: 0.0,
             cutout: 0.45,
             ring_gap: 0.5,
             segment_gap: 0.3,
+            label_width: 0.0,
+            label_height: 0.0,
             marker: false,
         }
     }
 
+    fn matrix(rows: usize, columns: usize) -> Vec<Vec<f64>> {
+        vec![vec![0.0; columns]; rows]
+    }
+
+    const CLASSES: [Rgba; 3] = [[255, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]];
+
     #[test]
-    fn rings_get_fewer_segments_inwards() {
-        let chart = layout(&request(&[1.0], &[]));
-        assert_eq!(chart.radius, 150.0);
+    fn the_matrix_sets_the_rings_and_segments() {
+        let m = matrix(5, 24);
+        let chart = layout(&request(&m));
         assert_eq!(chart.center, (200.0, 150.0));
         assert_eq!(chart.rings.len(), 5);
-        assert_eq!(chart.rings[0].count, 60);
+        assert_eq!(chart.columns, 24);
+        // A small room is left outside, as when there is a marker.
+        assert!(chart.radius < 150.0 && chart.radius > 140.0);
+        assert_eq!(chart.rings[0].0, chart.radius);
         for pair in chart.rings.windows(2) {
-            assert!(pair[1].count < pair[0].count);
-            assert!(pair[1].outer < pair[0].inner);
-            assert_eq!(pair[1].first, pair[0].first + pair[0].count);
+            assert!(pair[1].0 < pair[0].1);
         }
-        assert!((chart.inner_radius - 150.0 * 0.45).abs() < 1e-3);
-        let last = chart.rings[4];
-        assert_eq!(chart.capacity, last.first + last.count);
+        assert!((chart.inner_radius - chart.radius * 0.45).abs() < 1e-3);
+        // Ragged rows: the longest sets the columns.
+        let ragged = vec![vec![1.0; 3], vec![1.0; 30], vec![]];
+        assert_eq!(dimensions(&ragged), (3, 30));
+        assert_eq!(dimensions(&[]), (1, 1));
+        assert_eq!(dimensions(&matrix(80, 1000)), (MAX_ROWS, MAX_COLUMNS));
+        // More rings are narrower; a single ring is not the whole radius.
+        let many = layout(&request(&matrix(20, 10)));
+        let one = layout(&request(&matrix(1, 10)));
+        let width = |c: &Segmented| c.rings[0].0 - c.rings[0].1;
+        assert!(width(&many) < width(&layout(&request(&m))));
+        assert!((width(&one) - one.radius * 0.2).abs() < 1e-3);
     }
 
     #[test]
-    fn items_fill_the_segments_in_turn() {
-        let mut req = request(&[300.0, 100.0, 0.0, 50.0], &[false, false, false, true]);
-        req.max = 0.0;
+    fn columns_go_round_both_ways_and_are_hit() {
+        let m = matrix(3, 12);
+        let mut req = request(&m);
         let chart = layout(&req);
-        assert_eq!(chart.total, 400.0);
-        let c = chart.capacity;
-        assert_eq!(chart.spans.len(), 3, "the hidden item is left out");
-        assert_eq!(chart.spans[0].from, 0);
-        assert_eq!(chart.spans[0].to, (c as f64 * 0.75).round() as usize);
-        assert_eq!(chart.spans[1].to, c, "the values fill every segment");
-        assert_eq!(chart.spans[2].from, chart.spans[2].to);
-
-        req.max = 800.0;
-        let chart = layout(&req);
-        assert_eq!(chart.spans[1].to, (c as f64 / 2.0).round() as usize);
-        req.max = 100.0;
-        let chart = layout(&req);
-        assert_eq!(chart.spans[0].to, c, "past the maximum fills every segment");
-        assert_eq!(chart.spans[1].from, c);
-    }
-
-    #[test]
-    fn segments_go_both_ways_and_are_hit() {
-        let values = [10.0, 10.0];
-        let mut req = request(&values, &[]);
-        req.max = 0.0;
-        let chart = layout(&req);
-        let (cx, cy) = chart.center;
-        let mid = (chart.rings[0].outer + chart.rings[0].inner) / 2.0;
-        // Just clockwise of 12 o'clock is the first segment.
-        let (x, y) = point(chart.center, mid, 0.05);
-        assert_eq!(segment_at(&chart, x, y), Some(0));
-        assert_eq!(hit(&chart, x, y), Some(0));
-        let (x, y) = point(chart.center, mid, -0.05);
-        assert_eq!(segment_at(&chart, x, y), Some(59));
-        assert_eq!(hit(&chart, cx, cy), None, "the middle");
+        let (outer, inner) = chart.rings[1];
+        let mid = (outer + inner) / 2.0;
+        let (x, y) = point(chart.center, mid, 0.1);
+        assert_eq!(hit(&chart, x, y), Some((1, 0)));
+        let (x, y) = point(chart.center, mid, -0.1);
+        assert_eq!(hit(&chart, x, y), Some((1, 11)));
+        let (x, y) = point(chart.center, mid, std::f32::consts::PI + 0.1);
+        assert_eq!(hit(&chart, x, y), Some((1, 6)));
+        assert_eq!(hit(&chart, chart.center.0, chart.center.1), None);
 
         req.clockwise = false;
         let chart = layout(&req);
-        let (x, y) = point(chart.center, mid, -0.05);
-        assert_eq!(segment_at(&chart, x, y), Some(0));
-        let p = path(&chart, 0.0, 1.0);
-        assert_eq!(p.matches('M').count(), 1);
-        assert!(p.starts_with("M "), "{p}");
-        // The segment is left of 12 o'clock.
-        let x: f32 = p[2..].split(' ').next().unwrap().parse().unwrap();
-        assert!(x < cx, "{p}");
+        let (x, y) = point(chart.center, mid, -0.1);
+        assert_eq!(hit(&chart, x, y), Some((1, 0)));
+        assert!(column_middle(&chart, 0) < 0.0);
+        assert_eq!(cell_path(&chart, 0, 0).matches('M').count(), 1);
+        assert!(cell_path(&chart, 9, 0).is_empty());
     }
 
     #[test]
-    fn paths_round_to_whole_segments() {
-        let chart = layout(&request(&[1.0], &[]));
-        let p = |from, to| path(&chart, from, to);
-        assert!(p(0.0, 0.0).is_empty());
-        assert_eq!(p(0.0, 3.4).matches('M').count(), 3);
-        assert_eq!(p(58.0, 62.0).matches('M').count(), 4, "across two rings");
-        assert_eq!(p(0.0, 1e9).matches('M').count(), chart.capacity);
-        assert!(p(f32::NAN, 3.0).is_empty());
+    fn cells_are_grouped_by_color() {
+        let nan = f64::NAN;
+        let values = vec![vec![0.0, 1.0, 0.0], vec![2.0, nan, 7.0]];
+        let chart = layout(&request(&values));
+        let coloring = Coloring::Classes {
+            colors: &CLASSES,
+            hidden: &[false, false, true],
+        };
+        let (track, groups) = paint(&chart, &values, &coloring, 1.0);
+        // Missing, unknown and hidden classes are empty.
+        assert_eq!(track.matches('M').count(), 3);
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].0, CLASSES[0]);
+        assert_eq!(groups[0].1.matches('M').count(), 2);
+        assert_eq!(groups[1].1.matches('M').count(), 1);
+        // A short row leaves the rest of its ring empty.
+        let short = vec![vec![0.0, 0.0, 0.0], vec![0.0]];
+        let chart = layout(&request(&short));
+        let (track, groups) = paint(&chart, &short, &coloring, 1.0);
+        assert_eq!(track.matches('M').count(), 2);
+        assert_eq!(groups[0].1.matches('M').count(), 4);
+        // Sweeping in colors only the first columns.
+        let full = matrix(2, 3);
+        let (track, groups) = paint(&chart, &full, &coloring, 0.3);
+        assert_eq!(track.matches('M').count(), 4);
+        assert_eq!(groups[0].1.matches('M').count(), 2);
     }
 
     #[test]
-    fn sweeping_fill_goes_round_across_the_rings() {
-        let mut req = request(&[1.0], &[]);
-        req.by_ring = false;
-        let chart = layout(&req);
-        let order = order(&chart.rings, false);
-        assert_eq!(order.len(), chart.capacity);
-        // Every ring starts at the start, outermost first.
-        let starts: Vec<_> = order[..5].to_vec();
-        assert_eq!(starts, [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)]);
-        // The outer ring's last segment ends nearest the start, so comes last.
-        assert_eq!(order.last(), Some(&(0, 59)));
-        // The hit test agrees with the order.
-        let r = chart.rings[2];
-        let mid = (r.outer + r.inner) / 2.0;
-        let (x, y) = point(chart.center, mid, 0.01);
-        assert_eq!(segment_at(&chart, x, y), Some(2));
-        let (x, y) = point(chart.center, mid, std::f32::consts::PI);
-        let k = segment_at(&chart, x, y).unwrap();
-        assert_eq!(order[k], (2, r.count / 2));
+    fn scale_colors_like_a_heatmap() {
+        let empty = [238, 240, 243, 255];
+        let color = [0, 100, 200, 255];
+        let scale = Coloring::Scale {
+            low: 0.0,
+            high: 10.0,
+            diverging: false,
+            center: 0.0,
+            color,
+            negative: [200, 0, 0, 255],
+            empty,
+        };
+        assert_eq!(cell_color(10.0, &scale), Some(color));
+        assert_eq!(cell_color(99.0, &scale), Some(color));
+        assert_eq!(cell_color(0.0, &scale), Some(mix(empty, color, 0.12)));
+        assert_eq!(cell_color(f64::NAN, &scale), None);
+        // Nearly equal values share a color.
+        assert_eq!(cell_color(5.0, &scale), cell_color(5.001, &scale));
+        let diverging = Coloring::Scale {
+            low: -5.0,
+            high: 10.0,
+            diverging: true,
+            center: 0.0,
+            color,
+            negative: [200, 0, 0, 255],
+            empty,
+        };
+        assert_eq!(cell_color(0.0, &diverging), Some(empty));
+        assert_eq!(cell_color(-10.0, &diverging), Some([200, 0, 0, 255]));
     }
 
     #[test]
-    fn marker_sits_outside_at_the_start() {
-        let mut req = request(&[1.0], &[]);
+    fn labels_and_marker_get_room() {
+        let m = matrix(4, 24);
+        let mut req = request(&m);
+        let plain = layout(&req);
         req.marker = true;
         req.start_angle = 90.0;
-        let chart = layout(&req);
-        let (x, y, d) = chart.marker;
-        assert!(d > 0.0);
-        assert!((y - chart.center.1).abs() < 1e-3);
-        assert!(x - d / 2.0 > chart.center.0 + chart.radius);
-        assert!(x + d / 2.0 <= 400.0 && chart.radius < 150.0);
+        let marked = layout(&req);
+        let (x, y, d) = marked.marker;
+        assert!(d > 0.0 && (y - marked.center.1).abs() < 1e-3);
+        assert!(x - d / 2.0 > marked.center.0 + marked.radius);
+        assert!(marked.radius < plain.radius);
+        req.label_width = 30.0;
+        req.label_height = 14.0;
+        let labeled = layout(&req);
+        assert!(labeled.radius < marked.radius);
+        assert!(labeled.label_radius + 15.0 <= 150.0 + 1e-3);
+        // 24 labels of 30 px don't fit round a circle of this size.
+        assert!(labeled.label_skip > 1, "{}", labeled.label_skip);
+        let few = matrix(4, 6);
+        req.values = &few;
+        assert_eq!(layout(&req).label_skip, 1);
     }
 
     #[test]
     fn bad_input_gives_finite_shapes() {
-        let values = [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -5.0, 1e300, 0.0];
-        for (max, start, cutout, size, rings, segments) in [
-            (0.0, 0.0, 0.45, 300.0, 5, 60),
-            (f64::NAN, f32::NAN, f32::NAN, f32::NAN, 0, 0),
-            (-1.0, f32::INFINITY, 5.0, 0.0, -3, -10),
-            (f64::INFINITY, 1e30, -1.0, -10.0, 1000, 1_000_000),
-            (1e-300, -720.0, 0.9, 1e7, 1, 3),
+        let row = vec![f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -5.0, 1e300, 0.0];
+        for (start, cutout, size, rows) in [
+            (0.0, 0.45, 300.0, 5),
+            (f32::NAN, f32::NAN, f32::NAN, 0),
+            (f32::INFINITY, 5.0, 0.0, 1),
+            (1e30, -1.0, -10.0, 200),
+            (-720.0, 0.9, 1e7, 1),
         ] {
-            let mut req = request(&values, &[]);
-            (req.max, req.start_angle, req.cutout) = (max, start, cutout);
-            (req.width, req.height, req.rings, req.segments) = (size, size, rings, segments);
-            req.marker = true;
+            let values = vec![row.clone(); rows];
+            let mut req = request(&values);
+            (req.start_angle, req.cutout, req.width, req.height) = (start, cutout, size, size);
+            (req.label_width, req.label_height, req.marker) = (size, 14.0, true);
             let chart = layout(&req);
-            assert!(chart.radius.is_finite() && chart.unit > 0.0 && chart.unit.is_finite());
-            assert!(chart.capacity <= 20 * 500);
-            for s in &chart.spans {
-                assert!(s.from <= s.to && s.to <= chart.capacity);
+            assert!(chart.radius.is_finite() && chart.label_radius.is_finite());
+            assert!(chart.rings.len() <= MAX_ROWS && chart.columns <= MAX_COLUMNS);
+            assert!(chart.label_skip >= 1);
+            for coloring in [
+                Coloring::Scale {
+                    low: f64::NAN,
+                    high: f64::INFINITY,
+                    diverging: true,
+                    center: f64::NAN,
+                    color: [0; 4],
+                    negative: [0; 4],
+                    empty: [0; 4],
+                },
+                Coloring::Classes {
+                    colors: &CLASSES,
+                    hidden: &[],
+                },
+            ] {
+                let (track, groups) = paint(&chart, &values, &coloring, f32::NAN);
+                for p in groups.iter().map(|g| &g.1).chain([&track]) {
+                    assert!(!p.contains("NaN") && !p.contains("inf"));
+                }
             }
-            let mut swept = chart.clone();
-            swept.by_ring = false;
-            let p = path(&swept, 0.0, chart.capacity as f32);
-            assert!(!p.contains("NaN") && !p.contains("inf"));
             let _ = hit(&chart, 1.0, 1.0);
         }
-        assert!(layout(&request(&[], &[])).spans.is_empty());
     }
 }

@@ -308,19 +308,25 @@ export component Fuzz inherits Window {
             color-value-decimals: root.decimals;
         }
         if root.chart == 23: SegmentedRingChart {
-            slices <=> root.slices;
-            max-value: root.fixed-range ? root.max-value : 0;
+            values: [root.values, root.values, [], root.values];
+            x-labels: root.labels;
+            y-labels: root.row-labels;
+            classes <=> root.slices;
+            diverging: root.flag;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            center-value: root.value;
             start-angle: root.min-value;
             clockwise: !root.flag;
-            fill-by-ring: root.stacked;
-            rings: root.decimals;
-            segments: root.number * 100;
             cutout: root.number;
             ring-gap: root.value;
             segment-gap: root.value / 10;
+            show-labels: !root.stacked;
             show-marker: !root.logarithmic;
             glow: root.show-values;
             show-legend: root.begin-at-zero;
+            center-text: root.stacked-percent ? "538" : "";
             center-label: root.stacked-percent ? "LABEL" : "";
             value-decimals: root.decimals;
             legend-position: root.legend-position;

@@ -738,28 +738,14 @@ export struct ChartRadialBarRequest {
 // inside the bar. Not `visible` when the ring is too thin for it.
 export struct ChartRadialBarValue { x: float, y: float, inside: bool, visible: bool }
 
-// One ring of a segmented ring chart: its radii, its number of segments,
-// and the place of its first segment in the fill order.
-export struct ChartSegmentRing { outer: float, inner: float, count: int, first: int }
-
-// An item of a segmented ring chart, for the item `index`: the segments it
-// fills, `from` up to `to` in the fill order. Hidden items have one too,
-// not `visible`.
-export struct ChartSegmentedRingItem {
-    index: int,
-    visible: bool,
-    // The item's place among the visible ones; -1 if hidden.
-    position: int,
-    from: int,
-    to: int,
-    color: color,
-}
+// One ring of a segmented ring chart, for a row of the matrix.
+export struct ChartSegmentRing { outer: float, inner: float }
 
 export struct ChartSegmentedRingLayout {
-    // One per item, in the input order.
-    items: [ChartSegmentedRingItem],
-    // The visible items, in fill order.
-    visible: [int],
+    // The size of the matrix: one ring per row, and as many segments as the
+    // longest row has values.
+    rows: int,
+    columns: int,
     // Outermost first.
     rings: [ChartSegmentRing],
     center-x: float,
@@ -771,14 +757,10 @@ export struct ChartSegmentedRingLayout {
     start: float,
     direction: float,
     segment-gap: float,
-    // Each ring filled before the next, rather than all swept round.
-    by-ring: bool,
-    // The number of segments, those the items fill, and the value of each.
-    capacity: int,
-    filled: int,
-    unit: float,
-    // The total of the visible values.
-    total: float,
+    // Where the middles of the column labels go, and every how many columns
+    // there is one.
+    label-radius: float,
+    label-skip: int,
     // The dot at the start; a size of 0 for none.
     marker-x: float,
     marker-y: float,
@@ -786,22 +768,41 @@ export struct ChartSegmentedRingLayout {
 }
 
 export struct ChartSegmentedRingRequest {
-    slices: [ChartSlice],
+    // One row per ring, the first outermost.
+    values: [[float]],
     width: float,
     height: float,
     start-angle: float,
     clockwise: bool,
-    by-ring: bool,
-    rings: int,
-    segments: int,
-    // The value of all segments; 0 or less for the total of the values.
-    max: float,
     cutout: float,
     ring-gap: float,
     segment-gap: float,
+    // The size of the widest column label; 0 for none.
+    label-width: float,
+    label-height: float,
     marker: bool,
-    palette: [color],
 }
+
+// How a segmented ring chart colors its cells: by class when there are
+// `classes` (a value is a class index), or else on a scale, as a heatmap.
+export struct ChartSegmentedRingStyle {
+    values: [[float]],
+    classes: [ChartSlice],
+    palette: [color],
+    low: float,
+    high: float,
+    diverging: bool,
+    center: float,
+    color: color,
+    negative-color: color,
+    empty: color,
+    // The share of the columns colored, as the chart sweeps in.
+    progress: float,
+}
+
+// The colored cells, one path per color, and the empty ones.
+export struct ChartSegmentGroup { path: string, color: color }
+export struct ChartSegmentedRingPaint { track: string, groups: [ChartSegmentGroup] }
 
 // A period of a candlestick chart: its time, in seconds after `time-origin`,
 // its first, highest, lowest and last value, and the volume traded in it.
@@ -1087,10 +1088,16 @@ export global ChartEngine {
     // The item at (x, y), on its ring or its label, or -1.
     pure callback radial-bar-hit(layout: ChartRadialBarLayout, x: float, y: float, label-width: float, label-height: float) -> int;
     pure callback segmented-ring-layout(request: ChartSegmentedRingRequest) -> ChartSegmentedRingLayout;
-    // The segments from `from` up to `to` in the fill order, rounded to
-    // whole segments, as one path.
-    pure callback segmented-ring-path(layout: ChartSegmentedRingLayout, from: float, to: float) -> string;
-    // The item whose segment is at (x, y), or -1.
+    pure callback segmented-ring-paint(layout: ChartSegmentedRingLayout, style: ChartSegmentedRingStyle) -> ChartSegmentedRingPaint;
+    // One cell's segment, as a path.
+    pure callback segmented-ring-cell(layout: ChartSegmentedRingLayout, row: int, column: int) -> string;
+    // The cell at (x, y), as `row * columns + column`, or -1.
     pure callback segmented-ring-hit(layout: ChartSegmentedRingLayout, x: float, y: float) -> int;
+    // The middle of a column's label.
+    pure callback segmented-ring-label(layout: ChartSegmentedRingLayout, column: int) -> ChartXY;
+    // A value of a matrix; NaN where a row is too short.
+    pure callback matrix-value(values: [[float]], row: int, column: int) -> float;
+    // The range of a matrix's finite values; 0 to 1 when there are none.
+    pure callback matrix-range(values: [[float]]) -> ChartRange;
     pure callback matrix-layout(request: ChartMatrixRequest) -> ChartMatrixLayout;
 }

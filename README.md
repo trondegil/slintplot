@@ -133,7 +133,7 @@ example and its properties.
 | [`PolarAreaChart`](https://slintplot.dev/#polar-area-chart) | Slices of equal angle whose radius shows the value |
 | [`RadarChart`](https://slintplot.dev/#radar-chart) | One spoke per label and one closed polygon per dataset |
 | [`RadialBarChart`](https://slintplot.dev/#radial-bar-chart) | One ring per bar, filled along its arc in proportion to the value |
-| `SegmentedRingChart` | Rings of short segments, each a unit of the total, filled by the items in turn |
+| `SegmentedRingChart` | A heatmap bent into rings: one ring per row of a matrix, one segment per column, colored on a scale or by class |
 | [`TimeSeriesChart`](https://slintplot.dev/#time-series) | Lines over a time axis with calendar-aligned ticks |
 | [`GanttChart`](https://slintplot.dev/#gantt) | One row per task with a bar on a time axis, groups, progress, milestones and a line at now |
 | [`CandlestickChart`](https://slintplot.dev/#candlestick) | Open, high, low and close per period, as candles or OHLC bars, on a zoomable time axis |
