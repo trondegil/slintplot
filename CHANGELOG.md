@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Added
+
+- `SegmentedRingChart`: concentric rings cut into short segments, each a
+  unit of the total. The items fill the segments in turn, sweeping round
+  from `start-angle` across all the rings, or ring by ring with
+  `fill-by-ring`, clockwise or not. `max-value` sets the value of all the
+  segments; the ones past the last item stay as a faint track. `rings` and
+  `segments` set how many there are; inner rings get fewer, so the segments
+  keep their length. The total, or `center-value`, is written in the middle
+  over `center-label`, and hovering an item shows its value and label there
+  instead, with a tooltip. A dot marks the start, and `glow` adds a soft
+  light in the middle. Segments light up in turn when the chart appears and
+  the items' ends move to new values. The arrow keys, Home, End and Enter
+  work, and `slice-clicked` reports clicks. Items are `ChartSlice`s, as in
+  pie charts.
+
 ### Example apps
 
 - **Gallery:** builds without Slint's binding loop warnings. The window

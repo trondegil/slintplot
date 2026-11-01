@@ -50,6 +50,7 @@ pub mod pie;
 pub mod profile;
 pub mod radar;
 pub mod radial;
+pub mod segmented;
 pub mod sunburst;
 pub mod ticks;
 pub mod time;
@@ -1802,6 +1803,113 @@ macro_rules! register {
                 $crate::radial::hit(&bars, x, y, label_width, label_height).map_or(-1, |i| i as i32)
             },
         );
+        engine.on_segmented_ring_layout(|req: ChartSegmentedRingRequest| {
+            let slices = tracked(&req.slices);
+            let values: Vec<f64> = slices.iter().map(|s| s.value.into()).collect();
+            let hidden: Vec<bool> = slices.iter().map(|s| s.hidden).collect();
+            let out = $crate::segmented::layout(&$crate::segmented::SegmentedRequest {
+                values: &values,
+                hidden: &hidden,
+                width: req.width,
+                height: req.height,
+                start_angle: req.start_angle,
+                clockwise: req.clockwise,
+                by_ring: req.by_ring,
+                rings: req.rings,
+                segments: req.segments,
+                max: req.max.into(),
+                cutout: req.cutout,
+                ring_gap: req.ring_gap,
+                segment_gap: req.segment_gap,
+                marker: req.marker,
+            });
+            let palette = palette(&req.palette);
+            // One entry per item, so that the chart can look its segments up
+            // by index; hidden items have none.
+            let mut items: Vec<ChartSegmentedRingItem> = slices
+                .iter()
+                .enumerate()
+                .map(|(i, s)| ChartSegmentedRingItem {
+                    index: i as i32,
+                    color: color($crate::layout::resolve_color(rgba(s.color), i, &palette)),
+                    position: -1,
+                    ..Default::default()
+                })
+                .collect();
+            for (position, s) in out.spans.iter().enumerate() {
+                let item = &mut items[s.index];
+                item.visible = true;
+                item.position = position as i32;
+                item.from = s.from as i32;
+                item.to = s.to as i32;
+            }
+            ChartSegmentedRingLayout {
+                visible: model(out.spans.iter().map(|s| s.index as i32)),
+                items: model(items),
+                rings: model(out.rings.iter().map(|r| ChartSegmentRing {
+                    outer: r.outer,
+                    inner: r.inner,
+                    count: r.count as i32,
+                    first: r.first as i32,
+                })),
+                center_x: out.center.0,
+                center_y: out.center.1,
+                radius: out.radius,
+                inner_radius: out.inner_radius,
+                start: out.start,
+                direction: out.direction,
+                segment_gap: out.segment_gap,
+                by_ring: out.by_ring,
+                capacity: out.capacity as i32,
+                filled: out.spans.last().map_or(0, |s| s.to as i32),
+                unit: out.unit as f32,
+                total: out.total as f32,
+                marker_x: out.marker.0,
+                marker_y: out.marker.1,
+                marker_size: out.marker.2,
+            }
+        });
+        fn segmented_rings(layout: &ChartSegmentedRingLayout) -> Vec<$crate::segmented::Ring> {
+            tracked(&layout.rings)
+                .into_iter()
+                .map(|r| $crate::segmented::Ring {
+                    outer: r.outer,
+                    inner: r.inner,
+                    count: r.count.max(0) as usize,
+                    first: r.first.max(0) as usize,
+                })
+                .collect()
+        }
+        fn segmented_chart(layout: &ChartSegmentedRingLayout) -> $crate::segmented::Segmented {
+            $crate::segmented::Segmented {
+                center: (layout.center_x, layout.center_y),
+                radius: layout.radius,
+                start: layout.start,
+                direction: layout.direction,
+                segment_gap: layout.segment_gap,
+                by_ring: layout.by_ring,
+                rings: segmented_rings(layout),
+                ..Default::default()
+            }
+        }
+        engine.on_segmented_ring_path(|layout: ChartSegmentedRingLayout, from: f32, to: f32| {
+            $crate::segmented::path(&segmented_chart(&layout), from, to).into()
+        });
+        engine.on_segmented_ring_hit(|layout: ChartSegmentedRingLayout, x: f32, y: f32| {
+            let chart = $crate::segmented::Segmented {
+                spans: tracked(&layout.items)
+                    .into_iter()
+                    .filter(|i| i.visible)
+                    .map(|i| $crate::segmented::Span {
+                        index: i.index as usize,
+                        from: i.from.max(0) as usize,
+                        to: i.to.max(0) as usize,
+                    })
+                    .collect(),
+                ..segmented_chart(&layout)
+            };
+            $crate::segmented::hit(&chart, x, y).map_or(-1, |i| i as i32)
+        });
         engine.on_matrix_layout(|req: ChartMatrixRequest| {
             let values: Vec<f64> = tracked(&req.values).into_iter().map(f64::from).collect();
             let color_values: Vec<f64> = tracked(&req.color_values)

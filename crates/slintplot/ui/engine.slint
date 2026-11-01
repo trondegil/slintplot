@@ -738,6 +738,71 @@ export struct ChartRadialBarRequest {
 // inside the bar. Not `visible` when the ring is too thin for it.
 export struct ChartRadialBarValue { x: float, y: float, inside: bool, visible: bool }
 
+// One ring of a segmented ring chart: its radii, its number of segments,
+// and the place of its first segment in the fill order.
+export struct ChartSegmentRing { outer: float, inner: float, count: int, first: int }
+
+// An item of a segmented ring chart, for the item `index`: the segments it
+// fills, `from` up to `to` in the fill order. Hidden items have one too,
+// not `visible`.
+export struct ChartSegmentedRingItem {
+    index: int,
+    visible: bool,
+    // The item's place among the visible ones; -1 if hidden.
+    position: int,
+    from: int,
+    to: int,
+    color: color,
+}
+
+export struct ChartSegmentedRingLayout {
+    // One per item, in the input order.
+    items: [ChartSegmentedRingItem],
+    // The visible items, in fill order.
+    visible: [int],
+    // Outermost first.
+    rings: [ChartSegmentRing],
+    center-x: float,
+    center-y: float,
+    radius: float,
+    // The inside of the inner ring.
+    inner-radius: float,
+    // In radians clockwise from 12 o'clock; 1 clockwise, -1 counterclockwise.
+    start: float,
+    direction: float,
+    segment-gap: float,
+    // Each ring filled before the next, rather than all swept round.
+    by-ring: bool,
+    // The number of segments, those the items fill, and the value of each.
+    capacity: int,
+    filled: int,
+    unit: float,
+    // The total of the visible values.
+    total: float,
+    // The dot at the start; a size of 0 for none.
+    marker-x: float,
+    marker-y: float,
+    marker-size: float,
+}
+
+export struct ChartSegmentedRingRequest {
+    slices: [ChartSlice],
+    width: float,
+    height: float,
+    start-angle: float,
+    clockwise: bool,
+    by-ring: bool,
+    rings: int,
+    segments: int,
+    // The value of all segments; 0 or less for the total of the values.
+    max: float,
+    cutout: float,
+    ring-gap: float,
+    segment-gap: float,
+    marker: bool,
+    palette: [color],
+}
+
 // A period of a candlestick chart: its time, in seconds after `time-origin`,
 // its first, highest, lowest and last value, and the volume traded in it.
 export struct ChartCandle { x: float, open: float, high: float, low: float, close: float, volume: float }
@@ -1021,5 +1086,11 @@ export global ChartEngine {
     pure callback radial-bar-value(layout: ChartRadialBarLayout, ring: ChartRadialBarRing, end: float, width: float, height: float) -> ChartRadialBarValue;
     // The item at (x, y), on its ring or its label, or -1.
     pure callback radial-bar-hit(layout: ChartRadialBarLayout, x: float, y: float, label-width: float, label-height: float) -> int;
+    pure callback segmented-ring-layout(request: ChartSegmentedRingRequest) -> ChartSegmentedRingLayout;
+    // The segments from `from` up to `to` in the fill order, rounded to
+    // whole segments, as one path.
+    pure callback segmented-ring-path(layout: ChartSegmentedRingLayout, from: float, to: float) -> string;
+    // The item whose segment is at (x, y), or -1.
+    pure callback segmented-ring-hit(layout: ChartSegmentedRingLayout, x: float, y: float) -> int;
     pure callback matrix-layout(request: ChartMatrixRequest) -> ChartMatrixLayout;
 }

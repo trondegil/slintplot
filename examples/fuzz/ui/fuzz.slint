@@ -3,7 +3,7 @@ import {
     BarChart, BubbleChart, BulletChart, CalendarHeatmap, CandlestickChart, ChartBullet, ChartCandle, ChartDataset, ChartEngine, ChartGanttTask, ChartGaugeBand, ChartLegendPosition, ChartSlice,
     ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GanttChart, GaugeChart,
     HeatmapChart, HorizontalBarChart, LineChart, MatrixChart, ChartMatrixColorMode, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
-    RadialBarChart, TimeSeriesChart, TreemapChart, WaterfallChart,
+    RadialBarChart, SegmentedRingChart, TimeSeriesChart, TreemapChart, WaterfallChart,
 } from "@slintplot";
 export { ChartEngine }
 
@@ -306,6 +306,24 @@ export component Fuzz inherits Window {
             x-labels-top: root.begin-at-zero;
             value-decimals: root.decimals;
             color-value-decimals: root.decimals;
+        }
+        if root.chart == 23: SegmentedRingChart {
+            slices <=> root.slices;
+            max-value: root.fixed-range ? root.max-value : 0;
+            start-angle: root.min-value;
+            clockwise: !root.flag;
+            fill-by-ring: root.stacked;
+            rings: root.decimals;
+            segments: root.number * 100;
+            cutout: root.number;
+            ring-gap: root.value;
+            segment-gap: root.value / 10;
+            show-marker: !root.logarithmic;
+            glow: root.show-values;
+            show-legend: root.begin-at-zero;
+            center-label: root.stacked-percent ? "LABEL" : "";
+            value-decimals: root.decimals;
+            legend-position: root.legend-position;
         }
     }
 }

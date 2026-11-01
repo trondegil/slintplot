@@ -167,6 +167,15 @@ const CHANNELS: [(&str, f32); 6] = [
     ("Forum", 3.0),
 ];
 // Product categories, not colors: the slices take the theme's colors.
+/// The segmented ring sample: a day of automated runs, by outcome.
+const RUNS: [(&str, f32); 3] = [("On its own", 471.0), ("Needed you", 58.0), ("Failed", 9.0)];
+/// The segmented ring sample: support tickets this week, by channel.
+const TICKETS: [(&str, f32); 4] = [
+    ("Email", 120.0),
+    ("Chat", 85.0),
+    ("Phone", 40.0),
+    ("Forum", 15.0),
+];
 const SLICE_NAMES: [&str; 8] = [
     "Books", "Games", "Music", "Movies", "Apps", "Toys", "Sports", "Garden",
 ];
@@ -275,6 +284,8 @@ enum Shape {
     Candles,
     /// Goals reached, and survey shares, as radial bars.
     RadialBar,
+    /// Runs and tickets as units of segmented rings.
+    SegmentedRing,
 }
 
 /// Population in millions (2025 estimates), by continent.
@@ -534,6 +545,14 @@ const SAMPLES: &[Sample] = &[
         "Equal angles; the radius shows the value.",
         Shape::Slices,
         DATA_ACTIONS,
+    ),
+    sample(
+        "segmented-ring",
+        "New",
+        "Segmented ring charts",
+        "SegmentedRingChart: concentric rings of short segments, each a unit of the total, filled by the items in turn as they sweep round from 12 o'clock. Runs a day out of a capacity of 600, counterclockwise with custom colors and a glow, and tickets by channel filling every segment in the theme's colors (fill-by-ring fills each ring before the next instead). Hover an item to see it in the middle; Randomize moves the items to new values.",
+        Shape::SegmentedRing,
+        &["Randomize"],
     ),
     sample(
         "radial-bar",
@@ -1592,13 +1611,25 @@ impl State {
         let slices: Vec<ChartSlice> = match sample.shape {
             Shape::Slices => (0..5).map(|i| self.slice(i)).collect(),
             Shape::RadialBar => bars(&GOALS),
+            Shape::SegmentedRing => bars(&RUNS)
+                .into_iter()
+                .zip([0xc6f432, 0xf0904a, 0xe0636b])
+                .map(|(s, rgb)| ChartSlice {
+                    color: slint::Color::from_rgb_u8(
+                        (rgb >> 16) as u8,
+                        (rgb >> 8) as u8,
+                        rgb as u8,
+                    ),
+                    ..s
+                })
+                .collect(),
             _ => Vec::new(),
         };
         self.slices.set_vec(slices);
-        self.channels.set_vec(if sample.shape == Shape::RadialBar {
-            bars(&CHANNELS)
-        } else {
-            Vec::new()
+        self.channels.set_vec(match sample.shape {
+            Shape::RadialBar => bars(&CHANNELS),
+            Shape::SegmentedRing => bars(&TICKETS),
+            _ => Vec::new(),
         });
         self.grid_values();
         self.tree_items(false);
@@ -1833,6 +1864,21 @@ impl State {
                     }
                 }
             }
+            "Randomize" if self.sample.shape == Shape::SegmentedRing => {
+                let runs = [(380.0, 560.0), (10.0, 90.0), (0.0, 25.0)];
+                for (row, &(lo, hi)) in runs.iter().enumerate() {
+                    if let Some(mut s) = self.slices.row_data(row) {
+                        s.value = self.rng.range(lo, hi).round();
+                        self.slices.set_row_data(row, s);
+                    }
+                }
+                for row in 0..self.channels.row_count() {
+                    if let Some(mut s) = self.channels.row_data(row) {
+                        s.value = self.rng.range(5.0, 150.0).round();
+                        self.channels.set_row_data(row, s);
+                    }
+                }
+            }
             "Randomize"
                 if matches!(
                     self.sample.shape,
@@ -1967,6 +2013,8 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
             categories.push(s.category);
         }
     }
+    // New charts on top, so that they are easy to find while reviewed.
+    categories.sort_by_key(|c| *c != "New");
     let mut entries = Vec::new();
     for category in categories {
         entries.push(SampleEntry {

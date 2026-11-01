@@ -37,6 +37,7 @@ import {
     PolarAreaChart,
     RadarChart,
     RadialBarChart,
+    SegmentedRingChart,
     ScatterChart,
     TimeSeriesChart,
 } from "@slintplot";
@@ -1818,6 +1819,39 @@ export component Gallery inherits Window {
                                 { to: 85, label: "Warm", color: ChartTheme.dark ? #fbbf24 : #f59e0b },
                                 { to: 100, label: "Hot", color: ChartTheme.dark ? #fb7185 : #f43f5e },
                             ];
+                        }
+                    }
+                    if root.sample == "segmented-ring": GridLayout {
+                        spacing: 8px;
+                        SegmentedRingChart {
+                            row: 0;
+                            col: 0;
+                            title: "Automated runs";
+                            slices <=> root.slices;
+                            max-value: 600;
+                            clockwise: false;
+                            glow: true;
+                            center-label: "RUNS A DAY";
+                            value-decimals: 0;
+                            slice-clicked(index) => {
+                                root.status = "slice-clicked: " + self.slices[index].label + ", "
+                                    + ChartEngine.format-value(self.slices[index].value, { decimals: 0 });
+                            }
+                        }
+                        SegmentedRingChart {
+                            row: root.narrow ? 1 : 0;
+                            col: root.narrow ? 0 : 1;
+                            title: "Support tickets this week";
+                            slices <=> root.channels;
+                            rings: 4;
+                            segments: 48;
+                            show-marker: false;
+                            center-label: "TICKETS";
+                            value-decimals: 0;
+                            slice-clicked(index) => {
+                                root.status = "slice-clicked: " + self.slices[index].label + ", "
+                                    + ChartEngine.format-value(self.slices[index].value, { decimals: 0 });
+                            }
                         }
                     }
                     if root.sample == "radial-bar": GridLayout {
