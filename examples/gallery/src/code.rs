@@ -236,6 +236,14 @@ fn property(ui: &Gallery, name: &str) -> (&'static str, Lit) {
         "sun" => list(ui.get_sun()),
         "steps" => list(ui.get_steps()),
         "candles" => list(ui.get_candles()),
+        "run-values" => list(ui.get_run_values()),
+        "visit-values" => list(ui.get_visit_values()),
+        "run-days" => list(ui.get_run_days()),
+        "run-slots" => list(ui.get_run_slots()),
+        "visit-days" => list(ui.get_visit_days()),
+        "visit-hours" => list(ui.get_visit_hours()),
+        "run-total" => ui.get_run_total().lit(),
+        "visit-total" => ui.get_visit_total().lit(),
         "gantt-tasks" => list(ui.get_gantt_tasks()),
         "gauge-value" => ui.get_gauge_value().lit(),
         "view-start" => ui.get_view_start().lit(),
@@ -258,7 +266,11 @@ fn property(ui: &Gallery, name: &str) -> (&'static str, Lit) {
 pub fn property_type(name: &str) -> Option<&'static str> {
     Some(match name {
         "narrow" | "ohlc" | "skip-gaps" | "decimate" => "bool",
-        "labels" | "row-labels" => "[string]",
+        "labels" | "row-labels" | "run-days" | "run-slots" | "visit-days" | "visit-hours" => {
+            "[string]"
+        }
+        "run-values" | "visit-values" => "[[float]]",
+        "run-total" | "visit-total" => "string",
         "datasets" => "[ChartDataset]",
         "slices" | "channels" => "[ChartSlice]",
         "grid" | "growth" | "bullet-values" => "[float]",
@@ -543,6 +555,23 @@ mod tests {
                     "{}: root.{name}",
                     sample.id
                 );
+            }
+        }
+    }
+
+    /// The code panel writes every sample's properties without panicking,
+    /// with the data the sample has when shown.
+    #[test]
+    fn every_sample_code_panel_opens() {
+        crate::snapshot::install();
+        let (ui, state) = crate::gallery().unwrap();
+        for sample in crate::SAMPLES {
+            state.borrow_mut().select(sample);
+            let files = sample_files(&ui, sample.id);
+            let slint = files.row_data(0).unwrap().code;
+            assert!(slint.contains("export component Example"), "{}", sample.id);
+            if let Some(dir) = option_env!("GALLERY_CODE_DIR") {
+                std::fs::write(format!("{dir}/{}.slint", sample.id), slint.as_str()).unwrap();
             }
         }
     }
