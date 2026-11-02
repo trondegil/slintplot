@@ -1314,34 +1314,21 @@ impl State {
         self.ring_colors();
     }
 
-    /// The colors of the segmented ring charts that pick their own: the
-    /// runs', uptime's and pipeline's classes, and the temperature's colors
-    /// above and below normal. "Theme colors" leaves the classes' colors
-    /// unset, so the library uses the theme's, and takes the theme's first
-    /// and third colors for the temperature; "Custom colors" sets them.
+    /// The classes' colors of the segmented ring charts that pick their own:
+    /// the runs, uptime and pipeline. "Theme colors" leaves them unset, so
+    /// the library uses the theme's; "Custom colors" sets them.
     fn ring_colors(&self) {
         let Some(ui) = self.ui.upgrade() else {
             return;
         };
-        let theme = ui.global::<ChartTheme>().get_colors();
-        let theme_color = |i: usize| {
-            theme
-                .row_data(i % theme.row_count().max(1))
-                .unwrap_or(slint::Color::from_rgb_u8(0x3b, 0x82, 0xf6))
-        };
-        let (classes, temperature) = match ui.get_ring_colors().max(0) as usize {
-            0 => (
-                [[slint::Color::default(); 3]; 3],
-                [theme_color(0), theme_color(2)],
-            ),
-            _ => (
-                [
-                    [0xc6f432, 0xf0904a, 0xe0636b].map(rgb),
-                    [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
-                    [0x2fb67c, 0x3d8bf2, 0xe0636b].map(rgb),
-                ],
-                [rgb(0xe0636b), rgb(0x3d8bf2)],
-            ),
+        let classes = if ui.get_ring_colors() == 0 {
+            [[slint::Color::default(); 3]; 3]
+        } else {
+            [
+                [0xc6f432, 0xf0904a, 0xe0636b].map(rgb),
+                [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
+                [0x2fb67c, 0x3d8bf2, 0xe0636b].map(rgb),
+            ]
         };
         ui.set_ring_class_colors(ModelRc::new(VecModel::from(
             classes
@@ -1349,7 +1336,6 @@ impl State {
                 .map(|c| ModelRc::new(VecModel::from(c.to_vec())))
                 .collect::<Vec<_>>(),
         )));
-        ui.set_ring_temperature_colors(ModelRc::new(VecModel::from(temperature.to_vec())));
     }
 
     /// Runs every half hour for a week, by class: 0 on its own, 1 needed

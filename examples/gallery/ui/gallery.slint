@@ -1098,13 +1098,11 @@ export component Gallery inherits Window {
     in property <[[string]]> ring-x-labels;
     in property <[[string]]> ring-y-labels;
     in property <[string]> ring-totals;
-    // The color set of the segmented ring charts that pick their own
-    // colors, worked out in Rust: per chart, the classes' colors, and the
-    // temperature chart's colors above and below normal.
+    // The colors of the segmented ring charts by class that pick their own,
+    // worked out in Rust: per chart, the classes' colors.
     // 1: the charts' custom colors.
     in-out property <int> ring-colors: 1;
     in property <[[color]]> ring-class-colors;
-    in property <[color]> ring-temperature-colors;
     callback ring-colors-changed();
     private property <[string]> ring-color-options: ["Theme colors", "Custom colors"];
     changed ring-colors => {
@@ -1312,7 +1310,7 @@ export component Gallery inherits Window {
                                 width: 150px;
                                 current <=> root.theme;
                             }
-                            if root.sample == "segmented-ring-classes" || root.sample == "segmented-ring-scale": ComboBox {
+                            if root.sample == "segmented-ring-classes": ComboBox {
                                 width: 150px;
                                 model: root.ring-color-options;
                                 current-index <=> root.ring-colors;
@@ -1366,7 +1364,7 @@ export component Gallery inherits Window {
                 color: Look.secondary;
                 wrap: word-wrap;
             }
-            if root.narrow && !root.chart-only && (root.sample == "segmented-ring-classes" || root.sample == "segmented-ring-scale"): ComboBox {
+            if root.narrow && !root.chart-only && root.sample == "segmented-ring-classes": ComboBox {
                 model: root.ring-color-options;
                 current-index <=> root.ring-colors;
             }
@@ -1968,8 +1966,8 @@ export component Gallery inherits Window {
                             y-labels: root.ring-y-labels[1];
                             center-text: root.ring-totals[1];
                             diverging: true;
-                            color: root.ring-temperature-colors[0];
-                            negative-color: root.ring-temperature-colors[1];
+                            color: #e0636b;
+                            negative-color: #3d8bf2;
                             segment-gap: 0.1;
                             ring-gap: 0.2;
                             center-label: "LAST YEAR";
@@ -1987,7 +1985,6 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[2];
                             y-labels: root.ring-y-labels[2];
                             center-text: root.ring-totals[2];
-                            color: ChartTheme.colors[4];
                             fixed-range: true;
                             min-value: 0;
                             max-value: 100;
@@ -2010,7 +2007,6 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[3];
                             y-labels: root.ring-y-labels[3];
                             center-text: root.ring-totals[3];
-                            color: ChartTheme.colors[1];
                             segment-gap: 0.2;
                             cutout: 0.6;
                             show-labels: false;
