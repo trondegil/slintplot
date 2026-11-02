@@ -408,6 +408,23 @@ const LIFE_EXPECTANCY: [(&str, f32, f32); 8] = [
     ("Nigeria", 46.3, 54.5),
 ];
 
+/// Samples shown as tabs of one sidebar entry: the entry's title, and each
+/// sample's id and tab title. The first sample is the one the entry opens.
+const TAB_GROUPS: &[(&str, &[(&str, &str)])] = &[(
+    "Segmented ring charts",
+    &[
+        ("segmented-ring-classes", "By class"),
+        ("segmented-ring-scale", "On a scale"),
+    ],
+)];
+
+/// The tab group of the sample `id`, if it is in one.
+fn tab_group(id: &str) -> Option<&'static (&'static str, &'static [(&'static str, &'static str)])> {
+    TAB_GROUPS
+        .iter()
+        .find(|(_, tabs)| tabs.iter().any(|(tab, _)| *tab == id))
+}
+
 struct Sample {
     id: &'static str,
     category: &'static str,
@@ -2129,7 +2146,27 @@ impl State {
         let Some(ui) = self.ui.upgrade() else { return };
         ui.set_editing_task(-1);
         ui.set_sample(sample.id.into());
-        ui.set_sample_title(sample.title.into());
+        let group = tab_group(sample.id);
+        ui.set_sidebar_sample(group.map_or(sample.id, |(_, tabs)| tabs[0].0).into());
+        ui.set_tabs(ModelRc::new(VecModel::from(
+            group
+                .map(|(_, tabs)| {
+                    tabs.iter()
+                        .map(|&(id, title)| SampleEntry {
+                            id: id.into(),
+                            title: title.into(),
+                            header: false,
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default(),
+        )));
+        // A tab group's page is named after the group.
+        ui.set_sample_title(
+            tab_group(sample.id)
+                .map_or(sample.title, |(title, _)| title)
+                .into(),
+        );
         ui.set_description(sample.description.into());
         ui.set_actions(strings(sample.actions.iter().copied()));
         ui.set_legend_position(ChartLegendPosition::Top);
@@ -2489,9 +2526,15 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
             header: true,
         });
         for s in SAMPLES.iter().filter(|s| s.category == category) {
+            // A tab group is one entry, which opens its first tab.
+            let title = match tab_group(s.id) {
+                Some((title, tabs)) if tabs[0].0 == s.id => title,
+                Some(_) => continue,
+                None => s.title,
+            };
             entries.push(SampleEntry {
                 id: s.id.into(),
-                title: s.title.into(),
+                title: (*title).into(),
                 header: false,
             });
         }
