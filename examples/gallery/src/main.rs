@@ -167,6 +167,20 @@ const CHANNELS: [(&str, f32); 6] = [
     ("Forum", 3.0),
 ];
 // Product categories, not colors: the slices take the theme's colors.
+/// The color sets of the segmented ring charts that pick their own colors,
+/// after "Own colors" and "Theme colors": colorblind safe (Okabe-Ito),
+/// muted and neon. Each is good, in between, bad, and a blue for a running
+/// step and for below normal.
+const RING_COLOR_SETS: [[u32; 4]; 3] = [
+    [0x009e73, 0xe69f00, 0xd55e00, 0x0072b2],
+    [0x6b9e78, 0xc9a35a, 0xb8615e, 0x6a8cb8],
+    [0x39ff88, 0xffb020, 0xff4d6d, 0x3dd6ff],
+];
+
+fn rgb(rgb: u32) -> slint::Color {
+    slint::Color::from_rgb_u8((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
+}
+
 const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_MONTHS: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -1307,6 +1321,52 @@ impl State {
         ui.set_ring_x_labels(ModelRc::new(VecModel::from(x_labels)));
         ui.set_ring_y_labels(ModelRc::new(VecModel::from(y_labels)));
         ui.set_ring_totals(ModelRc::new(VecModel::from(totals)));
+        self.ring_colors();
+    }
+
+    /// The colors of the segmented ring charts that pick their own, from the
+    /// color set chosen: the runs', uptime's and pipeline's classes, and the
+    /// temperature's colors above and below normal. "Theme colors" leaves
+    /// the classes' colors unset, so the library uses the theme's, and takes
+    /// the theme's first and third colors for the temperature.
+    fn ring_colors(&self) {
+        let Some(ui) = self.ui.upgrade() else {
+            return;
+        };
+        let theme = ui.global::<ChartTheme>().get_colors();
+        let theme_color = |i: usize| {
+            theme
+                .row_data(i % theme.row_count().max(1))
+                .unwrap_or(slint::Color::from_rgb_u8(0x3b, 0x82, 0xf6))
+        };
+        let (classes, temperature) = match ui.get_ring_colors().max(0) as usize {
+            0 => (
+                [
+                    [0xc6f432, 0xf0904a, 0xe0636b].map(rgb),
+                    [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
+                    [0x2fb67c, 0x3d8bf2, 0xe0636b].map(rgb),
+                ],
+                [rgb(0xe0636b), rgb(0x3d8bf2)],
+            ),
+            1 => (
+                [[slint::Color::default(); 3]; 3],
+                [theme_color(0), theme_color(2)],
+            ),
+            n => {
+                let [good, middle, bad, blue] = RING_COLOR_SETS[(n - 2) % 3].map(rgb);
+                (
+                    [[good, middle, bad], [good, middle, bad], [good, blue, bad]],
+                    [bad, blue],
+                )
+            }
+        };
+        ui.set_ring_class_colors(ModelRc::new(VecModel::from(
+            classes
+                .iter()
+                .map(|c| ModelRc::new(VecModel::from(c.to_vec())))
+                .collect::<Vec<_>>(),
+        )));
+        ui.set_ring_temperature_colors(ModelRc::new(VecModel::from(temperature.to_vec())));
     }
 
     /// Runs every half hour for a week, by class: 0 on its own, 1 needed
@@ -2400,7 +2460,13 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         run_live_timer(&timer, &timer_rate, &s);
     });
     let s = state.clone();
-    ui.on_dark_mode_changed(move || s.borrow_mut().recolor_survey());
+    ui.on_dark_mode_changed(move || {
+        let mut s = s.borrow_mut();
+        s.recolor_survey();
+        s.ring_colors();
+    });
+    let s = state.clone();
+    ui.on_ring_colors_changed(move || s.borrow().ring_colors());
     let s = state.clone();
     ui.on_language_changed(move || s.borrow_mut().relabel());
     let weak = ui.as_weak();

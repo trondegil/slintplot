@@ -1098,6 +1098,17 @@ export component Gallery inherits Window {
     in property <[[string]]> ring-x-labels;
     in property <[[string]]> ring-y-labels;
     in property <[string]> ring-totals;
+    // The color set of the segmented ring charts that pick their own
+    // colors, worked out in Rust: per chart, the classes' colors, and the
+    // temperature chart's colors above and below normal.
+    in-out property <int> ring-colors;
+    in property <[[color]]> ring-class-colors;
+    in property <[color]> ring-temperature-colors;
+    callback ring-colors-changed();
+    private property <[string]> ring-color-options: ["Own colors", "Theme colors", "Colorblind safe", "Muted", "Neon"];
+    changed ring-colors => {
+        root.ring-colors-changed();
+    }
     in property <[string]> row-labels;
     in property <[float]> grid;
     in property <[float]> growth;
@@ -1207,6 +1218,7 @@ export component Gallery inherits Window {
             : self.theme == 2 ? ChartPalette.corporate
             : self.theme == 3 ? ChartPalette.mono
             : ChartPalette.pastel;
+        root.ring-colors-changed();
     }
 
     Rectangle {
@@ -1291,9 +1303,19 @@ export component Gallery inherits Window {
                             names: root.language-names;
                             current <=> root.language;
                         }
-                        ThemePicker {
-                            width: 140px;
-                            current <=> root.theme;
+                        // The theme, and under it, on the segmented ring pages,
+                        // the colors of the charts that set their own.
+                        VerticalLayout {
+                            spacing: 6px;
+                            ThemePicker {
+                                width: 150px;
+                                current <=> root.theme;
+                            }
+                            if root.sample == "segmented-ring-classes" || root.sample == "segmented-ring-scale": ComboBox {
+                                width: 150px;
+                                model: root.ring-color-options;
+                                current-index <=> root.ring-colors;
+                            }
                         }
                     }
                 }
@@ -1342,6 +1364,10 @@ export component Gallery inherits Window {
                 font-size: 13px;
                 color: Look.secondary;
                 wrap: word-wrap;
+            }
+            if root.narrow && !root.chart-only && (root.sample == "segmented-ring-classes" || root.sample == "segmented-ring-scale"): ComboBox {
+                model: root.ring-color-options;
+                current-index <=> root.ring-colors;
             }
             if root.narrow && !root.chart-only: HorizontalLayout {
                 spacing: 8px;
@@ -1838,9 +1864,9 @@ export component Gallery inherits Window {
                             y-labels: root.ring-y-labels[0];
                             center-text: root.ring-totals[0];
                             classes: [
-                                { label: "On its own", color: #c6f432 },
-                                { label: "Needed you", color: #f0904a },
-                                { label: "Failed", color: #e0636b },
+                                { label: "On its own", color: root.ring-class-colors[0][0] },
+                                { label: "Needed you", color: root.ring-class-colors[0][1] },
+                                { label: "Failed", color: root.ring-class-colors[0][2] },
                             ];
                             clockwise: false;
                             show-labels: false;
@@ -1860,9 +1886,9 @@ export component Gallery inherits Window {
                             y-labels: root.ring-y-labels[1];
                             center-text: root.ring-totals[1];
                             classes: [
-                                { label: "Up", color: #2fb67c },
-                                { label: "Degraded", color: #f2b33d },
-                                { label: "Down", color: #e0636b },
+                                { label: "Up", color: root.ring-class-colors[1][0] },
+                                { label: "Degraded", color: root.ring-class-colors[1][1] },
+                                { label: "Down", color: root.ring-class-colors[1][2] },
                             ];
                             show-labels: false;
                             segment-gap: 0.25;
@@ -1901,9 +1927,9 @@ export component Gallery inherits Window {
                             y-labels: root.ring-y-labels[3];
                             center-text: root.ring-totals[3];
                             classes: [
-                                { label: "Passed", color: #2fb67c },
-                                { label: "Running", color: #3d8bf2 },
-                                { label: "Failed", color: #e0636b },
+                                { label: "Passed", color: root.ring-class-colors[2][0] },
+                                { label: "Running", color: root.ring-class-colors[2][1] },
+                                { label: "Failed", color: root.ring-class-colors[2][2] },
                             ];
                             show-labels: false;
                             segment-gap: 0.15;
@@ -1941,8 +1967,8 @@ export component Gallery inherits Window {
                             y-labels: root.ring-y-labels[1];
                             center-text: root.ring-totals[1];
                             diverging: true;
-                            color: #e0636b;
-                            negative-color: #3d8bf2;
+                            color: root.ring-temperature-colors[0];
+                            negative-color: root.ring-temperature-colors[1];
                             segment-gap: 0.1;
                             ring-gap: 0.2;
                             center-label: "LAST YEAR";
