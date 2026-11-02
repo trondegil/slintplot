@@ -1098,25 +1098,6 @@ export component Gallery inherits Window {
     in property <[[string]]> ring-x-labels;
     in property <[[string]]> ring-y-labels;
     in property <[string]> ring-totals;
-    // The segmented ring samples' colors, picked with the dropdowns and
-    // worked out in Rust: per chart, the classes' colors, the scale's colors
-    // and the color of the empty segments (transparent for the defaults).
-    in-out property <int> ring-colors;
-    in-out property <int> ring-track;
-    in property <[[color]]> ring-class-colors;
-    in property <[color]> ring-scale-colors;
-    in property <[color]> ring-negative-colors;
-    in property <[color]> ring-track-colors;
-    callback ring-colors-changed();
-    private property <[string]> ring-class-options: ["Sample colors", "Theme colors", "Traffic light", "Ocean", "Grays"];
-    private property <[string]> ring-scale-options: ["Sample colors", "Theme colors", "Blue", "Green", "Purple", "Orange"];
-    private property <[string]> ring-track-options: ["Gray track", "Darker track", "Tinted track"];
-    changed ring-colors => {
-        root.ring-colors-changed();
-    }
-    changed ring-track => {
-        root.ring-colors-changed();
-    }
     in property <[string]> row-labels;
     in property <[float]> grid;
     in property <[float]> growth;
@@ -1226,7 +1207,6 @@ export component Gallery inherits Window {
             : self.theme == 2 ? ChartPalette.corporate
             : self.theme == 3 ? ChartPalette.mono
             : ChartPalette.pastel;
-        root.ring-colors-changed();
     }
 
     Rectangle {
@@ -1305,22 +1285,6 @@ export component Gallery inherits Window {
                             model: ["Theme colors", "Green", "Blue", "Orange", "Purple", "Red"];
                             current-index <=> root.calendar-colors;
                         }
-                        // The segmented rings' colors and empty segments.
-                        if root.sample == "segmented-ring-classes": ComboBox {
-                            width: 150px;
-                            model: root.ring-class-options;
-                            current-index <=> root.ring-colors;
-                        }
-                        if root.sample == "segmented-ring-scale": ComboBox {
-                            width: 150px;
-                            model: root.ring-scale-options;
-                            current-index <=> root.ring-colors;
-                        }
-                        if root.sample == "segmented-ring-classes" || root.sample == "segmented-ring-scale": ComboBox {
-                            width: 140px;
-                            model: root.ring-track-options;
-                            current-index <=> root.ring-track;
-                        }
                         // The chart language, for the sample that shows it off.
                         if root.sample == "languages": LanguagePicker {
                             width: 150px;
@@ -1393,21 +1357,6 @@ export component Gallery inherits Window {
                 if root.sample == "calendar": ComboBox {
                     model: ["Theme colors", "Green", "Blue", "Orange", "Purple", "Red"];
                     current-index <=> root.calendar-colors;
-                }
-                if root.sample == "segmented-ring-classes": ComboBox {
-                    horizontal-stretch: 1;
-                    model: root.ring-class-options;
-                    current-index <=> root.ring-colors;
-                }
-                if root.sample == "segmented-ring-scale": ComboBox {
-                    horizontal-stretch: 1;
-                    model: root.ring-scale-options;
-                    current-index <=> root.ring-colors;
-                }
-                if root.sample == "segmented-ring-classes" || root.sample == "segmented-ring-scale": ComboBox {
-                    horizontal-stretch: 1;
-                    model: root.ring-track-options;
-                    current-index <=> root.ring-track;
                 }
             }
 
@@ -1888,12 +1837,7 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[0];
                             y-labels: root.ring-y-labels[0];
                             center-text: root.ring-totals[0];
-                            track-color: root.ring-track-colors[0];
-                            classes: [
-                                { label: "On its own", color: root.ring-class-colors[0][0] },
-                                { label: "Needed you", color: root.ring-class-colors[0][1] },
-                                { label: "Failed", color: root.ring-class-colors[0][2] },
-                            ];
+                            classes <=> root.slices;
                             clockwise: false;
                             show-labels: false;
                             show-marker: true;
@@ -1911,11 +1855,10 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[1];
                             y-labels: root.ring-y-labels[1];
                             center-text: root.ring-totals[1];
-                            track-color: root.ring-track-colors[1];
                             classes: [
-                                { label: "Up", color: root.ring-class-colors[1][0] },
-                                { label: "Degraded", color: root.ring-class-colors[1][1] },
-                                { label: "Down", color: root.ring-class-colors[1][2] },
+                                { label: "Up", color: #2fb67c },
+                                { label: "Degraded", color: #f2b33d },
+                                { label: "Down", color: #e0636b },
                             ];
                             show-labels: false;
                             segment-gap: 0.25;
@@ -1934,10 +1877,9 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[2];
                             y-labels: root.ring-y-labels[2];
                             center-text: root.ring-totals[2];
-                            track-color: root.ring-track-colors[2];
                             classes: [
-                                { label: "Done", color: root.ring-class-colors[2][0] },
-                                { label: "Skipped", color: root.ring-class-colors[2][1] },
+                                { label: "Done", color: ChartTheme.colors[1] },
+                                { label: "Skipped", color: ChartTheme.colors[3] },
                             ];
                             show-labels: false;
                             center-label: "DAY STREAK";
@@ -1953,11 +1895,10 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[3];
                             y-labels: root.ring-y-labels[3];
                             center-text: root.ring-totals[3];
-                            track-color: root.ring-track-colors[3];
                             classes: [
-                                { label: "Passed", color: root.ring-class-colors[3][0] },
-                                { label: "Running", color: root.ring-class-colors[3][1] },
-                                { label: "Failed", color: root.ring-class-colors[3][2] },
+                                { label: "Passed", color: #2fb67c },
+                                { label: "Running", color: #3d8bf2 },
+                                { label: "Failed", color: #e0636b },
                             ];
                             show-labels: false;
                             segment-gap: 0.15;
@@ -1978,8 +1919,6 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[0];
                             y-labels: root.ring-y-labels[0];
                             center-text: root.ring-totals[0];
-                            color: root.ring-scale-colors[0];
-                            track-color: root.ring-track-colors[0];
                             segment-gap: 0.12;
                             ring-gap: 0.25;
                             center-label: "VISITS";
@@ -1996,10 +1935,9 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[1];
                             y-labels: root.ring-y-labels[1];
                             center-text: root.ring-totals[1];
-                            color: root.ring-scale-colors[1];
-                            track-color: root.ring-track-colors[1];
                             diverging: true;
-                            negative-color: root.ring-negative-colors[1];
+                            color: #e0636b;
+                            negative-color: #3d8bf2;
                             segment-gap: 0.1;
                             ring-gap: 0.2;
                             center-label: "LAST YEAR";
@@ -2017,8 +1955,7 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[2];
                             y-labels: root.ring-y-labels[2];
                             center-text: root.ring-totals[2];
-                            color: root.ring-scale-colors[2];
-                            track-color: root.ring-track-colors[2];
+                            color: ChartTheme.colors[4];
                             fixed-range: true;
                             min-value: 0;
                             max-value: 100;
@@ -2041,8 +1978,7 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[3];
                             y-labels: root.ring-y-labels[3];
                             center-text: root.ring-totals[3];
-                            color: root.ring-scale-colors[3];
-                            track-color: root.ring-track-colors[3];
+                            color: ChartTheme.colors[1];
                             segment-gap: 0.2;
                             cutout: 0.6;
                             show-labels: false;

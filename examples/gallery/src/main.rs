@@ -167,38 +167,13 @@ const CHANNELS: [(&str, f32); 6] = [
     ("Forum", 3.0),
 ];
 // Product categories, not colors: the slices take the theme's colors.
-/// The segmented ring samples' own colors, per chart: the classes of the
-/// runs, uptime, habits and pipeline charts, ...
-const RING_CLASS_COLORS: [[u32; 3]; 4] = [
-    [0xc6f432, 0xf0904a, 0xe0636b],
-    [0x2fb67c, 0xf2b33d, 0xe0636b],
-    [0x22c55e, 0x818cf8, 0x818cf8],
-    [0x2fb67c, 0x3d8bf2, 0xe0636b],
+/// The segmented ring sample: how automated runs ended, as classes, in
+/// lime, orange and red.
+const RUN_CLASSES: [(&str, u32); 3] = [
+    ("On its own", 0xc6f432),
+    ("Needed you", 0xf0904a),
+    ("Failed", 0xe0636b),
 ];
-/// ... and the scale colors of the visits, temperature, CPU and steps
-/// charts, with the temperature's color below normal.
-const RING_SCALE_COLORS: [u32; 4] = [0x4f8cf7, 0xe0636b, 0x84cc16, 0x10b981];
-const RING_NEGATIVE: u32 = 0x3d8bf2;
-/// The class palettes of the colors dropdown after "Sample colors" and
-/// "Theme colors": traffic light, ocean and grays.
-const RING_CLASS_PALETTES: [[u32; 3]; 3] = [
-    [0x22c55e, 0xf59e0b, 0xef4444],
-    [0x38bdf8, 0x818cf8, 0xf472b6],
-    [0xcbd5e1, 0x94a3b8, 0x64748b],
-];
-/// The scale colors of the dropdown after "Sample colors" and "Theme
-/// colors": blue, green, purple and orange, each with a contrasting color
-/// for a diverging scale.
-const RING_SCALES: [(u32, u32); 4] = [
-    (0x3b82f6, 0xf97316),
-    (0x22c55e, 0xa855f7),
-    (0xa855f7, 0x22c55e),
-    (0xf97316, 0x3b82f6),
-];
-
-fn rgb(rgb: u32) -> slint::Color {
-    slint::Color::from_rgb_u8((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
-}
 const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_MONTHS: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -1300,12 +1275,6 @@ impl State {
         let Some(ui) = self.ui.upgrade() else {
             return;
         };
-        // The two pages have different color choices: start each at its own
-        // colors.
-        if !randomize {
-            ui.set_ring_colors(0);
-            ui.set_ring_track(0);
-        }
         let charts = if self.sample.shape == Shape::SegmentedScale {
             [
                 self.ring_visits(),
@@ -1345,76 +1314,6 @@ impl State {
         ui.set_ring_x_labels(ModelRc::new(VecModel::from(x_labels)));
         ui.set_ring_y_labels(ModelRc::new(VecModel::from(y_labels)));
         ui.set_ring_totals(ModelRc::new(VecModel::from(totals)));
-        self.ring_colors();
-    }
-
-    /// The segmented ring charts' colors, from the two dropdowns: the
-    /// classes' or the scale's colors, and the empty segments' color.
-    /// Transparent leaves a color to the library: the theme's colors for the
-    /// classes, a faint gray for the track.
-    fn ring_colors(&self) {
-        let Some(ui) = self.ui.upgrade() else {
-            return;
-        };
-        let theme = ui.global::<ChartTheme>().get_colors();
-        let theme_color = |i: usize| {
-            theme
-                .row_data(i % theme.row_count().max(1))
-                .unwrap_or(slint::Color::from_rgb_u8(0x3b, 0x82, 0xf6))
-        };
-        let choice = ui.get_ring_colors().max(0) as usize;
-        let track = ui.get_ring_track();
-        let transparent = slint::Color::default();
-
-        let classes: Vec<[slint::Color; 3]> = RING_CLASS_COLORS
-            .iter()
-            .map(|own| match choice {
-                0 => own.map(rgb),
-                1 => [transparent; 3],
-                n => RING_CLASS_PALETTES[(n - 2) % RING_CLASS_PALETTES.len()].map(rgb),
-            })
-            .collect();
-        let scales: Vec<(slint::Color, slint::Color)> = (0..4)
-            .map(|i| match choice {
-                0 => (rgb(RING_SCALE_COLORS[i]), rgb(RING_NEGATIVE)),
-                1 => (theme_color(0), theme_color(2)),
-                n => {
-                    let (c, neg) = RING_SCALES[(n - 2) % RING_SCALES.len()];
-                    (rgb(c), rgb(neg))
-                }
-            })
-            .collect();
-        let scale_page = self.sample.shape == Shape::SegmentedScale;
-        let tracks: Vec<slint::Color> = (0..4)
-            .map(|i| {
-                // The chart's main color, for a tinted track.
-                let main = if scale_page {
-                    scales[i].0
-                } else if classes[i][0].alpha() == 0 {
-                    theme_color(0)
-                } else {
-                    classes[i][0]
-                };
-                match track {
-                    1 => slint::Color::from_argb_u8(0x55, 0x80, 0x80, 0x80),
-                    2 => main.with_alpha(0.22),
-                    _ => transparent,
-                }
-            })
-            .collect();
-        ui.set_ring_class_colors(ModelRc::new(VecModel::from(
-            classes
-                .into_iter()
-                .map(|c| ModelRc::new(VecModel::from(c.to_vec())))
-                .collect::<Vec<_>>(),
-        )));
-        ui.set_ring_scale_colors(ModelRc::new(VecModel::from(
-            scales.iter().map(|s| s.0).collect::<Vec<_>>(),
-        )));
-        ui.set_ring_negative_colors(ModelRc::new(VecModel::from(
-            scales.iter().map(|s| s.1).collect::<Vec<_>>(),
-        )));
-        ui.set_ring_track_colors(ModelRc::new(VecModel::from(tracks)));
     }
 
     /// Runs every half hour for a week, by class: 0 on its own, 1 needed
@@ -2042,6 +1941,18 @@ impl State {
         let slices: Vec<ChartSlice> = match sample.shape {
             Shape::Slices => (0..5).map(|i| self.slice(i)).collect(),
             Shape::RadialBar => bars(&GOALS),
+            Shape::SegmentedRing => RUN_CLASSES
+                .iter()
+                .map(|&(label, rgb)| ChartSlice {
+                    label: label.into(),
+                    color: slint::Color::from_rgb_u8(
+                        (rgb >> 16) as u8,
+                        (rgb >> 8) as u8,
+                        rgb as u8,
+                    ),
+                    ..Default::default()
+                })
+                .collect(),
             _ => Vec::new(),
         };
         self.slices.set_vec(slices);
@@ -2508,13 +2419,7 @@ fn gallery() -> Result<(Gallery, Rc<RefCell<State>>), slint::PlatformError> {
         run_live_timer(&timer, &timer_rate, &s);
     });
     let s = state.clone();
-    ui.on_dark_mode_changed(move || {
-        let mut s = s.borrow_mut();
-        s.recolor_survey();
-        s.ring_colors();
-    });
-    let s = state.clone();
-    ui.on_ring_colors_changed(move || s.borrow().ring_colors());
+    ui.on_dark_mode_changed(move || s.borrow_mut().recolor_survey());
     let s = state.clone();
     ui.on_language_changed(move || s.borrow_mut().relabel());
     let weak = ui.as_weak();
