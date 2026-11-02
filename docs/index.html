@@ -962,6 +962,131 @@ SegmentedRingChart {
   <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a class</td></tr>
 </table>
 
+<h3 id="segmented-ring-matrix">How the matrix becomes rings</h3>
+<ul>
+  <li><strong>Rows are rings.</strong> <code>values[0]</code> is the outer ring, <code>values[1]</code> the next one in, and so on. A matrix
+  with one row is a single ring.</li>
+  <li><strong>Columns are segments.</strong> Column 0 starts at <code>start-angle</code> (12 o'clock by default), and the columns go round
+  clockwise, or counterclockwise with <code>clockwise: false</code>. Every ring has as many segments as the longest row has values, so the
+  same column lines up on every ring, like a clock face: hours, days of a month, steps of a process.</li>
+  <li><strong>The size is automatic.</strong> There is nothing to set when the matrix grows or shrinks: the ring width, the segment
+  angle and the spacing of the labels follow the data and the size of the chart. Few rings stay narrow at the outside rather than
+  filling the whole radius.</li>
+  <li><strong>Rows can differ in length.</strong> A shorter row leaves the rest of its ring empty, as in a year with one ring per month of
+  28 to 31 days, or today's row of a week that is not over yet.</li>
+  <li><strong>Empty cells.</strong> NaN (<code>0 / 0</code> in Slint), and with <code>classes</code> any value that names no class, such
+  as -1, is drawn as the faint track, so the shape of the whole matrix stays visible.</li>
+  <li><strong>Limits.</strong> Up to 50 rings and 720 segments per ring are drawn; the rest of a larger matrix is left out.</li>
+</ul>
+
+<h3 id="segmented-ring-classes">By class, or on a scale</h3>
+<p>With <code>classes</code> set, each value is a class index, rounded: 0 is the first class, 1 the second, and so on. Each class is a
+<code>ChartSlice</code> with a <code>label</code> and a <code>color</code> (unset, it takes the theme's next color), and the classes make the legend;
+clicking an entry hides that class, leaving its cells empty. This suits states and outcomes: passed and failed, up and down, done and
+skipped. Without classes, the values are colored on a scale, exactly as in a <a href="#heatmap">HeatmapChart</a>: from a faint
+<code>color</code> for the smallest value to the full color for the largest, or with <code>diverging</code>, from
+<code>negative-color</code> below <code>center-value</code> to <code>color</code> above it. The scale fits the data unless
+<code>fixed-range</code> is set; the legend under the chart shows it.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/segmented-ring-scale.webp" alt="SegmentedRingChart of four years of monthly temperatures against the normal, on a diverging scale" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/segmented-ring-scale-dark.webp" alt="SegmentedRingChart of four years of monthly temperatures against the normal, on a diverging scale" loading="lazy"></figure>
+<pre data-shot="segmented-ring-scale"><code>import { SegmentedRingChart } from "@slintplot";
+
+SegmentedRingChart {
+    title: "Temperature against normal";
+    // One ring per year, the oldest outermost; one segment per month.
+    values: [
+        [-0.6, -0.2, -0.4, 0.1, -0.3, 0.0, 0.2, -0.1, -0.5, -0.2, 0.1, -0.4],
+        [-0.1, 0.2, 0.0, -0.3, 0.4, 0.3, 0.1, 0.5, 0.0, 0.2, -0.2, 0.3],
+        [0.3, 0.1, 0.6, 0.4, 0.2, 0.8, 0.7, 0.4, 0.5, 0.9, 0.3, 0.6],
+        [0.9, 0.7, 1.1, 0.8, 1.3, 1.0, 1.4, 1.2, 0.9, 1.1, 1.5, 1.2],
+    ];
+    x-labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    y-labels: ["2022", "2023", "2024", "2025"];
+    diverging: true;
+    color: #e0636b;
+    negative-color: #3d8bf2;
+    segment-gap: 0.1;
+    ring-gap: 0.2;
+    value-suffix: "°";
+    value-decimals: 1;
+    center-text: "+1.1°";
+    center-label: "THIS YEAR";
+}</code></pre>
+
+<h3 id="segmented-ring-rust">The matrix from Rust</h3>
+<p>A <code>[[float]]</code> property is a model of models in Rust: <code>ModelRc&lt;ModelRc&lt;f32&gt;&gt;</code>. Keep a
+<code>VecModel</code> per row to change single cells, and one for the rows to add or remove rings; the chart redraws when any of them
+changes, and takes the new size when rows or columns are added.</p>
+<pre><code>// ui/app.slint
+import { ChartEngine, SegmentedRingChart } from "@slintplot";
+export { ChartEngine } // required, so Rust can connect it
+
+export component App inherits Window {
+    in property &lt;[[float]]&gt; runs;
+    in property &lt;[string]&gt; days;
+    SegmentedRingChart {
+        values: root.runs;
+        y-labels: root.days;
+        classes: [{ label: "Passed" }, { label: "Failed" }];
+        show-labels: false;
+    }
+}</code></pre>
+<pre><code>// src/main.rs
+use std::rc::Rc;
+use slint::{Model, ModelRc, VecModel};
+
+slint::include_modules!();
+
+fn main() -&gt; Result&lt;(), slint::PlatformError&gt; {
+    let app = App::new()?;
+    slintplot::register!(app);
+
+    // One row per day, 24 runs a day; NaN for runs still to come.
+    let today = Rc::new(VecModel::from(vec![f32::NAN; 24]));
+    let rows: Rc&lt;VecModel&lt;ModelRc&lt;f32&gt;&gt;&gt; = Rc::new(VecModel::from(vec![
+        ModelRc::new(VecModel::from(vec![0.0; 24])), // yesterday: all passed
+        ModelRc::from(today.clone()),
+    ]));
+    app.set_runs(rows.clone().into());
+    app.set_days(ModelRc::new(VecModel::from(vec!["Mon".into(), "Tue".into()])));
+
+    // Later: a run finished at 09:00 and failed, so one cell changes.
+    today.set_row_data(9, 1.0);
+    // A new day is a new ring; the chart makes room for it.
+    rows.push(ModelRc::new(VecModel::from(vec![f32::NAN; 24])));
+
+    app.run()
+}</code></pre>
+
+<h3 id="segmented-ring-events">Reacting to the chart</h3>
+<p>Hovering a cell outlines it and writes its value, or its class, in the middle with the row and column labels; a tooltip says the
+same. <code>hovered-row</code> and <code>hovered-column</code> tell your code which cell that is, and <code>cell-clicked(row, column)</code>
+reports clicks and Enter. The keyboard works too: click or tab to the chart, then Left and Right go round a ring, Up and Down move between
+rings, and Home and End go to the first and last cell.</p>
+<pre><code>chart := SegmentedRingChart {
+    values: root.runs;
+    y-labels: root.days;
+    x-labels: root.hours;
+    cell-clicked(row, column) =&gt; {
+        root.open-run(row, column);   // a callback of your own
+    }
+}
+Text {
+    text: chart.hovered-row &lt; 0 ? "Hover a run" : "Run " + chart.hovered-column + " on day " + chart.hovered-row;
+}</code></pre>
+
+<h3 id="segmented-ring-tips">Tips</h3>
+<ul>
+  <li><strong>Many columns:</strong> labels round the outside are thinned to every second, third, ... one that fits; with dozens of columns,
+  such as minutes or runs, <code>show-labels: false</code> gives the rings the room, and the tooltip still names each cell.</li>
+  <li><strong>Many rings:</strong> lower <code>cutout</code> (such as 0.3) for wider rings, or <code>ring-gap</code> for less space between them.</li>
+  <li><strong>Big segments, such as one ring of steps:</strong> a larger <code>cutout</code> (0.6) leaves room for a large number in the
+  middle, and a smaller <code>segment-gap</code> joins the segments into a ring.</li>
+  <li><strong>The middle:</strong> <code>center-text</code> is yours to fill, such as a count, a total or a percentage worked out with the
+  data; leave it and <code>center-label</code> empty for no text until a cell is hovered.</li>
+  <li><strong>A start mark:</strong> <code>show-marker: true</code> puts a dot at <code>start-angle</code>, which helps when the columns run
+  counterclockwise or don't start at 12 o'clock.</li>
+</ul>
+
 <h2 id="mixed-charts">Mixed charts</h2>
 <p>Any dataset in a line or bar chart can be drawn as the other type with <code>series-type</code>. Lines in a bar chart go through the bar centers, and stacking keeps lines and bars apart.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/combo-bar-line.webp" alt="Bars with a line" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/combo-bar-line-dark.webp" alt="Bars with a line" loading="lazy"></figure>
