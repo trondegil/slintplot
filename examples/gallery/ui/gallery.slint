@@ -1101,11 +1101,12 @@ export component Gallery inherits Window {
     // The color set of the segmented ring charts that pick their own
     // colors, worked out in Rust: per chart, the classes' colors, and the
     // temperature chart's colors above and below normal.
-    in-out property <int> ring-colors;
+    // 1: the charts' custom colors.
+    in-out property <int> ring-colors: 1;
     in property <[[color]]> ring-class-colors;
     in property <[color]> ring-temperature-colors;
     callback ring-colors-changed();
-    private property <[string]> ring-color-options: ["Own colors", "Theme colors", "Colorblind safe", "Muted", "Neon"];
+    private property <[string]> ring-color-options: ["Theme colors", "Custom colors", "Colorblind safe", "Muted", "Neon"];
     changed ring-colors => {
         root.ring-colors-changed();
     }

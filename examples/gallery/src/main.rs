@@ -168,7 +168,7 @@ const CHANNELS: [(&str, f32); 6] = [
 ];
 // Product categories, not colors: the slices take the theme's colors.
 /// The color sets of the segmented ring charts that pick their own colors,
-/// after "Own colors" and "Theme colors": colorblind safe (Okabe-Ito),
+/// after "Theme colors" and "Custom colors": colorblind safe (Okabe-Ito),
 /// muted and neon. Each is good, in between, bad, and a blue for a running
 /// step and for below normal.
 const RING_COLOR_SETS: [[u32; 4]; 3] = [
@@ -1340,7 +1340,7 @@ impl State {
                 .unwrap_or(slint::Color::from_rgb_u8(0x3b, 0x82, 0xf6))
         };
         let (classes, temperature) = match ui.get_ring_colors().max(0) as usize {
-            0 => (
+            1 => (
                 [
                     [0xc6f432, 0xf0904a, 0xe0636b].map(rgb),
                     [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
@@ -1348,7 +1348,7 @@ impl State {
                 ],
                 [rgb(0xe0636b), rgb(0x3d8bf2)],
             ),
-            1 => (
+            0 => (
                 [[slint::Color::default(); 3]; 3],
                 [theme_color(0), theme_color(2)],
             ),
