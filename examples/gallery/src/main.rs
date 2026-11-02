@@ -1535,7 +1535,7 @@ impl State {
     }
 
     /// Three habits over 30 days: 0 done, 1 skipped; the last days are
-    /// still to come.
+    /// still to come. The middle shows the share done so far.
     fn ring_habits(&mut self) -> RingSample {
         let today = 22;
         let values: Vec<Vec<f32>> = (0..3)
@@ -1553,18 +1553,16 @@ impl State {
                     .collect()
             })
             .collect();
-        // Days in a row, up to today, with every habit done.
-        let streak = (0..today)
-            .rev()
-            .take_while(|&d| values.iter().all(|row| row[d] == 0.0))
-            .count();
+        // The share of the habits done so far, the days to come left out.
+        let done = values.iter().flatten().filter(|&&v| v == 0.0).count();
+        let share = done as f32 / (3 * today) as f32 * 100.0;
         RingSample {
             values,
             x_labels: (1..=30).map(|d| format!("Day {d}")).collect(),
             y_labels: ["Exercise", "Reading", "Meditation"]
                 .map(String::from)
                 .to_vec(),
-            total: streak.to_string(),
+            total: format!("{share:.0}%"),
         }
     }
 
