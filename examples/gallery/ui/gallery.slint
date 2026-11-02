@@ -1106,7 +1106,7 @@ export component Gallery inherits Window {
     in property <[[color]]> ring-class-colors;
     in property <[color]> ring-temperature-colors;
     callback ring-colors-changed();
-    private property <[string]> ring-color-options: ["Theme colors", "Custom colors", "Colorblind safe", "Muted", "Neon"];
+    private property <[string]> ring-color-options: ["Theme colors", "Custom colors"];
     changed ring-colors => {
         root.ring-colors-changed();
     }

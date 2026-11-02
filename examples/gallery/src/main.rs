@@ -167,16 +167,6 @@ const CHANNELS: [(&str, f32); 6] = [
     ("Forum", 3.0),
 ];
 // Product categories, not colors: the slices take the theme's colors.
-/// The color sets of the segmented ring charts that pick their own colors,
-/// after "Theme colors" and "Custom colors": colorblind safe (Okabe-Ito),
-/// muted and neon. Each is good, in between, bad, and a blue for a running
-/// step and for below normal.
-const RING_COLOR_SETS: [[u32; 4]; 3] = [
-    [0x009e73, 0xe69f00, 0xd55e00, 0x0072b2],
-    [0x6b9e78, 0xc9a35a, 0xb8615e, 0x6a8cb8],
-    [0x39ff88, 0xffb020, 0xff4d6d, 0x3dd6ff],
-];
-
 fn rgb(rgb: u32) -> slint::Color {
     slint::Color::from_rgb_u8((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
 }
@@ -1324,11 +1314,11 @@ impl State {
         self.ring_colors();
     }
 
-    /// The colors of the segmented ring charts that pick their own, from the
-    /// color set chosen: the runs', uptime's and pipeline's classes, and the
-    /// temperature's colors above and below normal. "Theme colors" leaves
-    /// the classes' colors unset, so the library uses the theme's, and takes
-    /// the theme's first and third colors for the temperature.
+    /// The colors of the segmented ring charts that pick their own: the
+    /// runs', uptime's and pipeline's classes, and the temperature's colors
+    /// above and below normal. "Theme colors" leaves the classes' colors
+    /// unset, so the library uses the theme's, and takes the theme's first
+    /// and third colors for the temperature; "Custom colors" sets them.
     fn ring_colors(&self) {
         let Some(ui) = self.ui.upgrade() else {
             return;
@@ -1340,7 +1330,11 @@ impl State {
                 .unwrap_or(slint::Color::from_rgb_u8(0x3b, 0x82, 0xf6))
         };
         let (classes, temperature) = match ui.get_ring_colors().max(0) as usize {
-            1 => (
+            0 => (
+                [[slint::Color::default(); 3]; 3],
+                [theme_color(0), theme_color(2)],
+            ),
+            _ => (
                 [
                     [0xc6f432, 0xf0904a, 0xe0636b].map(rgb),
                     [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
@@ -1348,17 +1342,6 @@ impl State {
                 ],
                 [rgb(0xe0636b), rgb(0x3d8bf2)],
             ),
-            0 => (
-                [[slint::Color::default(); 3]; 3],
-                [theme_color(0), theme_color(2)],
-            ),
-            n => {
-                let [good, middle, bad, blue] = RING_COLOR_SETS[(n - 2) % 3].map(rgb);
-                (
-                    [[good, middle, bad], [good, middle, bad], [good, blue, bad]],
-                    [bad, blue],
-                )
-            }
         };
         ui.set_ring_class_colors(ModelRc::new(VecModel::from(
             classes
