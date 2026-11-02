@@ -53,6 +53,7 @@ pub mod radial;
 pub mod segmented;
 pub mod sunburst;
 pub mod ticks;
+pub mod tiles;
 pub mod time;
 pub mod treemap;
 pub mod waterfall;
@@ -1803,18 +1804,30 @@ macro_rules! register {
                 $crate::radial::hit(&bars, x, y, label_width, label_height).map_or(-1, |i| i as i32)
             },
         );
-        fn matrix(values: &::slint::ModelRc<::slint::ModelRc<f32>>) -> Vec<Vec<f64>> {
+        // A matrix property, up to `rows` × `columns`.
+        fn matrix_of(
+            values: &::slint::ModelRc<::slint::ModelRc<f32>>,
+            rows: usize,
+            columns: usize,
+        ) -> Vec<Vec<f64>> {
             tracked(values)
                 .iter()
-                .take($crate::segmented::MAX_ROWS)
+                .take(rows)
                 .map(|row| {
                     tracked(row)
                         .into_iter()
-                        .take($crate::segmented::MAX_COLUMNS)
+                        .take(columns)
                         .map(f64::from)
                         .collect()
                 })
                 .collect()
+        }
+        fn matrix(values: &::slint::ModelRc<::slint::ModelRc<f32>>) -> Vec<Vec<f64>> {
+            matrix_of(
+                values,
+                $crate::segmented::MAX_ROWS,
+                $crate::segmented::MAX_COLUMNS,
+            )
         }
         fn segmented_chart(layout: &ChartSegmentedRingLayout) -> $crate::segmented::Segmented {
             $crate::segmented::Segmented {
@@ -1871,43 +1884,55 @@ macro_rules! register {
                 marker_size: out.marker.2,
             }
         });
+        // How the cells of a segmented ring chart or tile grid are colored:
+        // by class when there are classes, or else on a scale.
+        fn with_coloring<R>(
+            style: &ChartSegmentedRingStyle,
+            f: impl FnOnce(&$crate::segmented::Coloring) -> R,
+        ) -> R {
+            let classes = tracked(&style.classes);
+            let palette = palette(&style.palette);
+            let colors: Vec<_> = classes
+                .iter()
+                .enumerate()
+                .map(|(i, c)| $crate::layout::resolve_color(rgba(c.color), i, &palette))
+                .collect();
+            let hidden: Vec<bool> = classes.iter().map(|c| c.hidden).collect();
+            if classes.is_empty() {
+                f(&$crate::segmented::Coloring::Scale {
+                    low: style.low.into(),
+                    high: style.high.into(),
+                    diverging: style.diverging,
+                    center: style.center.into(),
+                    color: rgba(style.color),
+                    negative: rgba(style.negative_color),
+                    empty: rgba(style.empty),
+                })
+            } else {
+                f(&$crate::segmented::Coloring::Classes {
+                    colors: &colors,
+                    hidden: &hidden,
+                })
+            }
+        }
+        fn cell_paint(
+            (track, groups): (String, Vec<($crate::layout::Rgba, String)>),
+        ) -> ChartSegmentedRingPaint {
+            ChartSegmentedRingPaint {
+                track: track.into(),
+                groups: model(groups.into_iter().map(|(c, path)| ChartSegmentGroup {
+                    path: path.into(),
+                    color: color(c),
+                })),
+            }
+        }
         engine.on_segmented_ring_paint(
             |layout: ChartSegmentedRingLayout, style: ChartSegmentedRingStyle| {
                 let chart = segmented_chart(&layout);
                 let values = matrix(&style.values);
-                let classes = tracked(&style.classes);
-                let palette = palette(&style.palette);
-                let colors: Vec<_> = classes
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| $crate::layout::resolve_color(rgba(c.color), i, &palette))
-                    .collect();
-                let hidden: Vec<bool> = classes.iter().map(|c| c.hidden).collect();
-                let coloring = if classes.is_empty() {
-                    $crate::segmented::Coloring::Scale {
-                        low: style.low.into(),
-                        high: style.high.into(),
-                        diverging: style.diverging,
-                        center: style.center.into(),
-                        color: rgba(style.color),
-                        negative: rgba(style.negative_color),
-                        empty: rgba(style.empty),
-                    }
-                } else {
-                    $crate::segmented::Coloring::Classes {
-                        colors: &colors,
-                        hidden: &hidden,
-                    }
-                };
-                let (track, groups) =
-                    $crate::segmented::paint(&chart, &values, &coloring, style.progress);
-                ChartSegmentedRingPaint {
-                    track: track.into(),
-                    groups: model(groups.into_iter().map(|(c, path)| ChartSegmentGroup {
-                        path: path.into(),
-                        color: color(c),
-                    })),
-                }
+                cell_paint(with_coloring(&style, |coloring| {
+                    $crate::segmented::paint(&chart, &values, coloring, style.progress)
+                }))
             },
         );
         engine.on_segmented_ring_cell(|layout: ChartSegmentedRingLayout, row: i32, column: i32| {
@@ -1931,6 +1956,69 @@ macro_rules! register {
                 r: 0.0,
             }
         });
+        fn tile_grid(layout: &ChartTileGridLayout) -> $crate::tiles::Tiles {
+            $crate::tiles::Tiles {
+                rows: layout.rows.max(0) as usize,
+                columns: layout.columns.max(0) as usize,
+                x: layout.x,
+                y: layout.y,
+                pitch: layout.pitch,
+                size: layout.size,
+                radius: layout.radius,
+                label_skip: layout.label_skip.max(1) as usize,
+            }
+        }
+        engine.on_tile_grid_layout(|req: ChartTileGridRequest| {
+            let values = matrix_of(
+                &req.values,
+                $crate::tiles::MAX_ROWS,
+                $crate::tiles::MAX_COLUMNS,
+            );
+            let out = $crate::tiles::layout(&$crate::tiles::TileRequest {
+                values: &values,
+                width: req.width,
+                height: req.height,
+                gap: req.gap,
+                radius: req.radius,
+                row_label_width: req.row_label_width,
+                column_label_width: req.column_label_width,
+                label_height: req.label_height,
+            });
+            ChartTileGridLayout {
+                rows: out.rows as i32,
+                columns: out.columns as i32,
+                x: out.x,
+                y: out.y,
+                pitch: out.pitch,
+                size: out.size,
+                radius: out.radius,
+                label_skip: out.label_skip as i32,
+            }
+        });
+        engine.on_tile_grid_paint(
+            |layout: ChartTileGridLayout, style: ChartSegmentedRingStyle| {
+                let tiles = tile_grid(&layout);
+                let values = matrix_of(
+                    &style.values,
+                    $crate::tiles::MAX_ROWS,
+                    $crate::tiles::MAX_COLUMNS,
+                );
+                cell_paint(with_coloring(&style, |coloring| {
+                    $crate::tiles::paint(&tiles, &values, coloring, style.progress)
+                }))
+            },
+        );
+        engine.on_tile_grid_cell(|layout: ChartTileGridLayout, row: i32, column: i32| {
+            if row < 0 || column < 0 {
+                return Default::default();
+            }
+            $crate::tiles::tile_path(&tile_grid(&layout), row as usize, column as usize).into()
+        });
+        engine.on_tile_grid_hit(|layout: ChartTileGridLayout, x: f32, y: f32| {
+            let tiles = tile_grid(&layout);
+            $crate::tiles::hit(&tiles, x, y)
+                .map_or(-1, |(row, column)| (row * tiles.columns + column) as i32)
+        });
         engine.on_matrix_value(
             |values: ::slint::ModelRc<::slint::ModelRc<f32>>, row: i32, column: i32| {
                 use ::slint::Model;
@@ -1944,7 +2032,8 @@ macro_rules! register {
             },
         );
         engine.on_matrix_range(|values: ::slint::ModelRc<::slint::ModelRc<f32>>| {
-            let values = matrix(&values);
+            // Up to the larger limits of the charts that use it.
+            let values = matrix_of(&values, $crate::tiles::MAX_ROWS, $crate::tiles::MAX_COLUMNS);
             let (min, max) =
                 $crate::heatmap::extent(values.into_iter().flatten()).unwrap_or((0.0, 1.0));
             ChartRange {

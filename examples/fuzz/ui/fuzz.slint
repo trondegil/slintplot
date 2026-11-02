@@ -3,7 +3,7 @@ import {
     BarChart, BubbleChart, BulletChart, CalendarHeatmap, CandlestickChart, ChartBullet, ChartCandle, ChartDataset, ChartEngine, ChartGanttTask, ChartGaugeBand, ChartLegendPosition, ChartSlice,
     ChartSunburstItem, ChartTreemapItem, ChartWaterfallStep, DoughnutChart, DumbbellChart, FunnelChart, GanttChart, GaugeChart,
     HeatmapChart, HorizontalBarChart, LineChart, MatrixChart, ChartMatrixColorMode, PieChart, PolarAreaChart, RadarChart, ScatterChart, SunburstChart,
-    RadialBarChart, SegmentedRingChart, TimeSeriesChart, TreemapChart, WaterfallChart,
+    RadialBarChart, SegmentedRingChart, TileGridChart, TimeSeriesChart, TreemapChart, WaterfallChart,
 } from "@slintplot";
 export { ChartEngine }
 
@@ -328,6 +328,23 @@ export component Fuzz inherits Window {
             show-legend: root.begin-at-zero;
             center-text: root.stacked-percent ? "538" : "";
             center-label: root.stacked-percent ? "LABEL" : "";
+            value-decimals: root.decimals;
+            legend-position: root.legend-position;
+        }
+        if root.chart == 24: TileGridChart {
+            values: [root.values, [], root.values, root.values, root.values];
+            x-labels: root.labels;
+            y-labels: root.row-labels;
+            classes <=> root.slices;
+            diverging: root.flag;
+            fixed-range: root.fixed-range;
+            min-value: root.min-value;
+            max-value: root.max-value;
+            center-value: root.value;
+            tile-gap: root.number;
+            tile-radius: root.value;
+            show-labels: !root.stacked;
+            show-legend: root.begin-at-zero;
             value-decimals: root.decimals;
             legend-position: root.legend-position;
         }

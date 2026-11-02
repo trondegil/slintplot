@@ -14,7 +14,7 @@ use slint::{Color, LogicalPosition, ModelRc, PhysicalSize, SharedString, VecMode
 
 slint::include_modules!();
 
-const CHARTS: i32 = 24;
+const CHARTS: i32 = 25;
 
 /// More memory than any chart should need: past it the fuzzer stops, rather
 /// than fill the machine's RAM and swap.

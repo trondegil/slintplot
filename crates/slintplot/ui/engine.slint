@@ -804,6 +804,35 @@ export struct ChartSegmentedRingStyle {
 export struct ChartSegmentGroup { path: string, color: color }
 export struct ChartSegmentedRingPaint { track: string, groups: [ChartSegmentGroup] }
 
+// A tile grid: the size of the matrix, the top left of the first cell, the
+// distance from cell to cell, and the side and corner radius of a tile,
+// centered in its cell; and every how many columns there is a label.
+export struct ChartTileGridLayout {
+    rows: int,
+    columns: int,
+    x: float,
+    y: float,
+    pitch: float,
+    size: float,
+    radius: float,
+    label-skip: int,
+}
+
+export struct ChartTileGridRequest {
+    // One row per row of tiles, from the top.
+    values: [[float]],
+    width: float,
+    height: float,
+    // The gap between tiles, as a share of their pitch, and the corner
+    // radius, as a share of their side.
+    gap: float,
+    radius: float,
+    // The widest row label, at the left, and column label, below; 0 for none.
+    row-label-width: float,
+    column-label-width: float,
+    label-height: float,
+}
+
 // A period of a candlestick chart: its time, in seconds after `time-origin`,
 // its first, highest, lowest and last value, and the volume traded in it.
 export struct ChartCandle { x: float, open: float, high: float, low: float, close: float, volume: float }
@@ -1096,6 +1125,13 @@ export global ChartEngine {
     // The middle of a column's label.
     pure callback segmented-ring-label(layout: ChartSegmentedRingLayout, column: int) -> ChartXY;
     // A value of a matrix; NaN where a row is too short.
+    pure callback tile-grid-layout(request: ChartTileGridRequest) -> ChartTileGridLayout;
+    // The tiles, one path per color, as for a segmented ring chart.
+    pure callback tile-grid-paint(layout: ChartTileGridLayout, style: ChartSegmentedRingStyle) -> ChartSegmentedRingPaint;
+    // One tile, as a path.
+    pure callback tile-grid-cell(layout: ChartTileGridLayout, row: int, column: int) -> string;
+    // The cell at (x, y), as `row * columns + column`, or -1.
+    pure callback tile-grid-hit(layout: ChartTileGridLayout, x: float, y: float) -> int;
     pure callback matrix-value(values: [[float]], row: int, column: int) -> float;
     // The range of a matrix's finite values; 0 to 1 when there are none.
     pure callback matrix-range(values: [[float]]) -> ChartRange;

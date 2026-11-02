@@ -1,0 +1,354 @@
+import { ChartEngine, ChartFormat, ChartLegendItem, ChartRange, ChartSegmentedRingPaint, ChartSlice, ChartTileGridLayout } from "engine.slint";
+import { ChartTheme, ChartTexts } from "theme.slint";
+import { ChartLegendPosition, LegendFrame } from "legend.slint";
+import { TooltipFrame, TooltipLine } from "tooltip.slint";
+
+// A tile grid: a matrix drawn as rows of rounded squares, one per value,
+// like an activity grid. It takes its data as a SegmentedRingChart does:
+// `values` is a matrix, one row per row of tiles from the top, and the
+// matrix sets the size: as many rows as it has, and as many columns as the
+// longest row; shorter rows leave the rest of their row empty. The tiles
+// stay square, as large as fit, centered.
+//
+// Cells are colored on a scale, as in HeatmapChart, or, when `classes` is
+// set, by class: each value is the index of its class, and the classes make
+// the legend. Missing values (NaN), and values that name no class such as
+// -1, are empty tiles, a faint track.
+export component TileGridChart {
+    in property <[[float]]> values;
+    // The columns' labels, below the grid, and the rows', at the left;
+    // either can be left empty.
+    in property <[string]> x-labels;
+    in property <[string]> y-labels;
+    // Color by class instead of on a scale; leave empty for a scale.
+    in-out property <[ChartSlice]> classes;
+    in property <string> title;
+    // The scale, as in HeatmapChart: the color of the largest value, with
+    // smaller values fading out; or, `diverging`, `negative-color` below
+    // `center-value` and `color` above it.
+    in property <color> color: ChartTheme.colors[0];
+    in property <bool> diverging: false;
+    in property <float> center-value: 0;
+    in property <color> negative-color: ChartTheme.colors[2];
+    // A fixed range of the scale, instead of fitting the data.
+    in property <bool> fixed-range: false;
+    in property <float> min-value: 0;
+    in property <float> max-value: 100;
+    // The gap between tiles, as a share of their pitch, and the corner
+    // radius, as a share of their side.
+    in property <float> tile-gap: 0.18;
+    in property <float> tile-radius: 0.18;
+    // The empty tiles; leave unset for a faint gray.
+    in property <color> track-color;
+    // The labels, where given; the column labels are thinned to those that
+    // fit.
+    in property <bool> show-labels: true;
+    // The classes, or the color scale.
+    in property <bool> show-legend: true;
+    in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
+    in property <bool> show-tooltip: true;
+    // Sweep the tiles in from the left when the chart appears.
+    in property <bool> animated: true;
+    // How values are written: a prefix and suffix, and a fixed number of
+    // decimals (-1: automatic).
+    in property <string> value-prefix;
+    in property <string> value-suffix;
+    in property <int> value-decimals: -1;
+
+    // The cell under the mouse, or selected with the arrow keys; -1 if none.
+    out property <int> hovered-row: root.hovered-cell < 0 ? -1 : floor(root.hovered-cell / grid.columns);
+    out property <int> hovered-column: root.hovered-cell < 0 ? -1 : mod(root.hovered-cell, grid.columns);
+
+    callback cell-clicked(row: int, column: int);
+    callback legend-toggled(index: int);
+
+    accessible-role: image;
+    accessible-label: root.title;
+    accessible-description: root.hovered-cell >= 0 ? root.place-text() + ": " + root.value-text() : "";
+
+    private property <bool> by-class: root.classes.length > 0;
+    private property <ChartRange> data-range: ChartEngine.matrix-range(root.values);
+    private property <float> low: root.fixed-range ? root.min-value : root.data-range.min;
+    private property <float> high: root.fixed-range ? root.max-value : root.data-range.max;
+    private property <ChartFormat> format: {
+        prefix: root.value-prefix,
+        suffix: root.value-suffix,
+        decimals: root.value-decimals,
+    };
+    // The scale fades towards this, as in HeatmapChart.
+    private property <color> empty: ChartTheme.dark ? #2b2f36 : #eef0f3;
+    private property <color> track: root.track-color.alpha > 0 ? root.track-color
+        : ChartTheme.text-color.with-alpha(ChartTheme.dark ? 0.12 : 0.09);
+    private property <[ChartLegendItem]> legend: ChartEngine.slice-legend(root.classes, ChartTheme.colors);
+
+    // The cell selected with the arrow keys.
+    private property <int> key-cell: -1;
+    private property <int> hovered-cell: grid.columns <= 0 ? -1
+        : touch.has-hover ? ChartEngine.tile-grid-hit(grid, touch.mouse-x / 1px, touch.mouse-y / 1px)
+        : keys.has-focus && root.key-cell >= 0 ? min(root.key-cell, grid.rows * grid.columns - 1)
+        : -1;
+    private property <float> hovered-value: root.hovered-cell < 0 ? 0 : ChartEngine.matrix-value(root.values, root.hovered-row, root.hovered-column);
+
+    // A value's class, or -1 for none.
+    pure function class-of(value: float) -> int {
+        value != value || round(value) < 0 || round(value) >= root.classes.length ? -1 : round(value)
+    }
+    // A cell's color, as drawn; transparent for an empty cell.
+    pure function cell-color(value: float) -> color {
+        if value != value {
+            return transparent;
+        }
+        if root.by-class {
+            let class = root.class-of(value);
+            return class < 0 || root.classes[class].hidden ? transparent : root.legend[class].color;
+        }
+        let s = root.strength(value);
+        s < 0 ? root.negative-color.mix(root.empty, 0.12 - s * 0.88) : root.color.mix(root.empty, root.diverging ? s : 0.12 + s * 0.88)
+    }
+    pure function strength(value: float) -> float {
+        if root.diverging {
+            let reach = max(abs(root.high - root.center-value), abs(root.low - root.center-value));
+            return reach > 0 ? clamp((value - root.center-value) / reach, -1, 1) : 0;
+        }
+        root.high > root.low ? clamp((value - root.low) / (root.high - root.low), 0, 1) : 1
+    }
+    // The hovered cell's row and column, by label or number.
+    pure function place-text() -> string {
+        (root.hovered-row < root.y-labels.length ? root.y-labels[root.hovered-row] : root.hovered-row + 1)
+            + ", " + (root.hovered-column < root.x-labels.length ? root.x-labels[root.hovered-column] : root.hovered-column + 1)
+    }
+    // The hovered cell's value, or its class.
+    pure function value-text() -> string {
+        root.hovered-value != root.hovered-value ? ChartTexts.no-data
+            : root.by-class ? (root.class-of(root.hovered-value) < 0 ? ChartTexts.no-data : root.classes[root.class-of(root.hovered-value)].label)
+            : ChartEngine.format-value(root.hovered-value, root.format)
+    }
+
+    private property <float> progress: 0;
+    animate progress {
+        duration: root.animated ? ChartTheme.animation-duration : 0ms;
+        easing: ease-out-quart;
+    }
+    init => {
+        progress = 1;
+    }
+    private property <bool> row-labels: root.show-labels && root.y-labels.length > 0;
+    private property <bool> column-labels: root.show-labels && root.x-labels.length > 0;
+    private property <ChartTileGridLayout> grid: ChartEngine.tile-grid-layout({
+        values: root.values,
+        width: area.width / 1px,
+        height: area.height / 1px,
+        gap: root.tile-gap,
+        radius: root.tile-radius,
+        row-label-width: root.row-labels ? row-measure.preferred-width / 1px : 0,
+        column-label-width: root.column-labels ? column-measure.preferred-width / 1px : 0,
+        label-height: row-measure.preferred-height / 1px,
+    });
+    private property <ChartSegmentedRingPaint> paint: ChartEngine.tile-grid-paint(grid, {
+        values: root.values,
+        classes: root.classes,
+        palette: ChartTheme.colors,
+        low: root.low,
+        high: root.high,
+        diverging: root.diverging,
+        center: root.center-value,
+        color: root.color,
+        negative-color: root.negative-color,
+        empty: root.empty,
+        progress: root.progress,
+    });
+
+    min-width: 120px;
+    min-height: 80px;
+    preferred-width: 480px;
+    preferred-height: 300px;
+
+    row-measure := Text {
+        visible: false;
+        text: ChartEngine.widest-label(root.y-labels);
+        font-size: ChartTheme.font-size;
+    }
+    column-measure := Text {
+        visible: false;
+        text: ChartEngine.widest-label(root.x-labels);
+        font-size: ChartTheme.font-size;
+    }
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        if root.title != "": Text {
+            text: root.title;
+            color: ChartTheme.text-color;
+            font-size: ChartTheme.title-font-size;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+
+        LegendFrame {
+            vertical-stretch: 1;
+            items: root.legend;
+            show-legend: root.show-legend && root.by-class;
+            position: root.legend-position;
+            toggled(index) => {
+                root.classes[index].hidden = !root.classes[index].hidden;
+                root.legend-toggled(index);
+            }
+
+            area := Rectangle {
+                horizontal-stretch: 1;
+
+                Path {
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    width: area.width;
+                    height: area.height;
+                    fit: fill;
+                    commands: paint.track;
+                    fill: root.track;
+                }
+
+                for group in paint.groups: Path {
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    width: area.width;
+                    height: area.height;
+                    fit: fill;
+                    commands: group.path;
+                    fill: group.color;
+                }
+
+                if root.hovered-cell >= 0: Path {
+                    viewbox-width: area.width / 1px;
+                    viewbox-height: area.height / 1px;
+                    width: area.width;
+                    height: area.height;
+                    fit: fill;
+                    commands: ChartEngine.tile-grid-cell(grid, root.hovered-row, root.hovered-column);
+                    stroke: ChartTheme.text-color;
+                    stroke-width: 1.5px;
+                }
+
+                if root.row-labels: Rectangle {
+                    for label[row] in root.y-labels: Text {
+                        visible: row < grid.rows;
+                        x: grid.x * 1px - self.preferred-width - row-measure.preferred-height * 0.6;
+                        y: (grid.y + (row + 0.5) * grid.pitch) * 1px - self.preferred-height / 2;
+                        text: label;
+                        color: root.hovered-row == row ? ChartTheme.text-color : ChartTheme.text-color.with-alpha(0.7);
+                        font-size: ChartTheme.font-size;
+                        font-weight: root.hovered-row == row ? 700 : 400;
+                    }
+                }
+
+                if root.column-labels: Rectangle {
+                    for label[column] in root.x-labels: Text {
+                        visible: column < grid.columns && mod(column, max(1, grid.label-skip)) == 0;
+                        x: (grid.x + (column + 0.5) * grid.pitch) * 1px - self.preferred-width / 2;
+                        y: (grid.y + grid.rows * grid.pitch) * 1px + row-measure.preferred-height * 0.3;
+                        text: label;
+                        color: root.hovered-column == column ? ChartTheme.text-color : ChartTheme.text-color.with-alpha(0.7);
+                        font-size: ChartTheme.font-size;
+                        font-weight: root.hovered-column == column ? 700 : 400;
+                    }
+                }
+
+                // Keyboard: the arrow keys move from tile to tile, Home and
+                // End go to the first and last, and Enter clicks.
+                keys := FocusScope {
+                    key-pressed(event) => {
+                        let count = grid.rows * grid.columns;
+                        if count == 0 {
+                            return reject;
+                        }
+                        let current = root.key-cell < 0 ? 0 : min(root.key-cell, count - 1);
+                        let row = floor(current / grid.columns);
+                        let column = mod(current, grid.columns);
+                        if root.key-cell < 0 && (event.text == Key.LeftArrow || event.text == Key.RightArrow
+                            || event.text == Key.UpArrow || event.text == Key.DownArrow) {
+                            root.key-cell = 0;
+                        } else if event.text == Key.RightArrow {
+                            root.key-cell = column < grid.columns - 1 ? current + 1 : current;
+                        } else if event.text == Key.LeftArrow {
+                            root.key-cell = column > 0 ? current - 1 : current;
+                        } else if event.text == Key.UpArrow {
+                            root.key-cell = row > 0 ? current - grid.columns : current;
+                        } else if event.text == Key.DownArrow {
+                            root.key-cell = row < grid.rows - 1 ? current + grid.columns : current;
+                        } else if event.text == Key.Home {
+                            root.key-cell = 0;
+                        } else if event.text == Key.End {
+                            root.key-cell = count - 1;
+                        } else if event.text == Key.Return && root.key-cell >= 0 {
+                            root.cell-clicked(row, column);
+                        } else {
+                            return reject;
+                        }
+                        accept
+                    }
+
+                    touch := TouchArea {
+                        mouse-cursor: root.hovered-cell >= 0 ? pointer : default;
+                        clicked => {
+                            keys.focus();
+                            if root.hovered-cell >= 0 {
+                                root.key-cell = root.hovered-cell;
+                                root.cell-clicked(root.hovered-row, root.hovered-column);
+                            }
+                        }
+                    }
+                }
+
+                if keys.has-focus: Rectangle {
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: ChartTheme.axis-color;
+                }
+
+                if root.show-tooltip && touch.has-hover && root.hovered-cell >= 0: TooltipFrame {
+                    x: touch.mouse-x + 14px + self.width > area.width ? max(0px, touch.mouse-x - 14px - self.width) : touch.mouse-x + 14px;
+                    y: clamp(touch.mouse-y - self.height / 2, 0px, max(0px, area.height - self.height));
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    title: root.place-text();
+
+                    TooltipLine {
+                        swatch: root.cell-color(root.hovered-value);
+                        text: root.value-text();
+                        bold: true;
+                    }
+                }
+            }
+        }
+
+        // The color scale from the smallest to the largest value.
+        if root.show-legend && !root.by-class: HorizontalLayout {
+            alignment: center;
+            spacing: 8px;
+            Text {
+                text: ChartEngine.format-value(root.low, root.format);
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                vertical-alignment: center;
+            }
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 160px;
+                    height: 10px;
+                    border-radius: 5px;
+                    background: root.diverging
+                        ? @linear-gradient(90deg, root.negative-color 0%, root.empty 50%, root.color 100%)
+                        : @linear-gradient(90deg, root.color.mix(root.empty, 0.12) 0%, root.color 100%);
+                }
+            }
+            Text {
+                text: ChartEngine.format-value(root.high, root.format);
+                color: ChartTheme.text-color;
+                font-size: ChartTheme.font-size;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

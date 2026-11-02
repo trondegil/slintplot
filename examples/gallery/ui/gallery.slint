@@ -38,6 +38,7 @@ import {
     RadarChart,
     RadialBarChart,
     SegmentedRingChart,
+    TileGridChart,
     ScatterChart,
     TimeSeriesChart,
 } from "@slintplot";
@@ -1094,10 +1095,10 @@ export component Gallery inherits Window {
     in-out property <[ChartSlice]> channels;
     // The segmented ring samples: one matrix, column labels, row labels and
     // text in the middle per chart.
-    in property <[[[float]]]> ring-values;
-    in property <[[string]]> ring-x-labels;
-    in property <[[string]]> ring-y-labels;
-    in property <[string]> ring-totals;
+    in property <[[[float]]]> matrix-values;
+    in property <[[string]]> matrix-x-labels;
+    in property <[[string]]> matrix-y-labels;
+    in property <[string]> matrix-totals;
     // The colors of the segmented ring charts by class that pick their own,
     // worked out in Rust: per chart, the classes' colors.
     // 1: the charts' custom colors.
@@ -1852,16 +1853,77 @@ export component Gallery inherits Window {
                             ];
                         }
                     }
+                    if root.sample == "tile-grid": GridLayout {
+                        spacing: 8px;
+                        TileGridChart {
+                            row: 0;
+                            col: 0;
+                            title: "Practice this quarter";
+                            values: root.matrix-values[0];
+                            x-labels: root.matrix-x-labels[0];
+                            y-labels: root.matrix-y-labels[0];
+                            color: #e8916a;
+                            show-labels: false;
+                            value-suffix: " h";
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        TileGridChart {
+                            row: 0;
+                            col: 1;
+                            title: "Contributions";
+                            values: root.matrix-values[1];
+                            x-labels: root.matrix-x-labels[1];
+                            y-labels: root.matrix-y-labels[1];
+                            value-decimals: 0;
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        TileGridChart {
+                            row: 1;
+                            col: 0;
+                            title: "Service status by day";
+                            values: root.matrix-values[2];
+                            x-labels: root.matrix-x-labels[2];
+                            y-labels: root.matrix-y-labels[2];
+                            classes: [
+                                { label: "Up", color: #2fb67c },
+                                { label: "Degraded", color: #f2b33d },
+                                { label: "Down", color: #e0636b },
+                            ];
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        TileGridChart {
+                            row: 1;
+                            col: 1;
+                            title: "Seats sold";
+                            values: root.matrix-values[3];
+                            x-labels: root.matrix-x-labels[3];
+                            y-labels: root.matrix-y-labels[3];
+                            classes: [
+                                { label: "Sold" },
+                                { label: "Reserved" },
+                            ];
+                            tile-radius: 0.3;
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                    }
                     if root.sample == "segmented-ring-classes": GridLayout {
                         spacing: 8px;
                         SegmentedRingChart {
                             row: 0;
                             col: 0;
                             title: "Automated runs";
-                            values: root.ring-values[0];
-                            x-labels: root.ring-x-labels[0];
-                            y-labels: root.ring-y-labels[0];
-                            center-text: root.ring-totals[0];
+                            values: root.matrix-values[0];
+                            x-labels: root.matrix-x-labels[0];
+                            y-labels: root.matrix-y-labels[0];
+                            center-text: root.matrix-totals[0];
                             classes: [
                                 { label: "On its own", color: root.ring-class-colors[0][0] },
                                 { label: "Needed you", color: root.ring-class-colors[0][1] },
@@ -1880,10 +1942,10 @@ export component Gallery inherits Window {
                             row: 0;
                             col: 1;
                             title: "Uptime this year";
-                            values: root.ring-values[1];
-                            x-labels: root.ring-x-labels[1];
-                            y-labels: root.ring-y-labels[1];
-                            center-text: root.ring-totals[1];
+                            values: root.matrix-values[1];
+                            x-labels: root.matrix-x-labels[1];
+                            y-labels: root.matrix-y-labels[1];
+                            center-text: root.matrix-totals[1];
                             classes: [
                                 { label: "Up", color: root.ring-class-colors[1][0] },
                                 { label: "Degraded", color: root.ring-class-colors[1][1] },
@@ -1902,10 +1964,10 @@ export component Gallery inherits Window {
                             row: 1;
                             col: 0;
                             title: "Habits this month";
-                            values: root.ring-values[2];
-                            x-labels: root.ring-x-labels[2];
-                            y-labels: root.ring-y-labels[2];
-                            center-text: root.ring-totals[2];
+                            values: root.matrix-values[2];
+                            x-labels: root.matrix-x-labels[2];
+                            y-labels: root.matrix-y-labels[2];
+                            center-text: root.matrix-totals[2];
                             classes: [
                                 { label: "Done" },
                                 // A muted gray, darker than the empty days.
@@ -1921,10 +1983,10 @@ export component Gallery inherits Window {
                             row: 1;
                             col: 1;
                             title: "Release pipeline";
-                            values: root.ring-values[3];
-                            x-labels: root.ring-x-labels[3];
-                            y-labels: root.ring-y-labels[3];
-                            center-text: root.ring-totals[3];
+                            values: root.matrix-values[3];
+                            x-labels: root.matrix-x-labels[3];
+                            y-labels: root.matrix-y-labels[3];
+                            center-text: root.matrix-totals[3];
                             classes: [
                                 { label: "Passed", color: root.ring-class-colors[2][0] },
                                 { label: "Running", color: root.ring-class-colors[2][1] },
@@ -1945,10 +2007,10 @@ export component Gallery inherits Window {
                             row: 0;
                             col: 0;
                             title: "Website visits by hour";
-                            values: root.ring-values[0];
-                            x-labels: root.ring-x-labels[0];
-                            y-labels: root.ring-y-labels[0];
-                            center-text: root.ring-totals[0];
+                            values: root.matrix-values[0];
+                            x-labels: root.matrix-x-labels[0];
+                            y-labels: root.matrix-y-labels[0];
+                            center-text: root.matrix-totals[0];
                             segment-gap: 0.12;
                             ring-gap: 0.25;
                             center-label: "VISITS";
@@ -1961,10 +2023,10 @@ export component Gallery inherits Window {
                             row: 0;
                             col: 1;
                             title: "Temperature against normal";
-                            values: root.ring-values[1];
-                            x-labels: root.ring-x-labels[1];
-                            y-labels: root.ring-y-labels[1];
-                            center-text: root.ring-totals[1];
+                            values: root.matrix-values[1];
+                            x-labels: root.matrix-x-labels[1];
+                            y-labels: root.matrix-y-labels[1];
+                            center-text: root.matrix-totals[1];
                             diverging: true;
                             segment-gap: 0.1;
                             ring-gap: 0.2;
@@ -1979,10 +2041,10 @@ export component Gallery inherits Window {
                             row: 1;
                             col: 0;
                             title: "CPU load by core";
-                            values: root.ring-values[2];
-                            x-labels: root.ring-x-labels[2];
-                            y-labels: root.ring-y-labels[2];
-                            center-text: root.ring-totals[2];
+                            values: root.matrix-values[2];
+                            x-labels: root.matrix-x-labels[2];
+                            y-labels: root.matrix-y-labels[2];
+                            center-text: root.matrix-totals[2];
                             fixed-range: true;
                             min-value: 0;
                             max-value: 100;
@@ -2001,10 +2063,10 @@ export component Gallery inherits Window {
                             row: 1;
                             col: 1;
                             title: "Steps per day";
-                            values: root.ring-values[3];
-                            x-labels: root.ring-x-labels[3];
-                            y-labels: root.ring-y-labels[3];
-                            center-text: root.ring-totals[3];
+                            values: root.matrix-values[3];
+                            x-labels: root.matrix-x-labels[3];
+                            y-labels: root.matrix-y-labels[3];
+                            center-text: root.matrix-totals[3];
                             segment-gap: 0.2;
                             cutout: 0.6;
                             show-labels: false;

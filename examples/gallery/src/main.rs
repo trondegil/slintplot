@@ -296,6 +296,8 @@ enum Shape {
     SegmentedRing,
     /// Segmented rings colored on a scale.
     SegmentedScale,
+    /// Tile grids, on a scale and by class.
+    TileGrid,
 }
 
 /// Population in millions (2025 estimates), by continent.
@@ -555,6 +557,14 @@ const SAMPLES: &[Sample] = &[
         "Equal angles; the radius shows the value.",
         Shape::Slices,
         DATA_ACTIONS,
+    ),
+    sample(
+        "tile-grid",
+        "New",
+        "Tile grids",
+        "TileGridChart: a matrix as rows of rounded squares, one per value. It takes its data as a SegmentedRingChart does, one row of tiles per row of the matrix, and takes its size from it. Practice hours over a quarter that began a month ago (7 × 13, empty weeks as the track), contributions over half a year on a scale (7 × 26), the status of six services by day (6 × 30, by class), and seats sold in a theater whose rows grow longer towards the back. Randomize gives new data.",
+        Shape::TileGrid,
+        &["Randomize"],
     ),
     sample(
         "segmented-ring-classes",
@@ -1272,7 +1282,14 @@ impl State {
         let Some(ui) = self.ui.upgrade() else {
             return;
         };
-        let charts = if self.sample.shape == Shape::SegmentedScale {
+        let charts = if self.sample.shape == Shape::TileGrid {
+            [
+                self.tile_practice(),
+                self.tile_contributions(),
+                self.tile_status(),
+                self.tile_seats(),
+            ]
+        } else if self.sample.shape == Shape::SegmentedScale {
             [
                 self.ring_visits(),
                 self.ring_temperature(),
@@ -1307,10 +1324,10 @@ impl State {
             y_labels.push(strings(chart.y_labels));
             totals.push(SharedString::from(chart.total));
         }
-        ui.set_ring_values(ModelRc::new(VecModel::from(values)));
-        ui.set_ring_x_labels(ModelRc::new(VecModel::from(x_labels)));
-        ui.set_ring_y_labels(ModelRc::new(VecModel::from(y_labels)));
-        ui.set_ring_totals(ModelRc::new(VecModel::from(totals)));
+        ui.set_matrix_values(ModelRc::new(VecModel::from(values)));
+        ui.set_matrix_x_labels(ModelRc::new(VecModel::from(x_labels)));
+        ui.set_matrix_y_labels(ModelRc::new(VecModel::from(y_labels)));
+        ui.set_matrix_totals(ModelRc::new(VecModel::from(totals)));
         self.ring_colors();
     }
 
@@ -1465,6 +1482,119 @@ impl State {
             x_labels: SHORT_MONTHS.iter().map(|m| m.to_string()).collect(),
             y_labels: (2016..2026).map(|y| y.to_string()).collect(),
             total: format!("{last:+.1}°"),
+        }
+    }
+
+    /// Hours of practice each day of a quarter, a column per week: begun
+    /// four weeks ago, so the first weeks are empty, with a few days in the
+    /// week before.
+    fn tile_practice(&mut self) -> RingSample {
+        let values = (0..7)
+            .map(|day| {
+                (0..13)
+                    .map(|week| match week {
+                        0..=7 => f32::NAN,
+                        8 if matches!(day, 1 | 3 | 4) => {
+                            0.5 + (self.rng.next() * 2.0).round() * 0.5
+                        }
+                        8 => f32::NAN,
+                        _ => 1.0 + (self.rng.next() * 6.0).round() * 0.5,
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (1..=13).map(|w| format!("Week {w}")).collect(),
+            y_labels: WEEKDAYS.iter().map(|d| d.to_string()).collect(),
+            total: String::new(),
+        }
+    }
+
+    /// Contributions each day over half a year, a column per week; quieter
+    /// at the weekend, with some days off.
+    fn tile_contributions(&mut self) -> RingSample {
+        let values = (0..7)
+            .map(|day| {
+                (0..26)
+                    .map(|_| {
+                        let r = self.rng.next();
+                        if r < if day >= 5 { 0.6 } else { 0.2 } {
+                            0.0
+                        } else {
+                            (1.0 + self.rng.next() * 11.0).round()
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (1..=26).map(|w| format!("Week {w}")).collect(),
+            y_labels: WEEKDAYS.iter().map(|d| d.to_string()).collect(),
+            total: String::new(),
+        }
+    }
+
+    /// Six services by day over 30 days: 0 up, 1 degraded, 2 down.
+    fn tile_status(&mut self) -> RingSample {
+        let values = (0..6)
+            .map(|_| {
+                (0..30)
+                    .map(|_| {
+                        let r = self.rng.next();
+                        if r < 0.03 {
+                            2.0
+                        } else if r < 0.1 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (1..=30).map(|d| d.to_string()).collect(),
+            y_labels: ["API", "Web", "Search", "Payments", "Email", "Storage"]
+                .map(String::from)
+                .to_vec(),
+            total: String::new(),
+        }
+    }
+
+    /// Seats in a theater, a row of tiles per row of seats, the rows longer
+    /// towards the back: 0 sold, 1 reserved, -1 free.
+    fn tile_seats(&mut self) -> RingSample {
+        const LENGTHS: [usize; 10] = [10, 12, 14, 14, 16, 16, 18, 18, 18, 18];
+        let values = LENGTHS
+            .iter()
+            .enumerate()
+            .map(|(row, &seats)| {
+                // The middle rows sell first.
+                let demand = 0.85 - (row as f32 - 4.5).abs() * 0.08;
+                (0..seats)
+                    .map(|_| {
+                        let r = self.rng.next();
+                        if r < demand {
+                            0.0
+                        } else if r < demand + 0.08 {
+                            1.0
+                        } else {
+                            -1.0
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (1..=18).map(|n| n.to_string()).collect(),
+            y_labels: ["A", "B", "C", "D", "E", "F", "G", "H", "J", "K"]
+                .map(String::from)
+                .to_vec(),
+            total: String::new(),
         }
     }
 
@@ -1968,7 +2098,10 @@ impl State {
             Shape::RadialBar => bars(&CHANNELS),
             _ => Vec::new(),
         });
-        if matches!(sample.shape, Shape::SegmentedRing | Shape::SegmentedScale) {
+        if matches!(
+            sample.shape,
+            Shape::SegmentedRing | Shape::SegmentedScale | Shape::TileGrid
+        ) {
             self.ring_data(false);
         }
         self.grid_values();
@@ -2207,7 +2340,7 @@ impl State {
             "Randomize"
                 if matches!(
                     self.sample.shape,
-                    Shape::SegmentedRing | Shape::SegmentedScale
+                    Shape::SegmentedRing | Shape::SegmentedScale | Shape::TileGrid
                 ) =>
             {
                 self.ring_data(true)

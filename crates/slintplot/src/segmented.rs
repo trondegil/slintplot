@@ -289,23 +289,24 @@ pub fn cell_color(value: f64, coloring: &Coloring) -> Option<Rgba> {
     }
 }
 
-/// The cells as one path per color, and the empty ones, missing cells
-/// included, as the track. Only the first `progress` (0 to 1) of the columns
-/// are colored, so that the chart can sweep in.
-pub fn paint(
-    chart: &Segmented,
+/// The cells of a `rows` × `columns` matrix as one path per color, and the
+/// empty ones, missing cells included, as the track; `push` adds a cell's
+/// shape to a path. Only the first `progress` (0 to 1) of the columns are
+/// colored, so that a chart can sweep in. Shared by the charts of matrices
+/// of cells, such as segmented rings and tile grids.
+pub fn paint_cells(
+    rows: usize,
+    columns: usize,
     values: &[Vec<f64>],
     coloring: &Coloring,
     progress: f32,
+    mut push: impl FnMut(&mut String, usize, usize),
 ) -> (String, Vec<(Rgba, String)>) {
     let mut track = String::new();
     let mut groups: Vec<(Rgba, String)> = Vec::new();
-    if !chart.center.0.is_finite() || !chart.center.1.is_finite() {
-        return (track, groups);
-    }
-    let lit = (finite_or(progress, 1.0).clamp(0.0, 1.0) * chart.columns as f32).ceil() as usize;
-    for row in 0..chart.rings.len() {
-        for column in 0..chart.columns {
+    let lit = (finite_or(progress, 1.0).clamp(0.0, 1.0) * columns as f32).ceil() as usize;
+    for row in 0..rows {
+        for column in 0..columns {
             let value = values
                 .get(row)
                 .and_then(|r| r.get(column))
@@ -326,10 +327,31 @@ pub fn paint(
                     }
                 },
             };
-            push_cell(out, chart, row, column);
+            push(out, row, column);
         }
     }
     (track, groups)
+}
+
+/// The rings' cells as one path per color, and the empty ones as the
+/// track; see [`paint_cells`].
+pub fn paint(
+    chart: &Segmented,
+    values: &[Vec<f64>],
+    coloring: &Coloring,
+    progress: f32,
+) -> (String, Vec<(Rgba, String)>) {
+    if !chart.center.0.is_finite() || !chart.center.1.is_finite() {
+        return (String::new(), Vec::new());
+    }
+    paint_cells(
+        chart.rings.len(),
+        chart.columns,
+        values,
+        coloring,
+        progress,
+        |out, row, column| push_cell(out, chart, row, column),
+    )
 }
 
 #[cfg(test)]

@@ -20,6 +20,17 @@
   appears; the arrow keys go round and between the rings, and
   `cell-clicked(row, column)` reports clicks.
 
+- `TileGridChart`: a matrix as rows of rounded squares, one per value, like
+  an activity grid. It takes its data as `SegmentedRingChart` does: `values`
+  is a matrix (`[[float]]`), one row of tiles per row, and the matrix sets the
+  size, the tiles staying square, as large as fit, and centered. Cells are
+  colored on a scale or by `classes`, with the same properties; missing
+  values are empty tiles, a faint track. `y-labels` go at the left and
+  `x-labels` below, thinned where they don't fit; `tile-gap` and
+  `tile-radius` shape the tiles. The tiles sweep in from the left; hovering
+  outlines a tile with a tooltip, the arrow keys move from tile to tile, and
+  `cell-clicked(row, column)` reports clicks.
+
 ### Example apps
 
 - **Gallery:** builds without Slint's binding loop warnings. The window
