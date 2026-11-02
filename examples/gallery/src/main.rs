@@ -167,13 +167,6 @@ const CHANNELS: [(&str, f32); 6] = [
     ("Forum", 3.0),
 ];
 // Product categories, not colors: the slices take the theme's colors.
-/// The segmented ring sample: how automated runs ended, as classes, in
-/// lime, orange and red.
-const RUN_CLASSES: [(&str, u32); 3] = [
-    ("On its own", 0xc6f432),
-    ("Needed you", 0xf0904a),
-    ("Failed", 0xe0636b),
-];
 const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_MONTHS: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -1941,18 +1934,6 @@ impl State {
         let slices: Vec<ChartSlice> = match sample.shape {
             Shape::Slices => (0..5).map(|i| self.slice(i)).collect(),
             Shape::RadialBar => bars(&GOALS),
-            Shape::SegmentedRing => RUN_CLASSES
-                .iter()
-                .map(|&(label, rgb)| ChartSlice {
-                    label: label.into(),
-                    color: slint::Color::from_rgb_u8(
-                        (rgb >> 16) as u8,
-                        (rgb >> 8) as u8,
-                        rgb as u8,
-                    ),
-                    ..Default::default()
-                })
-                .collect(),
             _ => Vec::new(),
         };
         self.slices.set_vec(slices);

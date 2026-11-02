@@ -1837,7 +1837,11 @@ export component Gallery inherits Window {
                             x-labels: root.ring-x-labels[0];
                             y-labels: root.ring-y-labels[0];
                             center-text: root.ring-totals[0];
-                            classes <=> root.slices;
+                            classes: [
+                                { label: "On its own", color: #c6f432 },
+                                { label: "Needed you", color: #f0904a },
+                                { label: "Failed", color: #e0636b },
+                            ];
                             clockwise: false;
                             show-labels: false;
                             show-marker: true;
@@ -1878,8 +1882,9 @@ export component Gallery inherits Window {
                             y-labels: root.ring-y-labels[2];
                             center-text: root.ring-totals[2];
                             classes: [
-                                { label: "Done", color: ChartTheme.colors[1] },
-                                { label: "Skipped", color: ChartTheme.colors[3] },
+                                { label: "Done" },
+                                // A muted gray, darker than the empty days.
+                                { label: "Skipped", color: ChartTheme.text-color.with-alpha(0.35) },
                             ];
                             show-labels: false;
                             center-label: "DAY STREAK";
