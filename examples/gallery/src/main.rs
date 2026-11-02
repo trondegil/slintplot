@@ -295,8 +295,10 @@ enum Shape {
     Candles,
     /// Goals reached, and survey shares, as radial bars.
     RadialBar,
-    /// Runs and tickets as units of segmented rings.
+    /// Segmented rings colored by class.
     SegmentedRing,
+    /// Segmented rings colored on a scale.
+    SegmentedScale,
 }
 
 /// Population in millions (2025 estimates), by continent.
@@ -558,11 +560,19 @@ const SAMPLES: &[Sample] = &[
         DATA_ACTIONS,
     ),
     sample(
-        "segmented-ring",
+        "segmented-ring-classes",
         "New",
-        "Segmented ring charts",
-        "SegmentedRingChart: a heatmap bent into rings, one ring per row of the matrix and one segment per column; each chart takes its size from its data. Runs by class (7 × 48), visits on a scale (7 × 24), a year of uptime with a ring per month of 28 to 31 days, ten years of temperatures on a diverging scale (10 × 12), three habits over 30 days, and one ring of pipeline steps. Randomize gives new data, and the runs a new size.",
+        "Segmented rings by class",
+        "SegmentedRingChart with classes: each value of the matrix is a class index (0, 1, 2), and the classes make the legend. One ring per row and one segment per column, so each chart takes its size from its data: runs every half hour for a week (7 × 48), a year of uptime with a ring per month of 28 to 31 days, three habits over 30 days, and one ring of pipeline steps. Randomize gives new data, and the runs a new size.",
         Shape::SegmentedRing,
+        &["Randomize"],
+    ),
+    sample(
+        "segmented-ring-scale",
+        "New",
+        "Segmented rings on a scale",
+        "SegmentedRingChart with values on a color scale, as in a heatmap. One ring per row and one segment per column, so each chart takes its size from its data: website visits by weekday and hour (7 × 24), ten years of temperatures on a diverging scale (10 × 12), CPU load of 8 cores over an hour (8 × 60), and steps per day as a single ring of 31 days. Randomize gives new data.",
+        Shape::SegmentedScale,
         &["Randomize"],
     ),
     sample(
@@ -1257,21 +1267,29 @@ impl State {
     }
 
     /// Fills the heatmap or calendar values of the current sample.
-    /// The segmented ring samples: six matrices of different sizes, one per
-    /// chart, with their column and row labels and the text in the middle.
-    /// Randomize gives new data, and the runs a new size.
+    /// The segmented ring samples: four matrices of different sizes, one per
+    /// chart, with their column and row labels and the text in the middle;
+    /// colored by class or on a scale. Randomize gives new data, and the runs
+    /// a new size.
     fn ring_data(&mut self, randomize: bool) {
         let Some(ui) = self.ui.upgrade() else {
             return;
         };
-        let charts = [
-            self.ring_runs(randomize),
-            self.ring_visits(),
-            self.ring_uptime(),
-            self.ring_temperature(),
-            self.ring_habits(),
-            self.ring_pipeline(),
-        ];
+        let charts = if self.sample.shape == Shape::SegmentedScale {
+            [
+                self.ring_visits(),
+                self.ring_temperature(),
+                self.ring_cpu(),
+                self.ring_steps(),
+            ]
+        } else {
+            [
+                self.ring_runs(randomize),
+                self.ring_uptime(),
+                self.ring_habits(),
+                self.ring_pipeline(),
+            ]
+        };
         let strings = |items: Vec<String>| -> ModelRc<SharedString> {
             ModelRc::new(VecModel::from(
                 items
@@ -1425,6 +1443,58 @@ impl State {
             x_labels: SHORT_MONTHS.iter().map(|m| m.to_string()).collect(),
             y_labels: (2016..2026).map(|y| y.to_string()).collect(),
             total: format!("{last:+.1}°"),
+        }
+    }
+
+    /// The CPU load of 8 cores, in percent, each minute of an hour: busy
+    /// spells shared by the cores, with one core often busier.
+    fn ring_cpu(&mut self) -> RingSample {
+        let spells: Vec<f32> = (0..60)
+            .map(|minute| {
+                let m = minute as f32;
+                55.0 * (-(m - 18.0).powi(2) / 30.0).exp()
+                    + 70.0 * (-(m - 44.0).powi(2) / 20.0).exp()
+            })
+            .collect();
+        let mut sum = 0.0;
+        let values = (0..8)
+            .map(|core| {
+                let extra = if core == 0 { 20.0 } else { 0.0 };
+                spells
+                    .iter()
+                    .map(|&spell| {
+                        let v = (4.0 + spell + extra + self.rng.next() * 12.0)
+                            .min(100.0)
+                            .round();
+                        sum += v;
+                        v
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (0..60).map(|m| format!(":{m:02}")).collect(),
+            y_labels: (0..8).map(|c| format!("Core {c}")).collect(),
+            total: format!("{:.0}%", sum / 480.0),
+        }
+    }
+
+    /// Steps each day of a month, as one ring of 31 days.
+    fn ring_steps(&mut self) -> RingSample {
+        let values: Vec<f32> = (0..31)
+            .map(|day| {
+                let weekend = matches!(day % 7, 5 | 6);
+                let base = if weekend { 4000.0 } else { 7500.0 };
+                (base + self.rng.next() * 7000.0).round()
+            })
+            .collect();
+        let average = values.iter().sum::<f32>() / 31.0;
+        RingSample {
+            values: vec![values],
+            x_labels: (1..=31).map(|d| format!("Oct {d}")).collect(),
+            y_labels: vec!["Steps".into()],
+            total: format!("{:.1}k", average / 1000.0),
         }
     }
 
@@ -1890,7 +1960,7 @@ impl State {
             Shape::RadialBar => bars(&CHANNELS),
             _ => Vec::new(),
         });
-        if sample.shape == Shape::SegmentedRing {
+        if matches!(sample.shape, Shape::SegmentedRing | Shape::SegmentedScale) {
             self.ring_data(false);
         }
         self.grid_values();
@@ -2126,7 +2196,14 @@ impl State {
                     }
                 }
             }
-            "Randomize" if self.sample.shape == Shape::SegmentedRing => self.ring_data(true),
+            "Randomize"
+                if matches!(
+                    self.sample.shape,
+                    Shape::SegmentedRing | Shape::SegmentedScale
+                ) =>
+            {
+                self.ring_data(true)
+            }
             "Randomize"
                 if matches!(
                     self.sample.shape,

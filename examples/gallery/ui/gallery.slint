@@ -1827,11 +1827,11 @@ export component Gallery inherits Window {
                             ];
                         }
                     }
-                    if root.sample == "segmented-ring": GridLayout {
+                    if root.sample == "segmented-ring-classes": GridLayout {
                         spacing: 8px;
                         SegmentedRingChart {
-                            row: root.narrow ? 0 : 0;
-                            col: root.narrow ? 0 : 0;
+                            row: 0;
+                            col: 0;
                             title: "Automated runs";
                             values: root.ring-values[0];
                             x-labels: root.ring-x-labels[0];
@@ -1848,29 +1848,13 @@ export component Gallery inherits Window {
                             }
                         }
                         SegmentedRingChart {
-                            row: root.narrow ? 0 : 0;
-                            col: root.narrow ? 1 : 1;
-                            title: "Website visits by hour";
+                            row: 0;
+                            col: 1;
+                            title: "Uptime this year";
                             values: root.ring-values[1];
                             x-labels: root.ring-x-labels[1];
                             y-labels: root.ring-y-labels[1];
                             center-text: root.ring-totals[1];
-                            segment-gap: 0.12;
-                            ring-gap: 0.25;
-                            center-label: "VISITS";
-                            value-decimals: 0;
-                            cell-clicked(row, column) => {
-                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
-                            }
-                        }
-                        SegmentedRingChart {
-                            row: root.narrow ? 1 : 0;
-                            col: root.narrow ? 0 : 2;
-                            title: "Uptime this year";
-                            values: root.ring-values[2];
-                            x-labels: root.ring-x-labels[2];
-                            y-labels: root.ring-y-labels[2];
-                            center-text: root.ring-totals[2];
                             classes: [
                                 { label: "Up", color: #2fb67c },
                                 { label: "Degraded", color: #f2b33d },
@@ -1886,13 +1870,71 @@ export component Gallery inherits Window {
                             }
                         }
                         SegmentedRingChart {
-                            row: root.narrow ? 1 : 1;
-                            col: root.narrow ? 1 : 0;
-                            title: "Temperature against normal";
+                            row: 1;
+                            col: 0;
+                            title: "Habits this month";
+                            values: root.ring-values[2];
+                            x-labels: root.ring-x-labels[2];
+                            y-labels: root.ring-y-labels[2];
+                            center-text: root.ring-totals[2];
+                            classes: [
+                                { label: "Done", color: ChartTheme.colors[1] },
+                                { label: "Skipped", color: ChartTheme.colors[3] },
+                            ];
+                            show-labels: false;
+                            center-label: "DAY STREAK";
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        SegmentedRingChart {
+                            row: 1;
+                            col: 1;
+                            title: "Release pipeline";
                             values: root.ring-values[3];
                             x-labels: root.ring-x-labels[3];
                             y-labels: root.ring-y-labels[3];
                             center-text: root.ring-totals[3];
+                            classes: [
+                                { label: "Passed", color: #2fb67c },
+                                { label: "Running", color: #3d8bf2 },
+                                { label: "Failed", color: #e0636b },
+                            ];
+                            show-labels: false;
+                            segment-gap: 0.15;
+                            cutout: 0.6;
+                            center-label: "STEPS";
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                    }
+                    if root.sample == "segmented-ring-scale": GridLayout {
+                        spacing: 8px;
+                        SegmentedRingChart {
+                            row: 0;
+                            col: 0;
+                            title: "Website visits by hour";
+                            values: root.ring-values[0];
+                            x-labels: root.ring-x-labels[0];
+                            y-labels: root.ring-y-labels[0];
+                            center-text: root.ring-totals[0];
+                            segment-gap: 0.12;
+                            ring-gap: 0.25;
+                            center-label: "VISITS";
+                            value-decimals: 0;
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        SegmentedRingChart {
+                            row: 0;
+                            col: 1;
+                            title: "Temperature against normal";
+                            values: root.ring-values[1];
+                            x-labels: root.ring-x-labels[1];
+                            y-labels: root.ring-y-labels[1];
+                            center-text: root.ring-totals[1];
                             diverging: true;
                             color: #e0636b;
                             negative-color: #3d8bf2;
@@ -1906,40 +1948,43 @@ export component Gallery inherits Window {
                             }
                         }
                         SegmentedRingChart {
-                            row: root.narrow ? 2 : 1;
-                            col: root.narrow ? 0 : 1;
-                            title: "Habits this month";
-                            values: root.ring-values[4];
-                            x-labels: root.ring-x-labels[4];
-                            y-labels: root.ring-y-labels[4];
-                            center-text: root.ring-totals[4];
-                            classes: [
-                                { label: "Done", color: ChartTheme.colors[1] },
-                                { label: "Skipped", color: ChartTheme.colors[3] },
-                            ];
+                            row: 1;
+                            col: 0;
+                            title: "CPU load by core";
+                            values: root.ring-values[2];
+                            x-labels: root.ring-x-labels[2];
+                            y-labels: root.ring-y-labels[2];
+                            center-text: root.ring-totals[2];
+                            color: ChartTheme.colors[4];
+                            fixed-range: true;
+                            min-value: 0;
+                            max-value: 100;
                             show-labels: false;
-                            center-label: "DAY STREAK";
+                            segment-gap: 0.2;
+                            ring-gap: 0.3;
+                            cutout: 0.4;
+                            center-label: "AVERAGE";
+                            value-suffix: "%";
+                            value-decimals: 0;
                             cell-clicked(row, column) => {
                                 root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
                             }
                         }
                         SegmentedRingChart {
-                            row: root.narrow ? 2 : 1;
-                            col: root.narrow ? 1 : 2;
-                            title: "Release pipeline";
-                            values: root.ring-values[5];
-                            x-labels: root.ring-x-labels[5];
-                            y-labels: root.ring-y-labels[5];
-                            center-text: root.ring-totals[5];
-                            classes: [
-                                { label: "Passed", color: #2fb67c },
-                                { label: "Running", color: #3d8bf2 },
-                                { label: "Failed", color: #e0636b },
-                            ];
-                            show-labels: false;
-                            segment-gap: 0.15;
+                            row: 1;
+                            col: 1;
+                            title: "Steps per day";
+                            values: root.ring-values[3];
+                            x-labels: root.ring-x-labels[3];
+                            y-labels: root.ring-y-labels[3];
+                            center-text: root.ring-totals[3];
+                            color: ChartTheme.colors[1];
+                            segment-gap: 0.2;
                             cutout: 0.6;
-                            center-label: "STEPS";
+                            show-labels: false;
+                            show-marker: true;
+                            center-label: "AVERAGE";
+                            value-decimals: 0;
                             cell-clicked(row, column) => {
                                 root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
                             }
