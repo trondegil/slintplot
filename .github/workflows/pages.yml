@@ -21,8 +21,12 @@ permissions:
   pages: write
   id-token: write
 
+# One deploy at a time, a newer one replacing one still running. A release
+# not tagged `apps-v*` (the library's `v*`) builds nothing, so it gets a group
+# of its own: in the shared group it would cancel the apps release's deploy,
+# published a second later.
 concurrency:
-  group: pages
+  group: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'apps-v')) && 'pages' || format('pages-skip-{0}', github.run_id) }}
   cancel-in-progress: true
 
 env:
