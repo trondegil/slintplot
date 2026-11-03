@@ -42,8 +42,8 @@
   two tabs, by category and on a scale, of four charts of different sizes and
   uses. They follow the theme, with their own colors only where the colors
   carry meaning, such as green, amber and red for a service's status; on the
-  segmented ring category page, a second dropdown under the theme picker
-  switches between the theme's colors and these. The heatmap sample shows
+  segmented ring category page and both tile grid pages, a second dropdown
+  under the theme picker switches between the theme's colors and these. The heatmap sample shows
   the visits in each cell, in two-hour blocks so that the numbers fit.
 - **Stress test:** segmented ring and tile grid charts, on a scale and by
   category, from 100 to 1,000,000 cells.

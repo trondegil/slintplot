@@ -1376,8 +1376,10 @@ impl State {
 
     /// The categories' colors of the charts that pick their own: the
     /// segmented rings' runs, uptime and pipeline, and the tile grids'
-    /// service status and tests. "Theme colors" leaves them unset, so the
-    /// library uses the theme's; "Custom colors" sets them.
+    /// service status and tests, and the practice tile grid's scale.
+    /// "Theme colors" leaves them unset, so the library uses the theme's
+    /// (the practice grid takes the theme's first color); "Custom colors"
+    /// sets them.
     fn ring_colors(&self) {
         let Some(ui) = self.ui.upgrade() else {
             return;
@@ -1393,6 +1395,12 @@ impl State {
                 [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
             ]
         };
+        ui.set_tile_color(if ui.get_ring_colors() == 0 {
+            let colors = ui.global::<ChartTheme>().get_colors();
+            colors.row_data(0).unwrap_or_default()
+        } else {
+            rgb(0xe8916a)
+        });
         ui.set_ring_class_colors(ModelRc::new(VecModel::from(
             classes
                 .iter()

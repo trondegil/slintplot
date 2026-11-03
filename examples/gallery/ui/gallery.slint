@@ -1145,6 +1145,9 @@ export component Gallery inherits Window {
     // 1: the charts' custom colors.
     in-out property <int> ring-colors: 1;
     in property <[[color]]> ring-class-colors;
+    // The practice tile grid's color: its own orange with Custom colors,
+    // the theme's first otherwise; worked out in Rust.
+    in property <color> tile-color;
     callback ring-colors-changed();
     private property <[string]> ring-color-options: ["Theme colors", "Custom colors"];
     changed ring-colors => {
@@ -1352,7 +1355,7 @@ export component Gallery inherits Window {
                                 width: 150px;
                                 current <=> root.theme;
                             }
-                            if root.sample == "segmented-ring-classes" || root.sample == "tile-grid-classes": ComboBox {
+                            if root.sample == "segmented-ring-classes" || root.sample == "tile-grid-classes" || root.sample == "tile-grid-scale": ComboBox {
                                 width: 150px;
                                 model: root.ring-color-options;
                                 current-index <=> root.ring-colors;
@@ -1406,7 +1409,7 @@ export component Gallery inherits Window {
                 color: Look.secondary;
                 wrap: word-wrap;
             }
-            if root.narrow && !root.chart-only && (root.sample == "segmented-ring-classes" || root.sample == "tile-grid-classes"): ComboBox {
+            if root.narrow && !root.chart-only && (root.sample == "segmented-ring-classes" || root.sample == "tile-grid-classes" || root.sample == "tile-grid-scale"): ComboBox {
                 model: root.ring-color-options;
                 current-index <=> root.ring-colors;
             }
@@ -1915,6 +1918,7 @@ export component Gallery inherits Window {
                             values: root.matrix-values[0];
                             x-labels: root.matrix-x-labels[0];
                             y-labels: root.matrix-y-labels[0];
+                            color: root.tile-color;
                             show-labels: false;
                             value-suffix: " h";
                             cell-clicked(row, column) => {
