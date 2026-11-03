@@ -1905,7 +1905,7 @@ export component Gallery inherits Window {
                             ];
                         }
                     }
-                    if root.sample == "tile-grid": GridLayout {
+                    if root.sample == "tile-grid-scale": GridLayout {
                         spacing: 8px;
                         TileGridChart {
                             row: 0;
@@ -1936,14 +1936,78 @@ export component Gallery inherits Window {
                         TileGridChart {
                             row: 1;
                             col: 0;
-                            title: "Service status by day";
+                            title: "Server load by half hour";
                             values: root.matrix-values[2];
                             x-labels: root.matrix-x-labels[2];
                             y-labels: root.matrix-y-labels[2];
+                            fixed-range: true;
+                            min-value: 0;
+                            max-value: 100;
+                            value-suffix: "%";
+                            value-decimals: 0;
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        TileGridChart {
+                            row: 1;
+                            col: 1;
+                            title: "Temperature against normal";
+                            values: root.matrix-values[3];
+                            x-labels: root.matrix-x-labels[3];
+                            y-labels: root.matrix-y-labels[3];
+                            diverging: true;
+                            value-suffix: "°";
+                            value-decimals: 1;
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                    }
+                    if root.sample == "tile-grid-classes": GridLayout {
+                        spacing: 8px;
+                        TileGridChart {
+                            row: 0;
+                            col: 0;
+                            title: "Service status by day";
+                            values: root.matrix-values[0];
+                            x-labels: root.matrix-x-labels[0];
+                            y-labels: root.matrix-y-labels[0];
                             classes: [
                                 { label: "Up", color: #2fb67c },
                                 { label: "Degraded", color: #f2b33d },
                                 { label: "Down", color: #e0636b },
+                            ];
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        TileGridChart {
+                            row: 0;
+                            col: 1;
+                            title: "Tests by build";
+                            values: root.matrix-values[1];
+                            x-labels: root.matrix-x-labels[1];
+                            y-labels: root.matrix-y-labels[1];
+                            classes: [
+                                { label: "Passed", color: #2fb67c },
+                                { label: "Flaky", color: #f2b33d },
+                                { label: "Failed", color: #e0636b },
+                            ];
+                            cell-clicked(row, column) => {
+                                root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];
+                            }
+                        }
+                        TileGridChart {
+                            row: 1;
+                            col: 0;
+                            title: "Room bookings";
+                            values: root.matrix-values[2];
+                            x-labels: root.matrix-x-labels[2];
+                            y-labels: root.matrix-y-labels[2];
+                            classes: [
+                                { label: "Booked" },
+                                { label: "Tentative" },
                             ];
                             cell-clicked(row, column) => {
                                 root.status = "cell-clicked: " + self.y-labels[row] + ", " + self.x-labels[column];

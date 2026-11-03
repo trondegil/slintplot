@@ -1966,6 +1966,7 @@ macro_rules! register {
                 size: layout.size,
                 radius: layout.radius,
                 label_skip: layout.label_skip.max(1) as usize,
+                row_label_skip: layout.row_label_skip.max(1) as usize,
             }
         }
         engine.on_tile_grid_layout(|req: ChartTileGridRequest| {
@@ -1993,6 +1994,7 @@ macro_rules! register {
                 size: out.size,
                 radius: out.radius,
                 label_skip: out.label_skip as i32,
+                row_label_skip: out.row_label_skip as i32,
             }
         });
         engine.on_tile_grid_paint(

@@ -73,7 +73,7 @@ pub fn run(png_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
         "{:>10}  {:<22}  {:>10}  {:>10}  {:>6}  {:>10}  {:>12}  {:>6}",
         "points", "mode", "generate", "engine", "calls", "frame", "hover frame", "calls"
     );
-    let modes: [(&str, i32, bool, bool, bool); 12] = [
+    let modes: [(&str, i32, bool, bool, bool); 16] = [
         // label, chart type (see `Stress.chart-type`), show points, smooth,
         // decimate
         ("line, points, smooth", 0, true, true, false),
@@ -88,6 +88,10 @@ pub fn run(png_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
         ("funnel", 6, false, false, false),
         ("sunburst", 7, false, false, false),
         ("gauge", 8, true, false, false),
+        ("segmented rings, scale", 9, false, false, false),
+        ("segmented rings, class", 9, true, false, false),
+        ("tile grid, scale", 10, false, false, false),
+        ("tile grid, class", 10, true, false, false),
     ];
     let mut zoom = Vec::new();
     for &points in &POINT_COUNTS {
@@ -100,7 +104,8 @@ pub fn run(png_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
             if chart_type == 8 && points > 100 {
                 continue;
             }
-            let markers = (show_points && chart_type != 8) || chart_type == 1;
+            // In the matrix charts, Points means classes, not markers.
+            let markers = (show_points && !matches!(chart_type, 8..=10)) || chart_type == 1;
             let per_item = (4..=7).contains(&chart_type);
             if (markers && points > 100_000) || ((chart_type == 3 || per_item) && points > 10_000) {
                 println!("{points:>10}  {label:<22}  {:>10}", "skipped");

@@ -806,7 +806,8 @@ export struct ChartSegmentedRingPaint { track: string, groups: [ChartSegmentGrou
 
 // A tile grid: the size of the matrix, the top left of the first cell, the
 // distance from cell to cell, and the side and corner radius of a tile,
-// centered in its cell; and every how many columns there is a label.
+// centered in its cell; and every how many columns and rows there is a
+// label.
 export struct ChartTileGridLayout {
     rows: int,
     columns: int,
@@ -816,6 +817,7 @@ export struct ChartTileGridLayout {
     size: float,
     radius: float,
     label-skip: int,
+    row-label-skip: int,
 }
 
 export struct ChartTileGridRequest {

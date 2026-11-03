@@ -295,6 +295,33 @@ impl Data {
         } else {
             Vec::new()
         });
+        // Segmented rings and tile grids: a matrix of about `count` cells,
+        // values 0 to 2 (classes, or a scale) with some missing. Rings suit
+        // few long rows, tiles rows about 2.5 times as long as the grid is
+        // tall. Beyond their limits the charts draw only part of it.
+        let matrix: Vec<ModelRc<f32>> = if matches!(chart_type, 9 | 10) && count > 0 {
+            let ratio = if chart_type == 9 { 14.0 } else { 2.5 };
+            let rows = ((count as f32 / ratio).sqrt().round() as usize).max(1);
+            let columns = count.div_ceil(rows);
+            (0..rows)
+                .map(|_| {
+                    let row: Vec<f32> = (0..columns)
+                        .map(|_| {
+                            let r = self.rng.next();
+                            if r < 0.05 {
+                                f32::NAN
+                            } else {
+                                (r * 3.0).floor().min(2.0)
+                            }
+                        })
+                        .collect();
+                    ModelRc::new(VecModel::from(row))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        app.set_matrix(ModelRc::new(VecModel::from(matrix)));
         self.gauge = 50.0;
         app.set_gauge_value(self.gauge);
     }

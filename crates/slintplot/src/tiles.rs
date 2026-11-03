@@ -44,9 +44,10 @@ pub struct Tiles {
     pub pitch: f32,
     pub size: f32,
     pub radius: f32,
-    /// Every how many columns there is a column label, so that they don't
-    /// overlap.
+    /// Every how many columns there is a column label, and every how many
+    /// rows a row label, so that they don't overlap.
     pub label_skip: usize,
+    pub row_label_skip: usize,
 }
 
 fn finite_or(v: f32, fallback: f32) -> f32 {
@@ -100,6 +101,12 @@ pub fn layout(req: &TileRequest) -> Tiles {
         1
     }
     .min(columns);
+    let row_label_skip = if row_labels > 0.0 && pitch > 0.0 {
+        ((label_h * 1.1) / pitch).ceil().max(1.0) as usize
+    } else {
+        1
+    }
+    .min(rows);
     Tiles {
         rows,
         columns,
@@ -109,6 +116,7 @@ pub fn layout(req: &TileRequest) -> Tiles {
         size: tile,
         radius: tile * radius,
         label_skip,
+        row_label_skip,
     }
 }
 
@@ -130,7 +138,9 @@ fn push_tile(out: &mut String, tiles: &Tiles, row: usize, column: usize) {
     if !out.is_empty() {
         out.push(' ');
     }
-    if r <= 0.01 {
+    // Corners under a pixel can't be seen, and their curves are most of the
+    // drawing time of grids of tiny tiles: draw those as squares.
+    if r < 1.0 {
         let _ = write!(out, "M {x:.2} {y:.2} h {s:.2} v {s:.2} h {:.2} Z", -s);
         return;
     }
@@ -246,9 +256,17 @@ mod tests {
         assert!(tiles.x >= 30.0);
         assert!(tiles.y + tiles.pitch * 7.0 <= 200.0 - 14.0);
         assert!(tiles.label_skip > 1, "{}", tiles.label_skip);
+        // Rows of 10.8 px for labels of 14: every second one.
+        assert_eq!(tiles.row_label_skip, 2, "rows of {} px", tiles.pitch);
         let few = matrix(3, 4);
         req.values = &few;
         assert_eq!(layout(&req).label_skip, 1);
+        // Rows shorter than the labels: every second or third one.
+        let flat = matrix(8, 48);
+        req.values = &flat;
+        req.height = 90.0;
+        let tiles = layout(&req);
+        assert!(tiles.pitch < 14.0 && tiles.row_label_skip > 1, "{tiles:?}");
     }
 
     #[test]
@@ -264,6 +282,9 @@ mod tests {
         assert!(tile_path(&tiles, 5, 0).is_empty());
         let mut square = tiles.clone();
         square.radius = 0.0;
+        assert!(!tile_path(&square, 0, 0).contains(" a "));
+        // Tiny tiles are squares: their corners can't be seen.
+        square.radius = 0.6;
         assert!(!tile_path(&square, 0, 0).contains(" a "));
     }
 
@@ -308,7 +329,7 @@ mod tests {
             for v in [tiles.x, tiles.y, tiles.pitch, tiles.size, tiles.radius] {
                 assert!(v.is_finite(), "{tiles:?}");
             }
-            assert!(tiles.label_skip >= 1);
+            assert!(tiles.label_skip >= 1 && tiles.row_label_skip >= 1);
             let coloring = Coloring::Classes {
                 colors: &CLASSES,
                 hidden: &[],

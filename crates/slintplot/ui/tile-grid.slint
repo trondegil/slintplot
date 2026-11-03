@@ -40,8 +40,7 @@ export component TileGridChart {
     in property <float> tile-radius: 0.18;
     // The empty tiles; leave unset for a faint gray.
     in property <color> track-color;
-    // The labels, where given; the column labels are thinned to those that
-    // fit.
+    // The labels, where given, thinned to those that fit.
     in property <bool> show-labels: true;
     // The classes, or the color scale.
     in property <bool> show-legend: true;
@@ -232,7 +231,7 @@ export component TileGridChart {
 
                 if root.row-labels: Rectangle {
                     for label[row] in root.y-labels: Text {
-                        visible: row < grid.rows;
+                        visible: row < grid.rows && mod(row, max(1, grid.row-label-skip)) == 0;
                         x: grid.x * 1px - self.preferred-width - row-measure.preferred-height * 0.6;
                         y: (grid.y + (row + 0.5) * grid.pitch) * 1px - self.preferred-height / 2;
                         text: label;

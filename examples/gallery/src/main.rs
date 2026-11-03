@@ -296,8 +296,10 @@ enum Shape {
     SegmentedRing,
     /// Segmented rings colored on a scale.
     SegmentedScale,
-    /// Tile grids, on a scale and by class.
-    TileGrid,
+    /// Tile grids on a scale.
+    TileScale,
+    /// Tile grids by class.
+    TileClasses,
 }
 
 /// Population in millions (2025 estimates), by continent.
@@ -410,13 +412,22 @@ const LIFE_EXPECTANCY: [(&str, f32, f32); 8] = [
 
 /// Samples shown as tabs of one sidebar entry: the entry's title, and each
 /// sample's id and tab title. The first sample is the one the entry opens.
-const TAB_GROUPS: &[(&str, &[(&str, &str)])] = &[(
-    "Segmented ring charts",
-    &[
-        ("segmented-ring-classes", "By class"),
-        ("segmented-ring-scale", "On a scale"),
-    ],
-)];
+const TAB_GROUPS: &[(&str, &[(&str, &str)])] = &[
+    (
+        "Segmented ring charts",
+        &[
+            ("segmented-ring-classes", "By class"),
+            ("segmented-ring-scale", "On a scale"),
+        ],
+    ),
+    (
+        "Tile grid charts",
+        &[
+            ("tile-grid-scale", "On a scale"),
+            ("tile-grid-classes", "By class"),
+        ],
+    ),
+];
 
 /// The tab group of the sample `id`, if it is in one.
 fn tab_group(id: &str) -> Option<&'static (&'static str, &'static [(&'static str, &'static str)])> {
@@ -576,11 +587,19 @@ const SAMPLES: &[Sample] = &[
         DATA_ACTIONS,
     ),
     sample(
-        "tile-grid",
+        "tile-grid-scale",
         "New",
-        "Tile grids",
-        "TileGridChart: a matrix as rows of rounded squares, one per value. It takes its data as a SegmentedRingChart does, one row of tiles per row of the matrix, and takes its size from it. Practice hours over a quarter that began a month ago (7 × 13, empty weeks as the track), contributions over half a year on a scale (7 × 26), the status of six services by day (6 × 30, by class), and seats sold in a theater whose rows grow longer towards the back. Randomize gives new data.",
-        Shape::TileGrid,
+        "Tile grids on a scale",
+        "TileGridChart with values on a color scale, as in a heatmap: a matrix as rows of rounded squares, one per value, taking its data as a SegmentedRingChart does and its size from the matrix. Practice hours over a quarter that began a month ago (7 × 13, empty weeks as the track), contributions over half a year (7 × 26), the load of 8 servers each half hour of a day (8 × 48), and ten years of temperatures on a diverging scale (10 × 12). Randomize gives new data.",
+        Shape::TileScale,
+        &["Randomize"],
+    ),
+    sample(
+        "tile-grid-classes",
+        "New",
+        "Tile grids by class",
+        "TileGridChart with classes: each value of the matrix is a class index, and the classes make the legend; -1 or NaN is an empty tile. The status of six services by day (6 × 30), test suites over the last 20 builds (12 × 20), room bookings in half hours (5 × 20), and seats sold in a theater whose rows grow longer towards the back. Randomize gives new data.",
+        Shape::TileClasses,
         &["Randomize"],
     ),
     sample(
@@ -1299,11 +1318,18 @@ impl State {
         let Some(ui) = self.ui.upgrade() else {
             return;
         };
-        let charts = if self.sample.shape == Shape::TileGrid {
+        let charts = if self.sample.shape == Shape::TileScale {
             [
                 self.tile_practice(),
                 self.tile_contributions(),
+                self.tile_load(),
+                self.ring_temperature(),
+            ]
+        } else if self.sample.shape == Shape::TileClasses {
+            [
                 self.tile_status(),
+                self.tile_tests(),
+                self.tile_rooms(),
                 self.tile_seats(),
             ]
         } else if self.sample.shape == Shape::SegmentedScale {
@@ -1549,6 +1575,111 @@ impl State {
             values,
             x_labels: (1..=26).map(|w| format!("Week {w}")).collect(),
             y_labels: WEEKDAYS.iter().map(|d| d.to_string()).collect(),
+            total: String::new(),
+        }
+    }
+
+    /// The load of 8 servers each half hour of a day, in percent: busy in
+    /// the working day, with a nightly batch on the first two.
+    fn tile_load(&mut self) -> RingSample {
+        let values = (0..8)
+            .map(|server| {
+                (0..48)
+                    .map(|slot| {
+                        let h = slot as f32 / 2.0;
+                        let day = 70.0 * (-(h - 14.0).powi(2) / 16.0).exp();
+                        let batch = if server < 2 {
+                            60.0 * (-(h - 3.0).powi(2) / 2.0).exp()
+                        } else {
+                            0.0
+                        };
+                        (5.0 + day + batch + self.rng.next() * 15.0)
+                            .min(100.0)
+                            .round()
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (0..48)
+                .map(|s| format!("{:02}:{:02}", s / 2, s % 2 * 30))
+                .collect(),
+            y_labels: (1..=8).map(|n| format!("Server {n}")).collect(),
+            total: String::new(),
+        }
+    }
+
+    /// Twelve test suites over the last 20 builds: 0 passed, 1 flaky,
+    /// 2 failed; a suite added later has no results for the first builds.
+    fn tile_tests(&mut self) -> RingSample {
+        const SUITES: [&str; 12] = [
+            "Unit",
+            "Layout",
+            "Axes",
+            "Legend",
+            "Tooltips",
+            "Zoom",
+            "Keyboard",
+            "Themes",
+            "Locales",
+            "Screenshots",
+            "Fuzz",
+            "Wasm",
+        ];
+        let values = (0..SUITES.len())
+            .map(|suite| {
+                (0..20)
+                    .map(|build| {
+                        if suite == 11 && build < 6 {
+                            return f32::NAN;
+                        }
+                        let r = self.rng.next();
+                        if r < 0.04 {
+                            2.0
+                        } else if r < 0.12 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (181..=200).map(|b| format!("#{b}")).collect(),
+            y_labels: SUITES.map(String::from).to_vec(),
+            total: String::new(),
+        }
+    }
+
+    /// Five rooms booked in half hours from 08:00 to 18:00: 0 booked,
+    /// 1 tentative, -1 free; meetings are an hour or two.
+    fn tile_rooms(&mut self) -> RingSample {
+        let values = (0..5)
+            .map(|_| {
+                let mut row = vec![-1.0f32; 20];
+                let mut slot = (self.rng.next() * 3.0) as usize;
+                while slot < 20 {
+                    let length = 2 + (self.rng.next() * 3.0) as usize;
+                    let class = if self.rng.next() < 0.2 { 1.0 } else { 0.0 };
+                    for cell in row.iter_mut().skip(slot).take(length) {
+                        *cell = class;
+                    }
+                    slot += length + (self.rng.next() * 4.0) as usize;
+                }
+                row
+            })
+            .collect();
+        RingSample {
+            values,
+            x_labels: (0..20)
+                .map(|s| format!("{:02}:{:02}", 8 + s / 2, s % 2 * 30))
+                .collect(),
+            y_labels: ["Fjord", "Glacier", "Aurora", "Harbor", "Summit"]
+                .map(String::from)
+                .to_vec(),
             total: String::new(),
         }
     }
@@ -2117,7 +2248,7 @@ impl State {
         });
         if matches!(
             sample.shape,
-            Shape::SegmentedRing | Shape::SegmentedScale | Shape::TileGrid
+            Shape::SegmentedRing | Shape::SegmentedScale | Shape::TileScale | Shape::TileClasses
         ) {
             self.ring_data(false);
         }
@@ -2377,7 +2508,10 @@ impl State {
             "Randomize"
                 if matches!(
                     self.sample.shape,
-                    Shape::SegmentedRing | Shape::SegmentedScale | Shape::TileGrid
+                    Shape::SegmentedRing
+                        | Shape::SegmentedScale
+                        | Shape::TileScale
+                        | Shape::TileClasses
                 ) =>
             {
                 self.ring_data(true)

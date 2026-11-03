@@ -8,6 +8,8 @@ import {
     ChartSunburstItem,
     ChartTheme,
     ChartWaterfallStep,
+    SegmentedRingChart,
+    TileGridChart,
     DumbbellChart,
     FunnelChart,
     GaugeChart,
@@ -81,6 +83,8 @@ export component Stress inherits Window {
     in-out property <[ChartDataset]> datasets;
     in property <[ChartWaterfallStep]> steps;
     in-out property <[ChartSlice]> stages;
+    // The matrix of the segmented ring and tile grid charts.
+    in property <[[float]]> matrix;
     in-out property <[ChartSunburstItem]> sun;
     in property <float> gauge-value;
 
@@ -214,7 +218,7 @@ export component Stress inherits Window {
                     }
                     ComboBox {
                         width: 140px;
-                        model: ["Line", "Bars", "Time series", "Scatter", "Waterfall", "Dumbbell", "Funnel", "Sunburst", "Gauge"];
+                        model: ["Line", "Bars", "Time series", "Scatter", "Waterfall", "Dumbbell", "Funnel", "Sunburst", "Gauge", "Segmented rings", "Tile grid"];
                         current-index <=> root.chart-type;
                         selected => {
                             root.rebuild();
@@ -470,6 +474,19 @@ export component Stress inherits Window {
                     if root.chart-type == 7: SunburstChart {
                         vertical-stretch: 1;
                         items <=> root.sun;
+                        animated: root.animated;
+                    }
+                    // A matrix, by class with Points on, else on a scale.
+                    if root.chart-type == 9: SegmentedRingChart {
+                        vertical-stretch: 1;
+                        values: root.matrix;
+                        classes: root.show-points ? [{ label: "A" }, { label: "B" }, { label: "C" }] : [];
+                        animated: root.animated;
+                    }
+                    if root.chart-type == 10: TileGridChart {
+                        vertical-stretch: 1;
+                        values: root.matrix;
+                        classes: root.show-points ? [{ label: "A" }, { label: "B" }, { label: "C" }] : [];
                         animated: root.animated;
                     }
                     if root.chart-type == 8: GaugeChart {
