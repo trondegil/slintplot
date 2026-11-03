@@ -414,6 +414,18 @@ const LIFE_EXPECTANCY: [(&str, f32, f32); 8] = [
 /// sample's id and tab title. The first sample is the one the entry opens.
 const TAB_GROUPS: &[(&str, &[(&str, &str)])] = &[
     (
+        "Line chart",
+        &[("line", "With points"), ("line-points", "Without points")],
+    ),
+    (
+        "Pie chart",
+        &[("pie", "Plain"), ("pie-labels", "With data labels")],
+    ),
+    (
+        "Radar chart",
+        &[("radar", "Lines"), ("area-radar", "Filled")],
+    ),
+    (
         "Segmented ring charts",
         &[
             ("segmented-ring-classes", "By category"),

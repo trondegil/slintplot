@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The focus ring round a chart shows only when the keyboard brought the
+  focus (Tab) or has been used since, not after a click, as `:focus-visible`
+  on the web. Clicking still gives the chart the arrow keys.
+
+### Example apps
+
+- **Gallery:** the line chart with and without points, the pie chart with
+  and without data labels, and the radar chart with lines and filled are one
+  sidebar entry each, with a tab per variant; the filled radar chart moves
+  from Area charts to the radar chart.
+
 ## 0.4.3
 
 ### Fixed
