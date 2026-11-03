@@ -9,7 +9,7 @@
 use std::f32::consts::TAU;
 
 use crate::layout::Rgba;
-use crate::pie::{point, slice_path};
+use crate::pie::point;
 
 /// The most rings and segments per ring, so that a huge matrix can't make
 /// the chart unusably slow.
@@ -28,7 +28,8 @@ pub struct SegmentedRequest<'a> {
     pub clockwise: bool,
     /// The empty middle, as a share of the radius; the gap between rings, as
     /// a share of their width; and the gap between segments, as a share of
-    /// the angle each takes.
+    /// a segment of the inner ring. The gaps between segments are as wide
+    /// in every ring, with parallel sides.
     pub cutout: f32,
     pub ring_gap: f32,
     pub segment_gap: f32,
@@ -50,7 +51,8 @@ pub struct Segmented {
     pub start: f32,
     /// 1 clockwise, -1 counterclockwise.
     pub direction: f32,
-    /// The gap between segments, as a share of the angle each takes.
+    /// The gap between segments, as a share of a segment of the inner
+    /// ring; see [`gap_width`].
     pub segment_gap: f32,
     pub columns: usize,
     /// One (outer, inner) per row, outermost first.
@@ -151,13 +153,92 @@ pub fn layout(req: &SegmentedRequest) -> Segmented {
     }
 }
 
-/// The angles of a column's segments, the smaller first.
+/// The angles a column spans, the smaller first, gap included.
 pub fn column_angles(chart: &Segmented, column: usize) -> (f32, f32) {
     let pitch = TAU / chart.columns.max(1) as f32;
     let a = chart.start + chart.direction * column as f32 * pitch;
     let b = chart.start + chart.direction * (column + 1) as f32 * pitch;
-    let trim = pitch * chart.segment_gap / 2.0;
-    (a.min(b) + trim, a.max(b) - trim)
+    (a.min(b), a.max(b))
+}
+
+/// The width of the gap between segments, in pixels: `segment_gap` of a
+/// segment's length along the middle of the inner ring, and at least 2
+/// pixels so that the gaps don't fade on screens of 1 pixel per point, while
+/// leaving most of each inner segment. Every ring has gaps this wide, so
+/// the gaps line up as straight, even spokes instead of widening outwards.
+pub fn gap_width(chart: &Segmented) -> f32 {
+    let Some(&(outer, inner)) = chart.rings.last() else {
+        return 0.0;
+    };
+    if chart.segment_gap <= 0.0 {
+        return 0.0;
+    }
+    if chart.columns <= 1 {
+        // One segment per ring: a gap where it starts and ends.
+        return (chart.segment_gap * (outer - inner)).max(2.0);
+    }
+    let segment = TAU / chart.columns as f32 * (outer + inner) / 2.0;
+    (chart.segment_gap * segment).max(2.0).min(segment * 0.4)
+}
+
+/// A ring segment from angle `a` to `b`, trimmed by half of `gap` at each
+/// end along both its outer and inner edge, so that the gaps on either side
+/// keep the same width all the way across the ring.
+fn segment_path(
+    out: &mut String,
+    center: (f32, f32),
+    outer: f32,
+    inner: f32,
+    a: f32,
+    b: f32,
+    gap: f32,
+) {
+    use std::fmt::Write;
+    let half = (b - a) / 2.0;
+    // How far each end moves in at a radius; at most nearly to the middle.
+    let trim = |r: f32| {
+        if r <= 0.0 {
+            half
+        } else {
+            (gap / 2.0 / r).min(half * 0.98)
+        }
+    };
+    let (to, ti) = (trim(outer), trim(inner));
+    let (oa, ob) = (a + to, b - to);
+    if ob <= oa {
+        return;
+    }
+    // An SVG arc can't draw more than half a circle in one go.
+    let split = |from: f32, to: f32| -> Vec<f32> {
+        if (to - from).abs() > std::f32::consts::PI {
+            vec![(from + to) / 2.0, to]
+        } else {
+            vec![to]
+        }
+    };
+    if !out.is_empty() {
+        out.push(' ');
+    }
+    let (x, y) = point(center, outer, oa);
+    let _ = write!(out, "M {x:.2} {y:.2}");
+    for angle in split(oa, ob) {
+        let (x, y) = point(center, outer, angle);
+        let _ = write!(out, " A {outer:.2} {outer:.2} 0 0 1 {x:.2} {y:.2}");
+    }
+    let (ia, ib) = (a + ti, b - ti);
+    if inner > 0.0 && ib > ia {
+        let (x, y) = point(center, inner, ib);
+        let _ = write!(out, " L {x:.2} {y:.2}");
+        for angle in split(ib, ia) {
+            let (x, y) = point(center, inner, angle);
+            let _ = write!(out, " A {inner:.2} {inner:.2} 0 0 0 {x:.2} {y:.2}");
+        }
+    } else {
+        // Too small a radius for a gap: the inner edge is a point.
+        let (x, y) = point(center, inner.max(0.0), (a + b) / 2.0);
+        let _ = write!(out, " L {x:.2} {y:.2}");
+    }
+    out.push_str(" Z");
 }
 
 /// The angle of the middle of a column.
@@ -172,10 +253,7 @@ fn push_cell(out: &mut String, chart: &Segmented, row: usize, column: usize) {
     };
     let (a, b) = column_angles(chart, column);
     if outer > inner && b > a && column < chart.columns {
-        if !out.is_empty() {
-            out.push(' ');
-        }
-        out.push_str(&slice_path(chart.center, outer, inner, a, b));
+        segment_path(out, chart.center, outer, inner, a, b, gap_width(chart));
     }
 }
 
@@ -429,6 +507,53 @@ mod tests {
         assert!(column_middle(&chart, 0) < 0.0);
         assert_eq!(cell_path(&chart, 0, 0).matches('M').count(), 1);
         assert!(cell_path(&chart, 9, 0).is_empty());
+    }
+
+    #[test]
+    fn gaps_are_as_wide_in_every_ring() {
+        let m = matrix(6, 24);
+        let chart = layout(&request(&m));
+        let gap = gap_width(&chart);
+        assert!(gap > 1.0);
+        // The numbers of a path: its points, in order.
+        let points = |path: String| -> Vec<(f32, f32)> {
+            let n: Vec<f32> = path.split(' ').filter_map(|w| w.parse().ok()).collect();
+            // M x y, then A rx ry rotation large sweep x y and L x y.
+            let mut out = vec![(n[0], n[1])];
+            let mut i = 2;
+            while i < n.len() {
+                if n.len() - i >= 7 && n[i] == n[i + 1] && n[i + 2] == 0.0 {
+                    out.push((n[i + 5], n[i + 6]));
+                    i += 7;
+                } else {
+                    out.push((n[i], n[i + 1]));
+                    i += 2;
+                }
+            }
+            out
+        };
+        let distance =
+            |p: (f32, f32), q: (f32, f32)| ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2)).sqrt();
+        for row in [0, 5] {
+            // Column 0 is [start, outer end, inner end, inner start]; the gap
+            // to column 1 is between its ends and column 1's starts.
+            let first = points(cell_path(&chart, row, 0));
+            let second = points(cell_path(&chart, row, 1));
+            let outer = distance(first[1], second[0]);
+            let inner = distance(first[2], second[3]);
+            assert!(
+                (outer - gap).abs() < 0.1,
+                "row {row}: outer gap {outer}, not {gap}"
+            );
+            assert!(
+                (inner - gap).abs() < 0.1,
+                "row {row}: inner gap {inner}, not {gap}"
+            );
+        }
+        // One segment per ring still leaves a gap where it starts.
+        let one = layout(&request(&matrix(1, 1)));
+        assert!(gap_width(&one) > 0.0);
+        assert!(!cell_path(&one, 0, 0).is_empty());
     }
 
     #[test]

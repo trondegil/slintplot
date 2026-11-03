@@ -40,7 +40,8 @@ export component SegmentedRingChart {
     // The empty middle, as a share of the radius.
     in property <float> cutout: 0.45;
     // The gap between the rings, as a share of their width, and between the
-    // segments, as a share of the angle each takes.
+    // segments, as a share of a segment of the inner ring: at least 2px, and
+    // as wide in every ring, with parallel sides.
     in property <float> ring-gap: 0.5;
     in property <float> segment-gap: 0.3;
     // The empty segments; leave unset for a faint gray.

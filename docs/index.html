@@ -373,7 +373,7 @@
 <figure class="shot"><video class="tour when-light" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour.mp4" type="video/mp4"></video><video class="tour when-dark" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour-dark.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour-dark.mp4" type="video/mp4"></video>
   <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
   <a href="demo/">Try it in your browser</a>, install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
-  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.0">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
+  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.1">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
 
 <h2 id="getting-started">Getting started</h2>
 <h3>1. Add the dependencies</h3>
@@ -946,7 +946,7 @@ SegmentedRingChart {
   <tr><td><code>clockwise</code></td><td><code>bool</code></td><td><code>true</code></td><td>Which way the columns go</td></tr>
   <tr><td><code>cutout</code></td><td><code>float</code></td><td><code>0.45</code></td><td>The empty middle, as a share of the radius</td></tr>
   <tr><td><code>ring-gap</code></td><td><code>float</code></td><td><code>0.5</code></td><td>The gap between the rings, as a share of their width</td></tr>
-  <tr><td><code>segment-gap</code></td><td><code>float</code></td><td><code>0.3</code></td><td>The gap between the segments, as a share of the angle each takes</td></tr>
+  <tr><td><code>segment-gap</code></td><td><code>float</code></td><td><code>0.3</code></td><td>The gap between the segments, as a share of a segment of the inner ring. It is at least 2px, and as wide in every ring, so the gaps form straight spokes</td></tr>
   <tr><td><code>track-color</code></td><td><code>color</code></td><td>unset</td><td>The empty segments; unset for a faint gray</td></tr>
   <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>The column labels round the outside</td></tr>
   <tr><td><code>show-center</code></td><td><code>bool</code></td><td><code>true</code></td><td>The text in the middle</td></tr>
@@ -2586,7 +2586,7 @@ a hang or a runaway allocation. Its soak test repeats the same rounds for a whil
 cargo run --release -p slintplot-fuzz -- soak 60    # an hour of the same rounds</code></pre>
 <p>The gallery also runs in the browser, built with WebAssembly: <a href="demo/">slintplot.dev/demo</a>.</p>
 <p>Ready-built apps for macOS, Windows and Linux are on the
-<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.0">releases page</a>.
+<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.1">releases page</a>.
 Each download includes the licenses of the open-source crates it is built from.</p>
 <p><a href="https://slint.dev"><img src="assets/MadeWithSlint-logo-whitebg.webp" alt="Made with Slint" width="212" height="97"></a></p>
 <figure class="shot"><img width="1280" height="820" class="when-light" src="screenshots/gallery.webp" alt="The gallery sample browser" loading="lazy"><img width="1280" height="820" class="when-dark" src="screenshots/gallery-dark.webp" alt="The gallery sample browser" loading="lazy"></figure>

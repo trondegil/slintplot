@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1
+
+### Fixed
+
+- `SegmentedRingChart`: the gaps between segments are as wide in every ring,
+  with parallel sides, and at least 2px. They were a share of each segment's
+  angle, so they widened outwards and, on screens of 1 pixel per point such
+  as most Linux desktops and browsers, looked uneven where they were under 2
+  pixels. `segment-gap` is now a share of a segment of the inner ring.
+
 ## 0.4.0
 
 ### Added
