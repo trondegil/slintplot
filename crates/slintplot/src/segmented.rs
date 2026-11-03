@@ -208,37 +208,44 @@ fn segment_path(
     if ob <= oa {
         return;
     }
-    // An SVG arc can't draw more than half a circle in one go.
+    // An SVG arc can't draw more than half a circle in one go; quarter
+    // circles also keep the points a fair outline of the shape.
     let split = |from: f32, to: f32| -> Vec<f32> {
-        if (to - from).abs() > std::f32::consts::PI {
-            vec![(from + to) / 2.0, to]
-        } else {
-            vec![to]
-        }
+        let pieces = ((to - from).abs() / std::f32::consts::FRAC_PI_2)
+            .ceil()
+            .max(1.0) as usize;
+        (1..=pieces)
+            .map(|k| from + (to - from) * k as f32 / pieces as f32)
+            .collect()
     };
     if !out.is_empty() {
         out.push(' ');
     }
-    let (x, y) = point(center, outer, oa);
-    let _ = write!(out, "M {x:.2} {y:.2}");
-    for angle in split(oa, ob) {
+    // Counterclockwise on screen, ending with a line back to the start:
+    // Slint's femtovg renderer works out from the points whether a shape is
+    // solid or a hole, without the closing edge. Drawn this way, every cell
+    // is solid wherever it is; as a hole, its smoothed edge would fall
+    // outside it and close the gaps.
+    let start = point(center, outer, ob);
+    let _ = write!(out, "M {:.2} {:.2}", start.0, start.1);
+    for angle in split(ob, oa) {
         let (x, y) = point(center, outer, angle);
-        let _ = write!(out, " A {outer:.2} {outer:.2} 0 0 1 {x:.2} {y:.2}");
+        let _ = write!(out, " A {outer:.2} {outer:.2} 0 0 0 {x:.2} {y:.2}");
     }
     let (ia, ib) = (a + ti, b - ti);
     if inner > 0.0 && ib > ia {
-        let (x, y) = point(center, inner, ib);
+        let (x, y) = point(center, inner, ia);
         let _ = write!(out, " L {x:.2} {y:.2}");
-        for angle in split(ib, ia) {
+        for angle in split(ia, ib) {
             let (x, y) = point(center, inner, angle);
-            let _ = write!(out, " A {inner:.2} {inner:.2} 0 0 0 {x:.2} {y:.2}");
+            let _ = write!(out, " A {inner:.2} {inner:.2} 0 0 1 {x:.2} {y:.2}");
         }
     } else {
         // Too small a radius for a gap: the inner edge is a point.
         let (x, y) = point(center, inner.max(0.0), (a + b) / 2.0);
         let _ = write!(out, " L {x:.2} {y:.2}");
     }
-    out.push_str(" Z");
+    let _ = write!(out, " L {:.2} {:.2} Z", start.0, start.1);
 }
 
 /// The angle of the middle of a column.
@@ -535,12 +542,13 @@ mod tests {
         let distance =
             |p: (f32, f32), q: (f32, f32)| ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2)).sqrt();
         for row in [0, 5] {
-            // Column 0 is [start, outer end, inner end, inner start]; the gap
-            // to column 1 is between its ends and column 1's starts.
+            // A cell is [outer end, outer start, inner start, inner end, back
+            // to the outer end]; the gap to column 1 is between column 0's
+            // ends and column 1's starts.
             let first = points(cell_path(&chart, row, 0));
             let second = points(cell_path(&chart, row, 1));
-            let outer = distance(first[1], second[0]);
-            let inner = distance(first[2], second[3]);
+            let outer = distance(first[0], second[1]);
+            let inner = distance(first[3], second[2]);
             assert!(
                 (outer - gap).abs() < 0.1,
                 "row {row}: outer gap {outer}, not {gap}"
@@ -554,6 +562,26 @@ mod tests {
         let one = layout(&request(&matrix(1, 1)));
         assert!(gap_width(&one) > 0.0);
         assert!(!cell_path(&one, 0, 0).is_empty());
+    }
+
+    #[test]
+    fn every_cell_is_solid_for_slint() {
+        // Slint's femtovg renderer marks a shape as a hole when this sum is
+        // negative, leaving out the closing edge; a hole's smoothed edge
+        // falls outside it and closes the gaps (Linux, Windows, browsers).
+        for (rows, columns) in [(7, 48), (12, 31), (1, 20), (1, 1), (3, 2)] {
+            let m = matrix(rows, columns);
+            let chart = layout(&request(&m));
+            for row in 0..rows {
+                for column in 0..columns {
+                    let path = cell_path(&chart, row, column);
+                    assert!(
+                        crate::pie::slint_solid(&path),
+                        "{rows} x {columns}: cell {row}, {column} is a hole: {path}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

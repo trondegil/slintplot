@@ -138,25 +138,33 @@ fn push_tile(out: &mut String, tiles: &Tiles, row: usize, column: usize) {
     if !out.is_empty() {
         out.push(' ');
     }
+    // Counterclockwise on screen and back to the start before closing, so
+    // that Slint's femtovg renderer, which works out from the points whether
+    // a shape is solid or a hole, takes every tile as solid; as a hole, its
+    // smoothed edge would fall outside it and narrow the gaps.
     // Corners under a pixel can't be seen, and their curves are most of the
     // drawing time of grids of tiny tiles: draw those as squares.
     if r < 1.0 {
-        let _ = write!(out, "M {x:.2} {y:.2} h {s:.2} v {s:.2} h {:.2} Z", -s);
+        let _ = write!(
+            out,
+            "M {x:.2} {y:.2} v {s:.2} h {s:.2} v {:.2} h {:.2} Z",
+            -s, -s
+        );
         return;
     }
     let side = s - 2.0 * r;
     let _ = write!(
         out,
-        "M {:.2} {y:.2} h {side:.2} a {r:.2} {r:.2} 0 0 1 {r:.2} {r:.2} v {side:.2} \
-         a {r:.2} {r:.2} 0 0 1 {:.2} {r:.2} h {:.2} a {r:.2} {r:.2} 0 0 1 {:.2} {:.2} \
-         v {:.2} a {r:.2} {r:.2} 0 0 1 {r:.2} {:.2} Z",
+        "M {:.2} {y:.2} a {r:.2} {r:.2} 0 0 0 {:.2} {r:.2} v {side:.2} \
+         a {r:.2} {r:.2} 0 0 0 {r:.2} {r:.2} h {side:.2} a {r:.2} {r:.2} 0 0 0 {r:.2} {:.2} \
+         v {:.2} a {r:.2} {r:.2} 0 0 0 {:.2} {:.2} h {:.2} Z",
         x + r,
         -r,
-        -side,
-        -r,
         -r,
         -side,
         -r,
+        -r,
+        -side,
     );
 }
 
@@ -225,6 +233,33 @@ mod tests {
     }
 
     const CLASSES: [Rgba; 2] = [[255, 0, 0, 255], [0, 0, 255, 255]];
+
+    #[test]
+    fn every_tile_is_solid_for_slint() {
+        // See pie::slint_solid: tiles Slint takes as holes are drawn a
+        // pixel larger all round, narrowing the gaps.
+        for (rows, columns, width) in [(7, 26, 600.0), (200, 1000, 400.0), (1, 1, 50.0)] {
+            let values = vec![vec![1.0; columns]; rows];
+            let tiles = layout(&TileRequest {
+                values: &values,
+                width,
+                height: width,
+                gap: 0.18,
+                radius: 0.18,
+                row_label_width: 0.0,
+                column_label_width: 0.0,
+                label_height: 0.0,
+            });
+            for (row, column) in [(0, 0), (rows - 1, columns - 1), (rows / 2, columns / 2)] {
+                let path = tile_path(&tiles, row, column);
+                assert!(!path.is_empty());
+                assert!(
+                    crate::pie::slint_solid(&path),
+                    "tile {row}, {column} is a hole: {path}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn square_tiles_fill_the_space_centered() {

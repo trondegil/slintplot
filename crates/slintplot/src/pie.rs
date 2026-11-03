@@ -2,7 +2,7 @@
 //!
 //! Angles are in radians, starting at 12 o'clock and growing clockwise.
 
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::{FRAC_PI_2, PI, TAU};
 use std::fmt::Write;
 
 use crate::layout::{Rgba, Tick, resolve_color};
@@ -246,35 +246,108 @@ pub(crate) fn slice_path(center: (f32, f32), r: f32, inner: f32, start: f32, end
     if end - start <= 0.0 {
         return out;
     }
-    // An SVG arc can't draw a full circle, so long sweeps use two arcs.
-    let arcs: &[(f32, f32)] = if end - start > PI {
-        let mid = (start + end) / 2.0;
-        &[(start, mid), (mid, end)]
-    } else {
-        &[(start, end)]
+    // Arcs of at most a quarter circle: an SVG arc can't draw a full circle,
+    // and the points stay a fair outline of the shape.
+    let pieces = ((end - start) / FRAC_PI_2).ceil().max(1.0) as usize;
+    let angles = |from: f32, to: f32| {
+        (1..=pieces).map(move |k| from + (to - from) * k as f32 / pieces as f32)
     };
     let full = end - start >= TAU - 1e-4;
-    let (x, y) = point(center, r, start);
-    if inner > 0.0 {
-        let _ = write!(out, "M {x:.2} {y:.2}");
-    } else {
-        let _ = write!(out, "M {:.2} {:.2} L {x:.2} {y:.2}", center.0, center.1);
-    }
-    for &(_, to) in arcs {
+    // Counterclockwise on screen, ending with a line back to the start:
+    // Slint's femtovg renderer works out from the points whether a shape is
+    // solid or a hole, without the closing edge, and draws a hole's smoothed
+    // edge outside it. Drawn this way the slice is solid wherever it is, and
+    // a full ring's inner circle, drawn the other way, a hole.
+    let first = point(center, r, end);
+    let _ = write!(out, "M {:.2} {:.2}", first.0, first.1);
+    for to in angles(end, start) {
         let (x, y) = point(center, r, to);
-        let _ = write!(out, " A {r:.2} {r:.2} 0 0 1 {x:.2} {y:.2}");
+        let _ = write!(out, " A {r:.2} {r:.2} 0 0 0 {x:.2} {y:.2}");
     }
-    if inner > 0.0 {
-        let (x, y) = point(center, inner, end);
-        // A full ring is two separate circles; otherwise connect the arcs.
-        let _ = write!(out, "{} {x:.2} {y:.2}", if full { " Z M" } else { " L" });
-        for &(from, _) in arcs.iter().rev() {
-            let (x, y) = point(center, inner, from);
-            let _ = write!(out, " A {inner:.2} {inner:.2} 0 0 0 {x:.2} {y:.2}");
+    if inner > 0.0 && full {
+        let _ = write!(out, " Z");
+        let hole = point(center, inner, start);
+        let _ = write!(out, " M {:.2} {:.2}", hole.0, hole.1);
+        for to in angles(start, end) {
+            let (x, y) = point(center, inner, to);
+            let _ = write!(out, " A {inner:.2} {inner:.2} 0 0 1 {x:.2} {y:.2}");
         }
+    } else if inner > 0.0 {
+        let (x, y) = point(center, inner, start);
+        let _ = write!(out, " L {x:.2} {y:.2}");
+        for to in angles(start, end) {
+            let (x, y) = point(center, inner, to);
+            let _ = write!(out, " A {inner:.2} {inner:.2} 0 0 1 {x:.2} {y:.2}");
+        }
+        let _ = write!(out, " L {:.2} {:.2}", first.0, first.1);
+    } else {
+        let _ = write!(
+            out,
+            " L {:.2} {:.2} L {:.2} {:.2}",
+            center.0, center.1, first.0, first.1
+        );
     }
     out.push_str(" Z");
     out
+}
+
+/// Whether Slint's femtovg renderer takes each shape of an SVG `path` as
+/// solid (true) or a hole, as it works it out: the sum over a shape's points, from where it
+/// starts, of (x1 - x0)(y1 + y0), without the edge that closes it. A shape it
+/// takes as a hole is still filled, but its smoothed edge falls outside it.
+/// Only absolute M, L, A and Z commands, and relative h, v and a.
+#[cfg(test)]
+pub(crate) fn slint_solidity(path: &str) -> Vec<bool> {
+    let words: Vec<&str> = path.split_whitespace().collect();
+    let num = |i: usize| -> f32 { words[i].parse().unwrap() };
+    let (mut area, mut prev, mut solid, mut i) = (0.0f32, (0.0f32, 0.0f32), Vec::new(), 0);
+    let add = |area: &mut f32, prev: &mut (f32, f32), p: (f32, f32)| {
+        *area += (p.0 - prev.0) * (p.1 + prev.1);
+        *prev = p;
+    };
+    while i < words.len() {
+        match words[i] {
+            "M" => {
+                (area, prev) = (0.0, (num(i + 1), num(i + 2)));
+                i += 3;
+            }
+            "L" => {
+                add(&mut area, &mut prev, (num(i + 1), num(i + 2)));
+                i += 3;
+            }
+            "A" => {
+                add(&mut area, &mut prev, (num(i + 6), num(i + 7)));
+                i += 8;
+            }
+            "a" => {
+                let p = (prev.0 + num(i + 6), prev.1 + num(i + 7));
+                add(&mut area, &mut prev, p);
+                i += 8;
+            }
+            "h" => {
+                let p = (prev.0 + num(i + 1), prev.1);
+                add(&mut area, &mut prev, p);
+                i += 2;
+            }
+            "v" => {
+                let p = (prev.0, prev.1 + num(i + 1));
+                add(&mut area, &mut prev, p);
+                i += 2;
+            }
+            "Z" => {
+                solid.push(area >= 0.0);
+                i += 1;
+            }
+            other => panic!("unexpected {other} in {path}"),
+        }
+    }
+    solid
+}
+
+/// Whether Slint's femtovg renderer takes every shape of `path` as solid.
+#[cfg(test)]
+pub(crate) fn slint_solid(path: &str) -> bool {
+    slint_solidity(path).iter().all(|&solid| solid)
 }
 
 #[cfg(test)]
@@ -309,6 +382,21 @@ mod tests {
     }
 
     #[test]
+    fn slices_are_solid_for_slint() {
+        let c = (200.0, 150.0);
+        for (start, end) in [(0.0, 0.3), (2.0, 2.4), (4.0, 6.0), (-1.0, 5.0), (5.5, 6.2)] {
+            for inner in [0.0, 60.0] {
+                let path = slice_path(c, 100.0, inner, start, end);
+                assert!(slint_solid(&path), "{start}..{end}, inner {inner}: {path}");
+            }
+        }
+        // A full ring: the outer circle solid, the inner one a hole.
+        let ring = slice_path(c, 100.0, 60.0, 1.0, 1.0 + TAU);
+        assert_eq!(slint_solidity(&ring), [true, false]);
+        assert!(slint_solid(&slice_path(c, 100.0, 0.0, 1.0, 1.0 + TAU)));
+    }
+
+    #[test]
     fn slices_split_the_circle_by_value() {
         let input = slices(&[1.0, 3.0]);
         let pie = layout(&request(&input, 0.0));
@@ -320,7 +408,7 @@ mod tests {
         assert!(
             pie.slices[0]
                 .path
-                .starts_with("M 100.00 50.00 L 100.00 0.00 A")
+                .starts_with("M 150.00 50.00 A 50.00 50.00 0 0 0 100.00 0.00 L 100.00 50.00")
         );
     }
 
@@ -382,7 +470,8 @@ mod tests {
     fn full_ring_is_two_circles() {
         let input = slices(&[1.0]);
         let path = &layout(&request(&input, 0.5)).slices[0].path;
-        assert_eq!(path.matches(" A ").count(), 4);
+        // Two circles of four quarters each.
+        assert_eq!(path.matches(" A ").count(), 8);
         assert!(path.contains(" Z M "));
     }
 }

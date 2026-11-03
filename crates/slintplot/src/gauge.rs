@@ -320,11 +320,14 @@ pub(crate) fn rounded_arc(
     let large = u8::from(b - a > PI);
     let (o1, o2) = (point(center, outer, a), point(center, outer, b));
     let (i1, i2) = (point(center, inner, a), point(center, inner, b));
+    // Counterclockwise on screen and back to the start, so that Slint's
+    // femtovg renderer takes it as solid, not as a hole with its smoothed
+    // edge outside it (see pie::slice_path).
     let _ = write!(
         out,
-        "M {:.2} {:.2} A {outer:.2} {outer:.2} 0 {large} 1 {:.2} {:.2} A {w:.2} {w:.2} 0 0 1 {:.2} {:.2} \
-         A {inner:.2} {inner:.2} 0 {large} 0 {:.2} {:.2} A {w:.2} {w:.2} 0 0 1 {:.2} {:.2} Z",
-        o1.0, o1.1, o2.0, o2.1, i2.0, i2.1, i1.0, i1.1, o1.0, o1.1
+        "M {:.2} {:.2} A {outer:.2} {outer:.2} 0 {large} 0 {:.2} {:.2} A {w:.2} {w:.2} 0 0 0 {:.2} {:.2} \
+         A {inner:.2} {inner:.2} 0 {large} 1 {:.2} {:.2} A {w:.2} {w:.2} 0 0 0 {:.2} {:.2} Z",
+        o2.0, o2.1, o1.0, o1.1, i1.0, i1.1, i2.0, i2.1, o2.0, o2.1
     );
     out
 }
@@ -370,6 +373,15 @@ mod tests {
             ticks: true,
             font_size: 12.0,
             format: &FORMAT,
+        }
+    }
+
+    #[test]
+    fn rounded_arcs_are_solid_for_slint() {
+        let c = (150.0, 150.0);
+        for (start, end) in [(0.2, 1.0), (2.0, 3.5), (4.0, 5.9), (1.0, 1.05)] {
+            let path = rounded_arc(c, 100.0, 80.0, start, end);
+            assert!(crate::pie::slint_solid(&path), "{start}..{end}: {path}");
         }
     }
 

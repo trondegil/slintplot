@@ -401,7 +401,7 @@ mod tests {
             bar_path(c, 90.0, 70.0, 0.0, 2.0, false)
                 .matches(" A ")
                 .count(),
-            2
+            4
         );
         let ring = bar_path(c, 90.0, 70.0, 1.0, 1.0 + TAU, true);
         assert!(

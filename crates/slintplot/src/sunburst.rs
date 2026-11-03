@@ -338,7 +338,7 @@ mod tests {
         // From 12 o'clock to 108°: the top and right of the circle, and past 3.
         assert_eq!(germany.bounds, (110.0, 2.0, 98.0, 129.0));
         assert!(
-            germany.path.starts_with("M 0.00 0.00 A"),
+            germany.path.contains(" 0 0 0 0.00 0.00 "),
             "the top of the outer arc, at the box's top left"
         );
         assert_eq!(

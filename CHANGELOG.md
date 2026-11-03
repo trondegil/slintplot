@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.2
+
+### Fixed
+
+- `SegmentedRingChart`, `TileGridChart`, and the slices and rings of pie,
+  doughnut, polar area, radial bar, gauge and sunburst charts: on Linux,
+  Windows and in browsers, where Slint draws with femtovg, some cells merged
+  into solid bands and gaps closed, on one half of a segmented ring chart and
+  in every tile grid. Slint's femtovg renderer works out from a shape's
+  points whether it is solid or a hole, leaving out the closing edge, so the
+  answer depended on where the shape was; it draws a hole's smoothed edge a
+  pixel outside it. Every shape is now drawn counterclockwise and back to its
+  start, which Slint takes as solid wherever it is.
+
 ## 0.4.1
 
 ### Fixed
