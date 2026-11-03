@@ -1365,7 +1365,7 @@ CandlestickChart {
 <h2 id="heatmap">HeatmapChart</h2>
 <p>A matrix of colored cells: rows (<code>y-labels</code>) by columns (<code>x-labels</code>), with <code>values</code> in row order.
 Missing values (NaN) are drawn as empty cells.</p>
-<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap.webp" alt="HeatmapChart: visits by weekday and hour" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-dark.webp" alt="HeatmapChart: visits by weekday and hour" loading="lazy"></figure>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/heatmap.webp" alt="HeatmapChart: visits by weekday and hour, with the number in each cell" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/heatmap-dark.webp" alt="HeatmapChart: visits by weekday and hour, with the number in each cell" loading="lazy"></figure>
 <pre data-shot="heatmap"><code>import { HeatmapChart } from "@slintplot";
 
 HeatmapChart {
@@ -1380,6 +1380,7 @@ HeatmapChart {
               7,  9, 14, 21, 25, 24, 19, 13, 10,  8,  7,
               8, 11, 15, 19, 22, 23, 20, 15, 10,  7,  6];
     value-suffix: " visits";
+    show-values: true;     // the number in each cell
 }</code></pre>
 <table>
   <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
