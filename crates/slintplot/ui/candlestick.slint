@@ -417,7 +417,18 @@ export component CandlestickChart {
                     // Keyboard: the arrow keys move through the candles in view,
                     // Enter clicks the selected one.
                     keys := FocusScope {
+                        // The focus ring shows only when the keyboard brought the focus or
+                        // has been used since, not after a click, as :focus-visible on the web.
+                        property <bool> keyboard-focus;
+                        focus-gained(reason) => {
+                            if reason == FocusReason.tab-navigation {
+                                self.keyboard-focus = true;
+                            } else if reason == FocusReason.pointer-click || reason == FocusReason.programmatic {
+                                self.keyboard-focus = false;
+                            }
+                        }
                         key-pressed(event) => {
+                            self.keyboard-focus = true;
                             let count = layout.candles.length;
                             if count == 0 {
                                 return reject;
@@ -482,7 +493,7 @@ export component CandlestickChart {
                     }
                 }
 
-                if keys.has-focus: Rectangle {
+                if keys.has-focus && keys.keyboard-focus: Rectangle {
                     x: plot.x - 3px;
                     y: plot.y - 3px;
                     width: plot.width + 6px;

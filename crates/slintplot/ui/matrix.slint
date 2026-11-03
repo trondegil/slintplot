@@ -351,11 +351,22 @@ export component MatrixChart {
                 // Keyboard: the arrow keys move from cell to cell, Home and End
                 // to the first and last cell, and Enter clicks.
                 keys := FocusScope {
+                    // The focus ring shows only when the keyboard brought the focus or
+                    // has been used since, not after a click, as :focus-visible on the web.
+                    property <bool> keyboard-focus;
+                    focus-gained(reason) => {
+                        if reason == FocusReason.tab-navigation {
+                            self.keyboard-focus = true;
+                        } else if reason == FocusReason.pointer-click || reason == FocusReason.programmatic {
+                            self.keyboard-focus = false;
+                        }
+                    }
                     x: 0;
                     y: 0;
                     width: root.matrix.grid-width * 1px;
                     height: root.matrix.grid-height * 1px;
                     key-pressed(event) => {
+                        self.keyboard-focus = true;
                         let count = min(root.values.length, root.rows * root.columns);
                         if count <= 0 {
                             return reject;
@@ -444,7 +455,7 @@ export component MatrixChart {
                 font-weight: 600;
             }
 
-            if keys.has-focus: Rectangle {
+            if keys.has-focus && keys.keyboard-focus: Rectangle {
                 x: plot.x - 3px;
                 y: plot.y - 3px;
                 width: root.matrix.grid-width * 1px + 6px;

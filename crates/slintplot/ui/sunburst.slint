@@ -192,7 +192,18 @@ export component SunburstChart {
                 // before their children; Enter clicks the selected item and
                 // zooms into it, Escape and Backspace zoom out.
                 keys := FocusScope {
+                    // The focus ring shows only when the keyboard brought the focus or
+                    // has been used since, not after a click, as :focus-visible on the web.
+                    property <bool> keyboard-focus;
+                    focus-gained(reason) => {
+                        if reason == FocusReason.tab-navigation {
+                            self.keyboard-focus = true;
+                        } else if reason == FocusReason.pointer-click || reason == FocusReason.programmatic {
+                            self.keyboard-focus = false;
+                        }
+                    }
                     key-pressed(event) => {
+                        self.keyboard-focus = true;
                         let count = sun.arcs.length;
                         let current = root.key-arc < 0 ? 0 : min(root.key-arc, count - 1);
                         if event.text == Key.Escape || event.text == Key.Backspace {
@@ -231,7 +242,7 @@ export component SunburstChart {
                     }
                 }
 
-                if keys.has-focus: Rectangle {
+                if keys.has-focus && keys.keyboard-focus: Rectangle {
                     border-radius: 4px;
                     border-width: 1px;
                     border-color: ChartTheme.axis-color;

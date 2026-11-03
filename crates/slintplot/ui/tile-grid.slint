@@ -256,7 +256,18 @@ export component TileGridChart {
                 // Keyboard: the arrow keys move from tile to tile, Home and
                 // End go to the first and last, and Enter clicks.
                 keys := FocusScope {
+                    // The focus ring shows only when the keyboard brought the focus or
+                    // has been used since, not after a click, as :focus-visible on the web.
+                    property <bool> keyboard-focus;
+                    focus-gained(reason) => {
+                        if reason == FocusReason.tab-navigation {
+                            self.keyboard-focus = true;
+                        } else if reason == FocusReason.pointer-click || reason == FocusReason.programmatic {
+                            self.keyboard-focus = false;
+                        }
+                    }
                     key-pressed(event) => {
+                        self.keyboard-focus = true;
                         let count = grid.rows * grid.columns;
                         if count == 0 {
                             return reject;
@@ -299,7 +310,7 @@ export component TileGridChart {
                     }
                 }
 
-                if keys.has-focus: Rectangle {
+                if keys.has-focus && keys.keyboard-focus: Rectangle {
                     border-radius: 4px;
                     border-width: 1px;
                     border-color: ChartTheme.axis-color;
