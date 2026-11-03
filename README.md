@@ -133,14 +133,14 @@ example and its properties.
 | [`PolarAreaChart`](https://slintplot.dev/#polar-area-chart) | Slices of equal angle whose radius shows the value |
 | [`RadarChart`](https://slintplot.dev/#radar-chart) | One spoke per label and one closed polygon per dataset |
 | [`RadialBarChart`](https://slintplot.dev/#radial-bar-chart) | One ring per bar, filled along its arc in proportion to the value |
-| `SegmentedRingChart` | A heatmap bent into rings: one ring per row of a matrix, one segment per column, colored on a scale or by class |
-| `TileGridChart` | A matrix as rows of rounded squares, one per value, colored on a scale or by class |
+| [`SegmentedRingChart`](https://slintplot.dev/#segmented-ring-chart) | A heatmap bent into rings: one ring per row of a matrix, one segment per column, colored on a scale or by category |
 | [`TimeSeriesChart`](https://slintplot.dev/#time-series) | Lines over a time axis with calendar-aligned ticks |
 | [`GanttChart`](https://slintplot.dev/#gantt) | One row per task with a bar on a time axis, groups, progress, milestones and a line at now |
 | [`CandlestickChart`](https://slintplot.dev/#candlestick) | Open, high, low and close per period, as candles or OHLC bars, on a zoomable time axis |
 | [`HeatmapChart`](https://slintplot.dev/#heatmap) | A matrix of colored cells, sequential or diverging |
 | [`MatrixChart`](https://slintplot.dev/#matrix) | Rows by columns of circles sized by value, colored by row, column, sign or a second measure |
 | [`CalendarHeatmap`](https://slintplot.dev/#calendar-heatmap) | Daily values over a year, like GitHub's contribution graph |
+| [`TileGridChart`](https://slintplot.dev/#tile-grid) | A matrix as rows of rounded squares, one per value, colored on a scale or by category |
 | [`TreemapChart`](https://slintplot.dev/#treemap) | Squarified rectangles sized by value, optionally in groups |
 | [`SunburstChart`](https://slintplot.dev/#sunburst) | A hierarchy as rings; click an item to zoom into it |
 | [`FunnelChart`](https://slintplot.dev/#funnel) | Stages as slices of one curved funnel, with conversion rates |

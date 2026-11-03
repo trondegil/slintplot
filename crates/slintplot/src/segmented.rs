@@ -217,7 +217,7 @@ pub enum Coloring<'a> {
         negative: Rgba,
         empty: Rgba,
     },
-    /// By class: a value is the index of its class, and the cell takes its
+    /// By category: a value is the index of its category, and the cell takes its
     /// color. Hidden classes, and values that name none, are left empty.
     Classes {
         colors: &'a [Rgba],

@@ -2,7 +2,7 @@
 //! per value. The matrix sets the size: as many rows as it has, and as many
 //! columns as its longest row. The tiles stay square, as large as fit, and
 //! the grid is centered. Cells are colored as in a segmented ring chart, on
-//! a scale or by class (see [`crate::segmented::Coloring`]); missing cells
+//! a scale or by category (see [`crate::segmented::Coloring`]); missing cells
 //! are left as a faint track.
 
 use std::fmt::Write as _;

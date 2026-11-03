@@ -10,8 +10,8 @@ import { TooltipFrame, TooltipLine } from "tooltip.slint";
 // values; shorter rows leave the rest of their ring empty.
 //
 // Cells are colored on a scale, as in HeatmapChart, or, when `classes` is
-// set, by class: each value is the index of its class, such as 0 for "Ok"
-// and 1 for "Failed", and the classes make the legend. Missing values (NaN)
+// set, by category: each value is the index of its category, such as 0 for "Ok"
+// and 1 for "Failed", and the categories make the legend. Missing values (NaN)
 // are empty segments, a faint track.
 export component SegmentedRingChart {
     in property <[[float]]> values;
@@ -19,7 +19,7 @@ export component SegmentedRingChart {
     // labels, for the tooltip.
     in property <[string]> x-labels;
     in property <[string]> y-labels;
-    // Color by class instead of on a scale; leave empty for a scale.
+    // Color by category instead of on a scale; leave empty for a scale.
     in-out property <[ChartSlice]> classes;
     in property <string> title;
     // The scale, as in HeatmapChart: the color of the largest value, with
@@ -57,7 +57,7 @@ export component SegmentedRingChart {
     in property <bool> show-marker: false;
     // A soft glow in the middle, of the first class's color or the scale's.
     in property <bool> glow: false;
-    // The classes, or the color scale.
+    // The categories, or the color scale.
     in property <bool> show-legend: true;
     in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
     in property <bool> show-tooltip: true;

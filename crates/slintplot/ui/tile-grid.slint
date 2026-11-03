@@ -11,16 +11,16 @@ import { TooltipFrame, TooltipLine } from "tooltip.slint";
 // stay square, as large as fit, centered.
 //
 // Cells are colored on a scale, as in HeatmapChart, or, when `classes` is
-// set, by class: each value is the index of its class, and the classes make
-// the legend. Missing values (NaN), and values that name no class such as
-// -1, are empty tiles, a faint track.
+// set, by category: each value is the index of its category, and the
+// categories make the legend. Missing values (NaN), and values that name no
+// category such as -1, are empty tiles, a faint track.
 export component TileGridChart {
     in property <[[float]]> values;
     // The columns' labels, below the grid, and the rows', at the left;
     // either can be left empty.
     in property <[string]> x-labels;
     in property <[string]> y-labels;
-    // Color by class instead of on a scale; leave empty for a scale.
+    // Color by category instead of on a scale; leave empty for a scale.
     in-out property <[ChartSlice]> classes;
     in property <string> title;
     // The scale, as in HeatmapChart: the color of the largest value, with
@@ -42,7 +42,7 @@ export component TileGridChart {
     in property <color> track-color;
     // The labels, where given, thinned to those that fit.
     in property <bool> show-labels: true;
-    // The classes, or the color scale.
+    // The categories, or the color scale.
     in property <bool> show-legend: true;
     in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
     in property <bool> show-tooltip: true;

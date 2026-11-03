@@ -292,13 +292,13 @@ enum Shape {
     Candles,
     /// Goals reached, and survey shares, as radial bars.
     RadialBar,
-    /// Segmented rings colored by class.
+    /// Segmented rings colored by category.
     SegmentedRing,
     /// Segmented rings colored on a scale.
     SegmentedScale,
     /// Tile grids on a scale.
     TileScale,
-    /// Tile grids by class.
+    /// Tile grids by category.
     TileClasses,
 }
 
@@ -416,7 +416,7 @@ const TAB_GROUPS: &[(&str, &[(&str, &str)])] = &[
     (
         "Segmented ring charts",
         &[
-            ("segmented-ring-classes", "By class"),
+            ("segmented-ring-classes", "By category"),
             ("segmented-ring-scale", "On a scale"),
         ],
     ),
@@ -424,7 +424,7 @@ const TAB_GROUPS: &[(&str, &[(&str, &str)])] = &[
         "Tile grid charts",
         &[
             ("tile-grid-scale", "On a scale"),
-            ("tile-grid-classes", "By class"),
+            ("tile-grid-classes", "By category"),
         ],
     ),
 ];
@@ -585,38 +585,6 @@ const SAMPLES: &[Sample] = &[
         "Equal angles; the radius shows the value.",
         Shape::Slices,
         DATA_ACTIONS,
-    ),
-    sample(
-        "tile-grid-scale",
-        "New",
-        "Tile grids on a scale",
-        "TileGridChart with values on a color scale, as in a heatmap: a matrix as rows of rounded squares, one per value, taking its data as a SegmentedRingChart does and its size from the matrix. Practice hours over a quarter that began a month ago (7 × 13, empty weeks as the track), contributions over half a year (7 × 26), the load of 8 servers each half hour of a day (8 × 48), and ten years of temperatures on a diverging scale (10 × 12). Randomize gives new data.",
-        Shape::TileScale,
-        &["Randomize"],
-    ),
-    sample(
-        "tile-grid-classes",
-        "New",
-        "Tile grids by class",
-        "TileGridChart with classes: each value of the matrix is a class index, and the classes make the legend; -1 or NaN is an empty tile. The status of six services by day (6 × 30), test suites over the last 20 builds (12 × 20), room bookings in half hours (5 × 20), and seats sold in a theater whose rows grow longer towards the back. Randomize gives new data.",
-        Shape::TileClasses,
-        &["Randomize"],
-    ),
-    sample(
-        "segmented-ring-classes",
-        "New",
-        "Segmented rings by class",
-        "SegmentedRingChart with classes: each value of the matrix is a class index (0, 1, 2), and the classes make the legend. One ring per row and one segment per column, so each chart takes its size from its data: runs every half hour for a week (7 × 48), a year of uptime with a ring per month of 28 to 31 days, three habits over 30 days, and one ring of pipeline steps. Randomize gives new data, and the runs a new size.",
-        Shape::SegmentedRing,
-        &["Randomize"],
-    ),
-    sample(
-        "segmented-ring-scale",
-        "New",
-        "Segmented rings on a scale",
-        "SegmentedRingChart with values on a color scale, as in a heatmap. One ring per row and one segment per column, so each chart takes its size from its data: website visits by weekday and hour (7 × 24), ten years of temperatures on a diverging scale (10 × 12), CPU load of 8 cores over an hour (8 × 60), and steps per day as a single ring of 31 days. Randomize gives new data.",
-        Shape::SegmentedScale,
-        &["Randomize"],
     ),
     sample(
         "radial-bar",
@@ -822,6 +790,38 @@ const SAMPLES: &[Sample] = &[
         "Calendar heatmap",
         "CalendarHeatmap: a year of daily values, like GitHub's contribution graph. It follows the theme; pick other colors with Colors.",
         Shape::Calendar,
+        &["Randomize"],
+    ),
+    sample(
+        "segmented-ring-classes",
+        "Heatmaps",
+        "Segmented rings by category",
+        "SegmentedRingChart by category: each value of the matrix is a category index (0, 1, 2) into classes, and the categories make the legend. One ring per row and one segment per column, so each chart takes its size from its data: runs every half hour for a week (7 × 48), a year of uptime with a ring per month of 28 to 31 days, three habits over 30 days, and one ring of pipeline steps. Randomize gives new data, and the runs a new size.",
+        Shape::SegmentedRing,
+        &["Randomize"],
+    ),
+    sample(
+        "segmented-ring-scale",
+        "Heatmaps",
+        "Segmented rings on a scale",
+        "SegmentedRingChart with values on a color scale, as in a heatmap. One ring per row and one segment per column, so each chart takes its size from its data: website visits by weekday and hour (7 × 24), ten years of temperatures on a diverging scale (10 × 12), CPU load of 8 cores over an hour (8 × 60), and steps per day as a single ring of 31 days. Randomize gives new data.",
+        Shape::SegmentedScale,
+        &["Randomize"],
+    ),
+    sample(
+        "tile-grid-scale",
+        "Heatmaps",
+        "Tile grids on a scale",
+        "TileGridChart with values on a color scale, as in a heatmap: a matrix as rows of rounded squares, one per value, taking its data as a SegmentedRingChart does and its size from the matrix. Practice hours over a quarter that began a month ago (7 × 13, empty weeks as the track), contributions over half a year (7 × 26), the load of 8 servers each half hour of a day (8 × 48), and ten years of temperatures on a diverging scale (10 × 12). Randomize gives new data.",
+        Shape::TileScale,
+        &["Randomize"],
+    ),
+    sample(
+        "tile-grid-classes",
+        "Heatmaps",
+        "Tile grids by category",
+        "TileGridChart by category: each value of the matrix is a category index into classes, and the categories make the legend; -1 or NaN is an empty tile. The status of six services by day (6 × 30), test suites over the last 20 builds (12 × 20), room bookings in half hours (5 × 20), and seats sold in a theater whose rows grow longer towards the back. Randomize gives new data.",
+        Shape::TileClasses,
         &["Randomize"],
     ),
     sample(
@@ -1312,7 +1312,7 @@ impl State {
     /// Fills the heatmap or calendar values of the current sample.
     /// The segmented ring samples: four matrices of different sizes, one per
     /// chart, with their column and row labels and the text in the middle;
-    /// colored by class or on a scale. Randomize gives new data, and the runs
+    /// colored by category or on a scale. Randomize gives new data, and the runs
     /// a new size.
     fn ring_data(&mut self, randomize: bool) {
         let Some(ui) = self.ui.upgrade() else {
@@ -1398,7 +1398,7 @@ impl State {
         )));
     }
 
-    /// Runs every half hour for a week, by class: 0 on its own, 1 needed
+    /// Runs every half hour for a week, by category: 0 on its own, 1 needed
     /// you, 2 failed. Today, the inner ring, has only run up to the time of
     /// day. Randomized, from 3 to 7 days of runs every 15 minutes to every 2
     /// hours.

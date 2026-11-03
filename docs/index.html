@@ -9,7 +9,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SlintPlot">
 <meta property="og:title" content="SlintPlot: native, interactive charts for Slint">
-<meta property="og:description" content="A chart library for Slint in Rust. 23 chart types, themes, dark mode, zoom and pan, and millions of points. Try the gallery in your browser.">
+<meta property="og:description" content="A chart library for Slint in Rust. 25 chart types, themes, dark mode, zoom and pan, and millions of points. Try the gallery in your browser.">
 <meta property="og:url" content="https://slintplot.dev/">
 <meta property="og:image" content="https://slintplot.dev/screenshots/gallery.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -313,6 +313,7 @@
   <a href="#heatmap">HeatmapChart</a>
   <a href="#matrix">MatrixChart</a>
   <a href="#calendar-heatmap">CalendarHeatmap</a>
+  <a href="#tile-grid">TileGridChart</a>
   <a href="#treemap">TreemapChart</a>
   <a href="#sunburst">SunburstChart</a>
   <a href="#funnel">FunnelChart</a>
@@ -364,7 +365,7 @@
 <div class="grid">
   <div class="card"><h2>Cartesian charts</h2><p>Line, bar, horizontal bar, scatter and bubble charts; stacked, mixed, stepped and filled variants.</p></div>
   <div class="card"><h2>Radial charts</h2><p>Pie, doughnut, polar area, radar, radial bar and segmented ring charts.</p></div>
-  <div class="card"><h2>Time and heatmaps</h2><p>Time series with date axes, candlestick and OHLC charts, Gantt charts, matrix heatmaps, matrix charts of sized circles and GitHub-style calendar heatmaps.</p></div>
+  <div class="card"><h2>Time and heatmaps</h2><p>Time series with date axes, candlestick and OHLC charts, Gantt charts, matrix heatmaps, matrix charts of sized circles, tile grids and GitHub-style calendar heatmaps.</p></div>
   <div class="card"><h2>Hierarchies and business</h2><p>Treemaps, sunbursts, funnels, waterfalls, dumbbells, gauges and bullet charts.</p></div>
   <div class="card"><h2>Interactive</h2><p>Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.</p></div>
   <div class="card"><h2>Large datasets</h2><p>Min-max decimation and on-demand data reading for millions of points.</p></div>
@@ -902,8 +903,8 @@ RadialBarChart {
 outermost, and each column a segment of every ring, going round from <code>start-angle</code>, clockwise or not. The chart takes its
 size from the matrix, as many rings as rows and as many segments as the longest row, and fits them to the space it has; shorter rows
 leave the rest of their ring empty. Cells are colored on a scale, with the same properties as a <a href="#heatmap">HeatmapChart</a>,
-or by class: with <code>classes</code> set, each value is the index of its class, and the classes make the legend. Missing values (NaN),
-and values that name no class such as -1, are left as a faint track. <code>x-labels</code> go round the outside, every second or third
+or by category: with <code>classes</code> set, each value is the index of its category, and the categories make the legend. Missing values (NaN),
+and values that name no category such as -1, are left as a faint track. <code>x-labels</code> go round the outside, every second or third
 one where they don't all fit, and <code>y-labels</code> name the rings in the tooltip. <code>center-text</code> and <code>center-label</code>
 are written in the middle; hovering a cell shows it there instead.</p>
 <figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/segmented-ring.webp" alt="SegmentedRingChart of five days of automated runs every 90 minutes, colored by outcome" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/segmented-ring-dark.webp" alt="SegmentedRingChart of five days of automated runs every 90 minutes, colored by outcome" loading="lazy"></figure>
@@ -936,7 +937,7 @@ SegmentedRingChart {
   <tr><td><code>values</code></td><td><code>[[float]]</code></td><td></td><td>The matrix: one row per ring, from the outside in, and one value per segment. NaN is an empty segment</td></tr>
   <tr><td><code>x-labels</code></td><td><code>[string]</code></td><td><code>[]</code></td><td>The columns' labels, round the outside</td></tr>
   <tr><td><code>y-labels</code></td><td><code>[string]</code></td><td><code>[]</code></td><td>The rows' labels, in the tooltip and the middle</td></tr>
-  <tr><td><code>classes</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td><code>[]</code></td><td>Color by class: a value is a class index, and each class has a <code>label</code>, <code>color</code> and <code>hidden</code> flag. Empty for a color scale</td></tr>
+  <tr><td><code>classes</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td><code>[]</code></td><td>Color by category: a value is a category index, and each category has a <code>label</code>, <code>color</code> and <code>hidden</code> flag. Empty for a color scale</td></tr>
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>color</code></td><td><code>color</code></td><td>first theme color</td><td>The scale's color for the largest value</td></tr>
   <tr><td><code>diverging</code>, <code>center-value</code>, <code>negative-color</code></td><td><code>bool</code>, <code>float</code>, <code>color</code></td><td><code>false</code>, <code>0</code>, third theme color</td><td>A diverging scale around <code>center-value</code>, as in a heatmap</td></tr>
@@ -951,15 +952,15 @@ SegmentedRingChart {
   <tr><td><code>show-center</code></td><td><code>bool</code></td><td><code>true</code></td><td>The text in the middle</td></tr>
   <tr><td><code>center-text</code>, <code>center-label</code></td><td><code>string</code></td><td><code>""</code></td><td>The large text in the middle, and the caption under it</td></tr>
   <tr><td><code>show-marker</code></td><td><code>bool</code></td><td><code>false</code></td><td>A dot at the start, outside the outer ring</td></tr>
-  <tr><td><code>glow</code></td><td><code>bool</code></td><td><code>false</code></td><td>A soft glow in the middle, of the first class's color or the scale's</td></tr>
-  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The classes, which hide and show on click, or the color scale</td></tr>
-  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td>Where the classes' legend goes</td></tr>
+  <tr><td><code>glow</code></td><td><code>bool</code></td><td><code>false</code></td><td>A soft glow in the middle, of the first category's color or the scale's</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The categories, which hide and show on click, or the color scale</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td>Where the categories' legend goes</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the cell under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the cells in when the chart appears</td></tr>
   <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td><code>string</code>, <code>string</code>, <code>int</code></td><td><code>""</code>, <code>""</code>, <code>-1</code></td><td>How values on a scale are written</td></tr>
   <tr><td><code>hovered-row</code>, <code>hovered-column</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The cell under the mouse or selected with the keyboard, or -1</td></tr>
   <tr><td><code>cell-clicked(row, column)</code></td><td>callback</td><td></td><td>A cell was clicked, or chosen with Enter</td></tr>
-  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a class</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a category</td></tr>
 </table>
 
 <h3 id="segmented-ring-matrix">How the matrix becomes rings</h3>
@@ -979,11 +980,11 @@ SegmentedRingChart {
   <li><strong>Limits.</strong> Up to 50 rings and 720 segments per ring are drawn; the rest of a larger matrix is left out.</li>
 </ul>
 
-<h3 id="segmented-ring-classes">By class, or on a scale</h3>
-<p>With <code>classes</code> set, each value is a class index, rounded: 0 is the first class, 1 the second, and so on. Each class is a
-<code>ChartSlice</code> with a <code>label</code> and a <code>color</code> (unset, it takes the theme's next color), and the classes make the legend;
-clicking an entry hides that class, leaving its cells empty. This suits states and outcomes: passed and failed, up and down, done and
-skipped. Without classes, the values are colored on a scale, exactly as in a <a href="#heatmap">HeatmapChart</a>: from a faint
+<h3 id="segmented-ring-classes">By category, or on a scale</h3>
+<p>With <code>classes</code> set, each value is a category index, rounded: 0 is the first category, 1 the second, and so on. Each category is a
+<code>ChartSlice</code> with a <code>label</code> and a <code>color</code> (unset, it takes the theme's next color), and the categories make the legend;
+clicking an entry hides that category, leaving its cells empty. This suits states and outcomes: passed and failed, up and down, done and
+skipped. Without categories, the values are colored on a scale, exactly as in a <a href="#heatmap">HeatmapChart</a>: from a faint
 <code>color</code> for the smallest value to the full color for the largest, or with <code>diverging</code>, from
 <code>negative-color</code> below <code>center-value</code> to <code>color</code> above it. The scale fits the data unless
 <code>fixed-range</code> is set; the legend under the chart shows it.</p>
@@ -1058,7 +1059,7 @@ fn main() -&gt; Result&lt;(), slint::PlatformError&gt; {
 }</code></pre>
 
 <h3 id="segmented-ring-events">Reacting to the chart</h3>
-<p>Hovering a cell outlines it and writes its value, or its class, in the middle with the row and column labels; a tooltip says the
+<p>Hovering a cell outlines it and writes its value, or its category, in the middle with the row and column labels; a tooltip says the
 same. <code>hovered-row</code> and <code>hovered-column</code> tell your code which cell that is, and <code>cell-clicked(row, column)</code>
 reports clicks and Enter. The keyboard works too: click or tab to the chart, then Left and Right go round a ring, Up and Down move between
 rings, and Home and End go to the first and last cell.</p>
@@ -1512,6 +1513,86 @@ CalendarHeatmap {
   <tr><td><code>hovered-index</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The day under the mouse or selected with the keyboard, or -1</td></tr>
   <tr><td><code>day-clicked(index)</code></td><td>callback</td><td></td><td>A day was clicked, or chosen with Enter; <code>index</code> counts from <code>start-date</code></td></tr>
 </table>
+
+<h2 id="tile-grid">TileGridChart</h2>
+<p>A matrix as rows of rounded squares, one per value, like an activity grid. It takes its data as a
+<a href="#segmented-ring-chart">SegmentedRingChart</a> does: <code>values</code> is a matrix, <code>[[float]]</code>, one row of tiles per
+row, and the chart takes its size from it, as many rows as the matrix has and as many columns as its longest row. The tiles stay square,
+as large as fit, and the grid is centered. Shorter rows and missing values (NaN) are empty tiles, a faint track. Cells are colored on a
+scale, with the same properties as a <a href="#heatmap">HeatmapChart</a>, or by category: with <code>classes</code> set, each value is the
+index of its category, and the categories make the legend. <code>y-labels</code> go at the left and <code>x-labels</code> below, thinned to
+those that fit.</p>
+<p>Use a TileGridChart where the cells should look alike and square, such as days or builds, and a
+<a href="#heatmap">HeatmapChart</a> where the cells should fill the space or show their numbers.</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/tile-grid.webp" alt="TileGridChart of practice hours per day over ten weeks, on a color scale" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/tile-grid-dark.webp" alt="TileGridChart of practice hours per day over ten weeks, on a color scale" loading="lazy"></figure>
+<pre data-shot="tile-grid"><code>import { TileGridChart } from "@slintplot";
+
+TileGridChart {
+    title: "Practice hours";
+    // One row per weekday, one column per week. This week has only reached
+    // Wednesday, so the rows after it are shorter and end in the track.
+    values: [
+        [1.2, 0, 0, 1.2, 0, 0, 0, 2.2, 0, 0.4],
+        [1.7, 1.4, 1.7, 1.8, 1.9, 2.5, 0, 1.3, 1, 0.5],
+        [0.7, 1.6, 1.4, 2.6, 1.3, 0, 0, 2.1, 2.7, 1.7],
+        [2, 0.8, 0.5, 0.9, 0, 1.6, 0, 0, 0],
+        [0, 1.8, 1.9, 1.9, 2.3, 1.9, 2.2, 0, 0.2],
+        [0.9, 1.1, 0, 0.2, 0, 1.4, 0, 0, 1.8],
+        [0, 1.1, 0.9, 0, 0, 0, 0, 1.1, 0.2],
+    ];
+    y-labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    x-labels: ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10"];
+    color: #e8916a;
+    value-suffix: " h";
+}</code></pre>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>values</code></td><td><code>[[float]]</code></td><td></td><td>The matrix: one row of tiles per row. NaN, and a row's missing end, are empty tiles</td></tr>
+  <tr><td><code>x-labels</code></td><td><code>[string]</code></td><td><code>[]</code></td><td>The columns' labels, below the grid</td></tr>
+  <tr><td><code>y-labels</code></td><td><code>[string]</code></td><td><code>[]</code></td><td>The rows' labels, at the left</td></tr>
+  <tr><td><code>classes</code> <span class="tag">in-out</span></td><td><code>[ChartSlice]</code></td><td><code>[]</code></td><td>Color by category: a value is a category index, and each category has a <code>label</code>, <code>color</code> and <code>hidden</code> flag. Empty for a color scale</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
+  <tr><td><code>color</code></td><td><code>color</code></td><td>first theme color</td><td>The scale's color for the largest value</td></tr>
+  <tr><td><code>diverging</code>, <code>center-value</code>, <code>negative-color</code></td><td><code>bool</code>, <code>float</code>, <code>color</code></td><td><code>false</code>, <code>0</code>, third theme color</td><td>A diverging scale around <code>center-value</code>, as in a heatmap</td></tr>
+  <tr><td><code>fixed-range</code>, <code>min-value</code>, <code>max-value</code></td><td><code>bool</code>, <code>float</code>, <code>float</code></td><td><code>false</code>, <code>0</code>, <code>100</code></td><td>A fixed range for the scale instead of the data's</td></tr>
+  <tr><td><code>tile-gap</code></td><td><code>float</code></td><td><code>0.18</code></td><td>The gap between tiles, as a share of a tile</td></tr>
+  <tr><td><code>tile-radius</code></td><td><code>float</code></td><td><code>0.18</code></td><td>The corner radius, as a share of a tile; 0 for squares, 0.5 for circles</td></tr>
+  <tr><td><code>track-color</code></td><td><code>color</code></td><td>unset</td><td>The empty tiles; unset for a faint gray</td></tr>
+  <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>The row and column labels</td></tr>
+  <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The categories, which hide and show on click, or the color scale</td></tr>
+  <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td>Where the categories' legend goes</td></tr>
+  <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the tile under the mouse</td></tr>
+  <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the tiles in from the left when the chart appears</td></tr>
+  <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td><code>string</code>, <code>string</code>, <code>int</code></td><td><code>""</code>, <code>""</code>, <code>-1</code></td><td>How values on a scale are written</td></tr>
+  <tr><td><code>hovered-row</code>, <code>hovered-column</code> <span class="tag">out</span></td><td><code>int</code></td><td></td><td>The tile under the mouse or selected with the keyboard, or -1</td></tr>
+  <tr><td><code>cell-clicked(row, column)</code></td><td>callback</td><td></td><td>A tile was clicked, or chosen with Enter</td></tr>
+  <tr><td><code>legend-toggled(index)</code></td><td>callback</td><td></td><td>A legend entry hid or showed a category</td></tr>
+</table>
+<p>By category, each value names its category, and -1 or NaN leaves the tile empty:</p>
+<figure class="shot"><img width="1012" height="660" class="when-light" src="screenshots/charts/tile-grid-classes.webp" alt="TileGridChart of five services' status over two weeks, colored by class" loading="lazy"><img width="1012" height="660" class="when-dark" src="screenshots/charts/tile-grid-classes-dark.webp" alt="TileGridChart of five services' status over two weeks, colored by class" loading="lazy"></figure>
+<pre data-shot="tile-grid-classes"><code>import { TileGridChart } from "@slintplot";
+
+TileGridChart {
+    title: "Service status, last 14 days";
+    // 0: up, 1: degraded, 2: down, -1: not monitored yet.
+    values: [
+        [0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0],
+        [-1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0],
+    ];
+    y-labels: ["API", "Web", "Search", "Billing", "Mail"];
+    x-labels: ["20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "1", "2"];
+    classes: [
+        { label: "Up", color: #2fb67c },
+        { label: "Degraded", color: #f2b33d },
+        { label: "Down", color: #e0636b },
+    ];
+}</code></pre>
+<p>From Rust, the matrix is a model of models, as for a <a href="#segmented-ring-rust">SegmentedRingChart</a>; a changed cell redraws
+the chart. Large matrices stay fast: the tiles are drawn as one path per color, tiles too small for visible corners are drawn as
+squares, and a matrix is cut to its first 200 rows and 1,000 columns.</p>
 
 <h2 id="treemap">TreemapChart</h2>
 <p>One rectangle per item, with an area proportional to its value, laid out with the squarified algorithm so the rectangles stay
@@ -2192,7 +2273,7 @@ and dataset names itself; everything else comes from the library.</p>
       <tr><td>Line, bar, horizontal bar</td><td>Left and Right move through the categories</td></tr>
       <tr><td>Scatter, bubble, time series</td><td>Left and Right move through a dataset's points in x order; Up and Down move to another dataset, at the point closest in x</td></tr>
       <tr><td>Pie, doughnut, polar area, radar</td><td>Move around the slices or spokes</td></tr>
-      <tr><td>Heatmap, matrix</td><td>Move from cell to cell</td></tr>
+      <tr><td>Heatmap, matrix, tile grid</td><td>Move from cell to cell</td></tr>
       <tr><td>Calendar heatmap</td><td>Left and Right move a week, Up and Down a day</td></tr>
       <tr><td>Treemap</td><td>Move through the items, group by group and largest first</td></tr>
       <tr><td>Sunburst</td><td>Move through the items, each parent before its children; Enter also zooms into an item with children, and Escape or Backspace zooms out</td></tr>
@@ -2453,6 +2534,7 @@ slintplot::register!(app);</code></pre>
   <tr><td><code>slintplot::time</code></td><td><code>time_ticks</code>, <code>format_datetime</code> (English), <code>time_ticks_in</code>, <code>format_datetime_in</code> (a <code>Locale</code>), <code>unix_seconds</code>, <code>days_from_civil</code>, <code>civil_from_days</code></td></tr>
   <tr><td><code>slintplot::gantt</code></td><td><code>rows</code> (groups and headings), <code>window</code>, <code>layout(&amp;GanttRequest) -&gt; Gantt</code> (rows in view, bars, ticks), <code>duration</code></td></tr>
   <tr><td><code>slintplot::heatmap</code></td><td><code>calendar</code>, <code>calendar_in</code> (calendar layout and quantile levels), <code>weekday_labels</code>, <code>extent</code></td></tr>
+  <tr><td><code>slintplot::tiles</code></td><td><code>layout(&amp;TileRequest) -&gt; Tiles</code>, <code>dimensions</code>, <code>paint</code>, <code>tile_path</code>, <code>hit</code></td></tr>
   <tr><td><code>slintplot::matrix</code></td><td><code>layout(&amp;MatrixRequest) -&gt; Matrix</code> (circles, merged blocks, totals, size legend), <code>radius</code>, <code>nice_below</code></td></tr>
   <tr><td><code>slintplot::ticks</code></td><td><code>NiceScale</code> (round tick spacing), <code>Format</code>, <code>log_ticks</code>, <code>format_tick</code>, <code>format_value</code> (English)</td></tr>
   <tr><td><code>slintplot::locale</code></td><td><code>Locale</code>: separators, names and date patterns, with <code>number</code>, <code>tick</code>, <code>value</code>, <code>date</code> and <code>time</code></td></tr>

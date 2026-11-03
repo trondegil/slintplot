@@ -11,8 +11,8 @@
   row, so data of any shape fits without settings; shorter rows and missing
   values (NaN) are left as a faint track. Cells are colored on a scale, as in
   `HeatmapChart` (`color`, `diverging`, `fixed-range`), with a color scale
-  legend, or by class: with `classes` set, each value is a class index, and
-  the classes make a legend that hides them. `x-labels` go round the
+  legend, or by category: with `classes` set, each value is a category index,
+  and the categories make a legend that hides them. `x-labels` go round the
   outside, thinned where they don't fit, and `y-labels` name the rings in the
   tooltip. `center-text` and `center-label` are written in the middle, and
   hovering a cell shows it there instead. A dot can mark the start, and
@@ -24,7 +24,7 @@
   an activity grid. It takes its data as `SegmentedRingChart` does: `values`
   is a matrix (`[[float]]`), one row of tiles per row, and the matrix sets the
   size, the tiles staying square, as large as fit, and centered. Cells are
-  colored on a scale or by `classes`, with the same properties; missing
+  colored on a scale or by category (`classes`), with the same properties; missing
   values are empty tiles, a faint track. `y-labels` go at the left and
   `x-labels` below, thinned where they don't fit; `tile-gap` and
   `tile-radius` shape the tiles. The tiles sweep in from the left; hovering
@@ -38,6 +38,16 @@
   phone layout instead of cutting off the page; the layout switches at 900px
   instead of 720px, where the sample list and header no longer fit beside the
   chart.
+  Samples of the two new charts under Heatmaps, each one sidebar entry with
+  two tabs, by category and on a scale, of four charts of different sizes and
+  uses. They follow the theme, with their own colors only where the colors
+  carry meaning, such as green, amber and red for a service's status; on the
+  segmented ring category page, a second dropdown under the theme picker
+  switches between the theme's colors and these. The heatmap sample shows
+  the visits in each cell, in two-hour blocks so that the numbers fit.
+- **Stress test:** segmented ring and tile grid charts, on a scale and by
+  category, from 100 to 1,000,000 cells.
+- **Fuzz test:** the two new charts, for 25 chart types.
 
 ## 0.3.0
 
