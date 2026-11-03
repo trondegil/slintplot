@@ -1374,20 +1374,23 @@ impl State {
         self.ring_colors();
     }
 
-    /// The classes' colors of the segmented ring charts that pick their own:
-    /// the runs, uptime and pipeline. "Theme colors" leaves them unset, so
-    /// the library uses the theme's; "Custom colors" sets them.
+    /// The categories' colors of the charts that pick their own: the
+    /// segmented rings' runs, uptime and pipeline, and the tile grids'
+    /// service status and tests. "Theme colors" leaves them unset, so the
+    /// library uses the theme's; "Custom colors" sets them.
     fn ring_colors(&self) {
         let Some(ui) = self.ui.upgrade() else {
             return;
         };
         let classes = if ui.get_ring_colors() == 0 {
-            [[slint::Color::default(); 3]; 3]
+            [[slint::Color::default(); 3]; 5]
         } else {
             [
                 [0xc6f432, 0xf0904a, 0xe0636b].map(rgb),
                 [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
                 [0x2fb67c, 0x3d8bf2, 0xe0636b].map(rgb),
+                [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
+                [0x2fb67c, 0xf2b33d, 0xe0636b].map(rgb),
             ]
         };
         ui.set_ring_class_colors(ModelRc::new(VecModel::from(
