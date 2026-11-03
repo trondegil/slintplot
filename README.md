@@ -41,7 +41,7 @@ to the mouse.
 *The gallery app shows every chart type with live data, themes and dark mode.
 [Try it in your browser](https://slintplot.dev/demo/), install it with
 `cargo install slintplot-gallery`, or download it ready-built from the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.3.0).*
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.0).*
 
 ## Getting started
 
@@ -51,11 +51,11 @@ to the mouse.
 ```toml
 [dependencies]
 slint = "1.18"
-slintplot = "0.3"
+slintplot = "0.4"
 
 [build-dependencies]
 slint-build = "1.18"
-slintplot = "0.3"
+slintplot = "0.4"
 ```
 
 **2. Make the library importable** in `build.rs`:
@@ -209,14 +209,14 @@ cargo install slintplot-stress    # up to 8 × 1,000,000 points, 60 Hz streaming
 fontconfig and xkbcommon development packages (`libfontconfig-dev` and
 `libxkbcommon-dev` on Debian and Ubuntu). Ready-built apps for macOS, Windows
 and Linux are on the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.3.0),
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.0),
 and the source is in [`examples/gallery`](https://github.com/trondegil/slintplot/tree/main/examples/gallery) and
 [`examples/stress`](https://github.com/trondegil/slintplot/tree/main/examples/stress). The gallery's `ui/gallery.slint` has a
 working example of every chart.
 
 ## Limitations
 
-What SlintPlot 0.3 doesn't do yet, or does with restrictions:
+What SlintPlot 0.4 doesn't do yet, or does with restrictions:
 
 - **Rust only.** The chart geometry is computed in Rust, so the library can't be used from Slint's C++, JavaScript or Python APIs, and charts aren't drawn in Slint's live preview or SlintPad.
 - **Platforms.** Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly. Embedded (MCU) builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.

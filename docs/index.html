@@ -373,18 +373,18 @@
 <figure class="shot"><video class="tour when-light" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour.mp4" type="video/mp4"></video><video class="tour when-dark" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour-dark.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour-dark.mp4" type="video/mp4"></video>
   <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
   <a href="demo/">Try it in your browser</a>, install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
-  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.3.0">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
+  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.0">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
 
 <h2 id="getting-started">Getting started</h2>
 <h3>1. Add the dependencies</h3>
 <p>SlintPlot is used both as a regular dependency (the <code>register!</code> macro) and as a build dependency (to find its <code>.slint</code> files).</p>
 <pre><code>[dependencies]
 slint = "1.18"
-slintplot = "0.3"
+slintplot = "0.4"
 
 [build-dependencies]
 slint-build = "1.18"
-slintplot = "0.3"</code></pre>
+slintplot = "0.4"</code></pre>
 
 <h3>2. Make the library importable: <code>build.rs</code></h3>
 <pre><code>fn main() {
@@ -2585,7 +2585,7 @@ a hang or a runaway allocation. Its soak test repeats the same rounds for a whil
 cargo run --release -p slintplot-fuzz -- soak 60    # an hour of the same rounds</code></pre>
 <p>The gallery also runs in the browser, built with WebAssembly: <a href="demo/">slintplot.dev/demo</a>.</p>
 <p>Ready-built apps for macOS, Windows and Linux are on the
-<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.3.0">releases page</a>.
+<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.0">releases page</a>.
 Each download includes the licenses of the open-source crates it is built from.</p>
 <p><a href="https://slint.dev"><img src="assets/MadeWithSlint-logo-whitebg.webp" alt="Made with Slint" width="212" height="97"></a></p>
 <figure class="shot"><img width="1280" height="820" class="when-light" src="screenshots/gallery.webp" alt="The gallery sample browser" loading="lazy"><img width="1280" height="820" class="when-dark" src="screenshots/gallery-dark.webp" alt="The gallery sample browser" loading="lazy"></figure>
@@ -2692,7 +2692,7 @@ slintplot-stress --bench-stream   # only the streaming limits, with your machine
 slintplot-stress                  # the interactive stress test</code></pre>
 
 <h2 id="limitations">Limitations</h2>
-<p>What SlintPlot 0.3 doesn't do yet, or does with restrictions:</p>
+<p>What SlintPlot 0.4 doesn't do yet, or does with restrictions:</p>
 <ul>
   <li><strong>Rust only.</strong> The chart geometry is computed in Rust and connected with <code>register!</code>, so the library can't be used from Slint's C++, JavaScript or Python APIs. For the same reason, charts aren't drawn in Slint's live preview or SlintPad.</li>
   <li><strong>Platforms.</strong> Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly, from version 0.1.2: the gallery runs <a href="demo/">in the browser</a>. Embedded (MCU) builds are untested. With Slint's software renderer, enable its <code>software-renderer-path</code> feature, or charts aren't drawn.</li>
