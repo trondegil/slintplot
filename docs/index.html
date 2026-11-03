@@ -735,6 +735,7 @@ PieChart {
   <tr><td><code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's share of the total on it</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the slices; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
@@ -770,6 +771,7 @@ DoughnutChart {
   <tr><td><code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's share of the total on it</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the slices; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
@@ -805,6 +807,7 @@ PolarAreaChart {
   <tr><td><code>show-percentages</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each slice's share of the total on it</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the slices; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
@@ -836,6 +839,7 @@ RadarChart {
   <tr><td><code>show-points</code></td><td><code>bool</code></td><td><code>true</code></td><td>A marker on every corner of the polygons</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the data in when the chart appears, and move to new values</td></tr>
   <tr><td><code>begin-at-zero</code></td><td><code>bool</code></td><td><code>true</code></td><td>The center is 0</td></tr>
@@ -888,6 +892,7 @@ RadialBarChart {
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>true</code></td><td>Each value just past the end of its bar, or inside it; rings too thin for the text leave it out</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>false</code></td><td>A legend of the bars; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the value under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Grow the bars in when the chart appears, and move them when the values change</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
@@ -955,6 +960,7 @@ SegmentedRingChart {
   <tr><td><code>glow</code></td><td><code>bool</code></td><td><code>false</code></td><td>A soft glow in the middle, of the first category's color or the scale's</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The categories, which hide and show on click, or the color scale</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td>Where the categories' legend goes</td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the cell under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the cells in when the chart appears</td></tr>
   <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td><code>string</code>, <code>string</code>, <code>int</code></td><td><code>""</code>, <code>""</code>, <code>-1</code></td><td>How values on a scale are written</td></tr>
@@ -1562,6 +1568,7 @@ TileGridChart {
   <tr><td><code>show-labels</code></td><td><code>bool</code></td><td><code>true</code></td><td>The row and column labels</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>The categories, which hide and show on click, or the color scale</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>bottom</code></td><td>Where the categories' legend goes</td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the tile under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the tiles in from the left when the chart appears</td></tr>
   <tr><td><code>value-prefix</code>, <code>value-suffix</code>, <code>value-decimals</code></td><td><code>string</code>, <code>string</code>, <code>int</code></td><td><code>""</code>, <code>""</code>, <code>-1</code></td><td>How values on a scale are written</td></tr>
@@ -1690,6 +1697,7 @@ SunburstChart {
   <tr><td><code>zoom-item</code> <span class="tag">in-out</span></td><td><code>int</code></td><td><code>-1</code></td><td>The item zoomed into, or -1 for all; set it to zoom from code</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the top-level items; clicking one hides or shows it</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
+  <tr><td><code>legend-attached</code></td><td><code>bool</code></td><td><code>true</code></td><td>Keep the legend next to the chart, not at the edge of its area, when the chart leaves room around it; <code>false</code> for the edge</td></tr>
   <tr><td><code>show-tooltip</code></td><td><code>bool</code></td><td><code>true</code></td><td>A tooltip with the values under the mouse</td></tr>
   <tr><td><code>animated</code></td><td><code>bool</code></td><td><code>true</code></td><td>Sweep the rings in when the chart appears</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>

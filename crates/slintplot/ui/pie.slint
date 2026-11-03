@@ -10,6 +10,9 @@ export component PieChart {
     in property <float> cutout: 0;
     in property <bool> show-legend: true;
     in property <ChartLegendPosition> legend-position: ChartLegendPosition.top;
+    // Keep the legend next to the chart's shape, not at the edge of its
+    // area, when the shape leaves room around it.
+    in property <bool> legend-attached: true;
     in property <bool> show-tooltip: true;
     in property <bool> animated: true;
     // Polar area chart: equal angles, and the radius shows the value. Use
@@ -86,6 +89,12 @@ export component PieChart {
             items: root.legend;
             show-legend: root.show-legend;
             position: root.legend-position;
+            attached: root.legend-attached;
+            // The shape is drawn in a centered square: the rest is empty.
+            slack-top: max(0px, (area.height - min(area.width, area.height)) / 2);
+            slack-bottom: self.slack-top;
+            slack-left: max(0px, (area.width - min(area.width, area.height)) / 2);
+            slack-right: self.slack-left;
             toggled(index) => {
                 root.slices[index].hidden = !root.slices[index].hidden;
                 root.legend-toggled(index);

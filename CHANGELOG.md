@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- `legend-attached` on pie, doughnut, polar area, radar, radial bar,
+  sunburst, segmented ring and tile grid charts, on by default: the legend
+  stays next to the chart instead of at the edge of its area, which was far
+  away when the area was much taller or wider than the round or square
+  chart in it. `false` keeps it at the edge, as before.
+
 ### Changed
 
 - The focus ring round a chart shows only when the keyboard brought the

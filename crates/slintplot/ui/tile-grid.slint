@@ -45,6 +45,9 @@ export component TileGridChart {
     // The categories, or the color scale.
     in property <bool> show-legend: true;
     in property <ChartLegendPosition> legend-position: ChartLegendPosition.bottom;
+    // Keep the legend next to the chart's shape, not at the edge of its
+    // area, when the shape leaves room around it.
+    in property <bool> legend-attached: true;
     in property <bool> show-tooltip: true;
     // Sweep the tiles in from the left when the chart appears.
     in property <bool> animated: true;
@@ -190,6 +193,12 @@ export component TileGridChart {
             items: root.legend;
             show-legend: root.show-legend && root.by-class;
             position: root.legend-position;
+            attached: root.legend-attached;
+            // The grid is centered, its labels included: the rest is empty.
+            slack-top: max(0px, grid.y * 1px);
+            slack-bottom: self.slack-top;
+            slack-right: max(0px, area.width - (grid.x + grid.columns * grid.pitch) * 1px);
+            slack-left: self.slack-right;
             toggled(index) => {
                 root.classes[index].hidden = !root.classes[index].hidden;
                 root.legend-toggled(index);
