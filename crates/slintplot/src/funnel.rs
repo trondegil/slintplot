@@ -93,18 +93,21 @@ pub fn layout(req: &FunnelRequest) -> Funnel {
             let (x0, x1) = ((wide - top) / 2.0, (wide - bottom) / 2.0);
             let (r0, r1) = (x0 + top, x1 + bottom);
             let mut path = String::new();
+            // Counterclockwise on screen and back to the start, so that
+            // Slint's femtovg renderer takes the stage as solid, not as a
+            // hole drawn a pixel larger all round (see pie::slice_path).
             if req.curved {
                 // Vertical tangents at both ends: an S-curve on each side.
                 let m = h / 2.0;
                 let _ = write!(
                     path,
-                    "M {x0:.2} 0 L {r0:.2} 0 C {r0:.2} {m:.2} {r1:.2} {m:.2} {r1:.2} {h:.2} \
-                     L {x1:.2} {h:.2} C {x1:.2} {m:.2} {x0:.2} {m:.2} {x0:.2} 0 Z"
+                    "M {x0:.2} 0 C {x0:.2} {m:.2} {x1:.2} {m:.2} {x1:.2} {h:.2} L {r1:.2} {h:.2} \
+                     C {r1:.2} {m:.2} {r0:.2} {m:.2} {r0:.2} 0 L {x0:.2} 0 Z"
                 );
             } else {
                 let _ = write!(
                     path,
-                    "M {x0:.2} 0 L {r0:.2} 0 L {r1:.2} {h:.2} L {x1:.2} {h:.2} Z"
+                    "M {x0:.2} 0 L {x1:.2} {h:.2} L {r1:.2} {h:.2} L {r0:.2} 0 L {x0:.2} 0 Z"
                 );
             }
             Stage {
@@ -159,6 +162,18 @@ mod tests {
     }
 
     #[test]
+    fn stages_are_solid_for_slint() {
+        let values = [Some(100.0), Some(60.0), Some(30.0), Some(5.0)];
+        for curved in [false, true] {
+            let mut req = request(&values);
+            req.curved = curved;
+            for stage in layout(&req).stages {
+                assert!(crate::pie::slint_solid(&stage.path), "{}", stage.path);
+            }
+        }
+    }
+
+    #[test]
     fn slices_narrow_to_the_next_stage() {
         let values = [Some(100.0), None, Some(50.0), Some(10.0)];
         let funnel = layout(&request(&values));
@@ -170,7 +185,7 @@ mod tests {
         assert_eq!(first.bounds, (0.0, 0.0, 200.0, 96.0));
         assert_eq!(
             first.path,
-            "M 0.00 0 L 200.00 0 L 150.00 96.00 L 50.00 96.00 Z"
+            "M 0.00 0 L 50.00 96.00 L 150.00 96.00 L 200.00 0 L 0.00 0 Z"
         );
         let last = &funnel.stages[2];
         assert_eq!((last.top, last.bottom), (20.0, 20.0), "the spout");

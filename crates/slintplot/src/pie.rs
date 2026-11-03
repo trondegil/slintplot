@@ -295,7 +295,7 @@ pub(crate) fn slice_path(center: (f32, f32), r: f32, inner: f32, start: f32, end
 /// solid (true) or a hole, as it works it out: the sum over a shape's points, from where it
 /// starts, of (x1 - x0)(y1 + y0), without the edge that closes it. A shape it
 /// takes as a hole is still filled, but its smoothed edge falls outside it.
-/// Only absolute M, L, A and Z commands, and relative h, v and a.
+/// Only absolute M, L, A, C and Z commands, and relative h, v and a.
 #[cfg(test)]
 pub(crate) fn slint_solidity(path: &str) -> Vec<bool> {
     let words: Vec<&str> = path.split_whitespace().collect();
@@ -323,6 +323,10 @@ pub(crate) fn slint_solidity(path: &str) -> Vec<bool> {
                 let p = (prev.0 + num(i + 6), prev.1 + num(i + 7));
                 add(&mut area, &mut prev, p);
                 i += 8;
+            }
+            "C" => {
+                add(&mut area, &mut prev, (num(i + 5), num(i + 6)));
+                i += 7;
             }
             "h" => {
                 let p = (prev.0 + num(i + 1), prev.1);

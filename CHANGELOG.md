@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.3
+
+### Fixed
+
+- `FunnelChart`: on Linux, Windows and in browsers, where Slint draws with
+  femtovg, every stage was drawn a pixel larger all round, so the gap
+  between stages was about half of `gap`, with a stray line at its ends.
+  The stages are now drawn counterclockwise and back to their start, as the
+  other charts' shapes since 0.4.2, and a test checks that Slint takes them
+  as solid.
+
 ## 0.4.2
 
 ### Fixed
