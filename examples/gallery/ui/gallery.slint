@@ -1747,7 +1747,8 @@ export component Gallery inherits Window {
                         x-labels: root.labels;
                         y-labels: root.row-labels;
                         values: root.grid;
-                        value-suffix: " visits";
+                        show-values: true;
+                        value-decimals: 0;
                         cell-clicked(row, column) => {
                             root.status = "cell-clicked: " + self.y-labels[row] + " " + self.x-labels[column] + ":00, "
                                 + ChartEngine.format-value(self.values[row * self.x-labels.length + column], { suffix: " visits", decimals: -1 });

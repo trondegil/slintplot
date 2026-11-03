@@ -796,7 +796,7 @@ const SAMPLES: &[Sample] = &[
         "heatmap",
         "Heatmaps",
         "Heatmap",
-        "HeatmapChart: activity by weekday and hour. Darker cells have higher values.",
+        "HeatmapChart: website visits by weekday, in two-hour blocks, with the count in each cell. Darker cells have higher values.",
         Shape::Matrix,
         &["Randomize"],
     ),
@@ -1876,13 +1876,14 @@ impl State {
 
     fn grid_values(&mut self) {
         let values: Vec<f32> = match self.sample.shape {
-            Shape::Matrix => (0..7 * 24)
+            // Two-hour blocks, so the counts fit in the cells.
+            Shape::Matrix => (0..7 * 12)
                 .map(|i| {
-                    let (day, hour) = (i / 24, (i % 24) as f32);
+                    let (day, hour) = (i / 12, (i % 12 * 2) as f32 + 1.0);
                     // Busy on weekday afternoons, quiet at night.
                     let daytime = (-((hour - 14.0) / 5.0).powi(2)).exp();
                     let weekday = if day < 5 { 1.0 } else { 0.45 };
-                    (100.0 * daytime * weekday + self.rng.next() * 15.0).round()
+                    (200.0 * daytime * weekday + self.rng.next() * 30.0).round()
                 })
                 .collect(),
             Shape::Correlation => {
@@ -2184,7 +2185,7 @@ impl State {
         };
         self.row_labels.set_vec(row_labels);
         let labels: Vec<SharedString> = match sample.shape {
-            Shape::Matrix => (0..24).map(|h| format!("{h:02}").into()).collect(),
+            Shape::Matrix => (0..12).map(|h| format!("{:02}", h * 2).into()).collect(),
             Shape::Correlation => ["Price", "Size", "Age", "Rooms", "Floor", "Garden"]
                 .map(SharedString::from)
                 .to_vec(),
