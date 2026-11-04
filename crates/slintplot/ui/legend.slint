@@ -73,87 +73,81 @@ export component LegendFrame {
     in property <length> slack-right;
     callback toggled(index: int);
 
+    // The legend in the layout keeps its room exactly as without
+    // `attached`, so the chart's size doesn't depend on where the legend is
+    // drawn. When attached, that one is invisible (it still takes its room)
+    // and a copy outside the layout is drawn moved by the slack. The copy
+    // depends on the layout, never the other way round, so the chart is laid
+    // out once.
     VerticalLayout {
         spacing: 8px;
-        if root.show-legend && root.position == ChartLegendPosition.top: Rectangle {
-            // Above the chart, so that clicks on the moved legend reach it.
-            z: 1;
-            vertical-stretch: 0;
-            min-height: top-legend.min-height;
-            preferred-height: top-legend.preferred-height;
-            max-height: top-legend.preferred-height;
-            top-legend := Legend {
-                y: root.attached ? max(0px, root.slack-top) : 0px;
-                width: parent.width;
-                height: parent.height;
-                items: root.items;
-                toggled(index) => {
-                    root.toggled(index);
-                }
+        if root.show-legend && root.position == ChartLegendPosition.top: Legend {
+            visible: !root.attached;
+            items: root.items;
+            toggled(index) => {
+                root.toggled(index);
             }
         }
         HorizontalLayout {
             vertical-stretch: 1;
             spacing: 8px;
             if root.show-legend && root.position == ChartLegendPosition.left: VerticalLayout {
-                z: 1;
                 alignment: center;
-                Rectangle {
-                    horizontal-stretch: 0;
-                    min-width: left-legend.min-width;
-                    preferred-width: left-legend.preferred-width;
-                    max-width: left-legend.preferred-width;
-                    min-height: left-legend.min-height;
-                    preferred-height: left-legend.preferred-height;
-                    left-legend := Legend {
-                        x: root.attached ? max(0px, root.slack-left) : 0px;
-                        width: parent.width;
-                        height: parent.height;
-                        vertical: true;
-                        items: root.items;
-                        toggled(index) => {
-                            root.toggled(index);
-                        }
+                Legend {
+                    visible: !root.attached;
+                    vertical: true;
+                    items: root.items;
+                    toggled(index) => {
+                        root.toggled(index);
                     }
                 }
             }
             @children
             if root.show-legend && root.position == ChartLegendPosition.right: VerticalLayout {
                 alignment: center;
-                Rectangle {
-                    horizontal-stretch: 0;
-                    min-width: right-legend.min-width;
-                    preferred-width: right-legend.preferred-width;
-                    max-width: right-legend.preferred-width;
-                    min-height: right-legend.min-height;
-                    preferred-height: right-legend.preferred-height;
-                    right-legend := Legend {
-                        x: root.attached ? -max(0px, root.slack-right) : 0px;
-                        width: parent.width;
-                        height: parent.height;
-                        vertical: true;
-                        items: root.items;
-                        toggled(index) => {
-                            root.toggled(index);
-                        }
+                Legend {
+                    visible: !root.attached;
+                    vertical: true;
+                    items: root.items;
+                    toggled(index) => {
+                        root.toggled(index);
                     }
                 }
             }
         }
-        if root.show-legend && root.position == ChartLegendPosition.bottom: Rectangle {
-            vertical-stretch: 0;
-            min-height: bottom-legend.min-height;
-            preferred-height: bottom-legend.preferred-height;
-            max-height: bottom-legend.preferred-height;
-            bottom-legend := Legend {
-                y: root.attached ? -max(0px, root.slack-bottom) : 0px;
-                width: parent.width;
-                height: parent.height;
-                items: root.items;
-                toggled(index) => {
-                    root.toggled(index);
-                }
+        if root.show-legend && root.position == ChartLegendPosition.bottom: Legend {
+            visible: !root.attached;
+            items: root.items;
+            toggled(index) => {
+                root.toggled(index);
             }
+        }
+    }
+
+    // The moved copies, over the chart so that their clicks reach them.
+    if root.attached && root.show-legend && (root.position == ChartLegendPosition.top || root.position == ChartLegendPosition.bottom): Legend {
+        x: 0px;
+        width: root.width;
+        height: self.preferred-height;
+        y: root.position == ChartLegendPosition.top
+            ? max(0px, root.slack-top)
+            : root.height - self.height - max(0px, root.slack-bottom);
+        items: root.items;
+        toggled(index) => {
+            root.toggled(index);
+        }
+    }
+    if root.attached && root.show-legend && (root.position == ChartLegendPosition.left || root.position == ChartLegendPosition.right): Legend {
+        vertical: true;
+        width: self.preferred-width;
+        height: self.preferred-height;
+        x: root.position == ChartLegendPosition.left
+            ? max(0px, root.slack-left)
+            : root.width - self.width - max(0px, root.slack-right);
+        y: (root.height - self.height) / 2;
+        items: root.items;
+        toggled(index) => {
+            root.toggled(index);
         }
     }
 }
