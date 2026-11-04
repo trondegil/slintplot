@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 ### Added
 
@@ -22,6 +22,34 @@
   and without data labels, and the radar chart with lines and filled are one
   sidebar entry each, with a tab per variant; the filled radar chart moves
   from Area charts to the radar chart.
+- **Stress test:** `--bench-gpu [dir]` times the same charts as `--bench`
+  with a GPU renderer, Skia on macOS, drawing each frame with
+  `Window::take_snapshot` so that the GPU's work is included; with a folder,
+  it saves every frame as a PNG.
+- **Both apps:** a `skia` feature builds them with Slint's Skia renderer, to
+  run with `SLINT_BACKEND=winit-skia`.
+
+### Tested
+
+- Skia: every gallery sample draws correctly with Slint's Skia renderer on
+  macOS, Linux and Windows, as with FemtoVG and the software renderer.
+
+### Documentation
+
+- A compatibility box next to Getting started: Rust only, the Slint and
+  Rust versions, the platforms and renderers tested, and no live preview.
+- Performance: how many points or items each chart can show at 60 fps,
+  30 fps and within a second, with the software renderer and with Skia, and
+  why the numbers look as they do. The full results moved to a new
+  benchmarks page, measured again with SlintPlot 0.5.0 and Slint 1.18.1, with
+  Skia's numbers and how to repeat them.
+- How to choose a renderer for the example apps.
+- "Request a commercial license" until checkout opens.
+
+### Website
+
+- A library release (`v*`) no longer cancels the deploy of the apps
+  release that follows it.
 
 ## 0.4.3
 

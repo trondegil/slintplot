@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlintPlot benchmarks: frame times with Slint's software and Skia renderers</title>
+<meta name="description" content="Frame times of every SlintPlot chart type from 100 to 1,000,000 points, with Slint's software renderer and with Skia on the GPU, streaming limits, and how to run the benchmarks yourself.">
+<link rel="canonical" href="https://slintplot.dev/benchmarks.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SlintPlot">
+<meta property="og:title" content="SlintPlot benchmarks">
+<meta property="og:description" content="A chart library for Slint in Rust. 25 chart types, themes, dark mode, zoom and pan, and millions of points. Try the gallery in your browser.">
+<meta property="og:url" content="https://slintplot.dev/benchmarks.html">
+<meta property="og:image" content="https://slintplot.dev/screenshots/gallery.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/slintplot-icon.png">
+<!-- Privacy-friendly analytics by Plausible: visit counts without cookies or
+     personal data, plus the site's custom events. Outbound link clicks are
+     switched on in Plausible's site settings. -->
+<script async src="https://plausible.io/js/pa-Uc9vcGHjcu2slhm1AwQAS.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
+<script>
+  // The theme picked with the theme button; otherwise the system's.
+  try {
+    const theme = localStorage.getItem("theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f7fb;
+    --text: #1d2433;
+    --text-muted: #5b6475;
+    --border: #e3e6ef;
+    --accent: #2563c9;
+    --accent-2: #13b7a5;
+    --code-bg: #f3f5fa;
+    --code-text: #1d2433;
+    --note-bg: #eef7f6;
+    --placeholder: #f2f4fa;
+    --sidebar: #fafbfd;
+    --scrollbar: #c9ceda;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151c;
+      --bg-soft: #181c25;
+      --text: #e6e9f0;
+      --text-muted: #a3abbb;
+      --border: #2a303d;
+      --accent: #6aa2ff;
+      --accent-2: #3fd6c4;
+      --code-bg: #1b2030;
+      --code-text: #dfe5f2;
+      --note-bg: #16302d;
+      --placeholder: #1a1f2b;
+      --sidebar: #151922;
+      --scrollbar: #3a4254;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151c;
+    --bg-soft: #181c25;
+    --text: #e6e9f0;
+    --text-muted: #a3abbb;
+    --border: #2a303d;
+    --accent: #6aa2ff;
+    --accent-2: #3fd6c4;
+    --code-bg: #1b2030;
+    --code-text: #dfe5f2;
+    --note-bg: #16302d;
+    --placeholder: #1a1f2b;
+    --sidebar: #151922;
+    --scrollbar: #3a4254;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  /* Scrollbars in the theme's colors. */
+  html { scrollbar-color: var(--scrollbar) transparent; }
+  nav, pre { scrollbar-width: thin; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+  /* The logo, the screenshots and the theme button's icon follow the
+     theme: .when-light shows in light mode only, .when-dark in dark mode. */
+  :root[data-theme="light"] .when-dark,
+  :root[data-theme="dark"] .when-light { display: none !important; }
+  @media not all and (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .when-dark { display: none !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .when-light { display: none !important; }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  main p a, main li a, main td a, figcaption a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  .layout { display: flex; min-height: 100vh; }
+  nav {
+    position: sticky; top: 0; align-self: flex-start;
+    /* dvh: on phones 100vh is taller than the screen between the browser's
+       bars, which hides the end of the menu. overscroll-behavior keeps a
+       scroll that reaches the end of the menu from moving the page. */
+    width: 250px; height: 100vh; height: 100dvh; overflow-y: auto;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding: 20px 16px 40px;
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .nav-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .nav-head .brand { margin-bottom: 0; }
+  .theme-button {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px;
+    background: transparent; color: var(--text-muted); cursor: pointer;
+  }
+  .theme-button:hover { background: var(--bg-soft); color: var(--text); }
+  .theme-button svg { width: 18px; height: 18px; }
+  pre { position: relative; }
+  .copy {
+    position: absolute; top: 8px; right: 8px;
+    padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text-muted); font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; cursor: pointer;
+    opacity: 0; transition: opacity .15s;
+  }
+  pre:hover .copy, .copy:focus-visible, .copy.done { opacity: 1; }
+  .copy:hover { color: var(--text); }
+  @media (hover: none) { .copy { opacity: 1; } }
+  nav .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--text); font-weight: 700; font-size: 18px; }
+  nav .brand img { width: 32px; height: 32px; }
+  nav .group { margin: 18px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  nav a { display: block; padding: 3px 8px; border-radius: 6px; color: var(--text); font-size: 14px; }
+  nav a:hover { background: var(--bg-soft); text-decoration: none; }
+  main { flex: 1; min-width: 0; padding: 32px 48px 80px; max-width: 980px; }
+  .hero { padding: 28px; border-radius: 14px; background: var(--bg-soft); border: 1px solid var(--border); margin-bottom: 28px; text-align: center; }
+  .hero img { max-width: 420px; width: 100%; height: auto; }
+  .hero .try { display: inline-block; margin-top: 6px; padding: 9px 18px; border-radius: 8px; background: #2563c9; color: #ffffff; font-weight: 600; }
+  .hero .try:hover { background: #1d4fa6; }
+  .hero p { color: #5b6475; margin: 10px 0 0; font-size: 17px; }
+  h1 { font-size: 30px; margin: 0 0 8px; }
+  h2 { font-size: 24px; margin: 52px 0 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 18px; margin: 32px 0 8px; }
+  h3 code, h2 code { font-size: .95em; }
+  p, li { color: var(--text); }
+  .muted { color: var(--text-muted); }
+  code { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code-bg); color: var(--code-text); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; }
+  pre code { background: none; padding: 0; font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--bg-soft); border: 1px solid var(--border); color: var(--text-muted); margin-left: 6px; vertical-align: middle; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td code { white-space: nowrap; }
+  .note { background: var(--note-bg); border-left: 3px solid var(--accent-2); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .placeholder {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: 220px; margin: 14px 0 20px; padding: 20px;
+    border: 2px dashed var(--border); border-radius: 12px;
+    background: var(--placeholder); color: var(--text-muted); font-size: 14px;
+  }
+  .placeholder.small { min-height: 70px; }
+  .placeholder strong { display: block; color: var(--text); margin-bottom: 4px; }
+  .shot { margin: 14px 0 20px; }
+  .shot figcaption { margin-top: 8px; font-size: 14px; color: var(--text-muted); }
+  .shot img, .shot video { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
+  .swatches { display: flex; gap: 4px; }
+  .swatches span { width: 18px; height: 18px; border-radius: 4px; display: inline-block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+  .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-soft); }
+  .card h2 { margin: 0 0 4px; padding: 0; border: 0; font-size: 15px; }
+  .card p { margin: 0; font-size: 13px; color: var(--text-muted); }
+  /* The compatibility box next to Getting started. */
+  .compat { border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; background: var(--bg-soft); margin: 14px 0; }
+  .compat h3 { margin: 0 0 6px; font-size: 15px; }
+  .compat dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; font-size: 14px; }
+  .compat dt { font-weight: 600; }
+  .compat dd { margin: 0; }
+  /* The hero's second button, and the pricing plans. */
+  .hero .buy-license { display: inline-block; margin: 6px 0 0 8px; padding: 8px 17px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-weight: 600; }
+  .hero .buy-license:hover { border-color: var(--accent); text-decoration: none; }
+  .early-bird { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 16px 0; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--accent-2); background: var(--note-bg); }
+  .early-bird p { flex: 1 1 320px; margin: 0; }
+  .early-bird strong { color: var(--text); }
+  .countdown { display: flex; gap: 6px; margin: 0; }
+  .countdown div { min-width: 54px; padding: 4px 6px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); text-align: center; }
+  .countdown span { display: block; font-size: 20px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .countdown small { display: block; font-size: 11px; color: var(--text-muted); }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 16px 0 10px; }
+  .plan { display: flex; flex-direction: column; padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft); }
+  .plan.featured { border-color: var(--accent); }
+  .plan h3 { margin: 0; font-size: 17px; }
+  .plan .who { margin: 2px 0 12px; font-size: 13px; color: var(--text-muted); }
+  .plan .price { font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .plan .price small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+  .plan .was { font-size: 14px; color: var(--text-muted); text-decoration: line-through; margin-right: 6px; }
+  .plan .bird { display: block; font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .plan ul { margin: 12px 0 16px; padding-left: 18px; font-size: 14px; flex: 1; }
+  .plan li { margin: 3px 0; }
+  .plan label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--text-muted); }
+  .plan input { width: 72px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  .plan .buy { display: block; padding: 9px 14px; border-radius: 8px; border: 0; background: #2563c9; color: #ffffff; font: inherit; font-weight: 600; text-align: center; cursor: pointer; }
+  .plan .buy:hover { background: #1d4fa6; text-decoration: none; }
+  .plan .buy.soon { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .plan .buy.soon:hover { border-color: var(--accent); }
+  .topbar, .backdrop { display: none; }
+  @media (max-width: 820px) {
+    .layout { display: block; }
+    nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    main { padding: 20px 16px 60px; }
+    /* Tables become one card per row: the first cell as its heading, the
+       others labelled with their column names (copied in by the script at
+       the end). */
+    .js table, .js tbody, .js tr, .js td { display: block; }
+    .js tr.head { display: none; }
+    .js tr { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .js td { padding: 2px 0; border: 0; }
+    .js td:first-child { font-weight: 600; margin-bottom: 2px; }
+    .js td[data-label]::before {
+      content: attr(data-label); display: inline-block; min-width: 8.5em; margin-right: 6px;
+      color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .js td:empty { display: none; }
+    .hero { padding: 20px 16px; }
+    /* With JavaScript, the menu opens from a button instead of sitting
+       above the content. */
+    .js .topbar {
+      display: flex; align-items: center; gap: 10px;
+      position: sticky; top: 0; z-index: 20;
+      padding: 8px 12px; background: var(--sidebar); border-bottom: 1px solid var(--border);
+    }
+    .topbar .brand { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; font-size: 17px; }
+    .topbar .theme-button { margin-left: auto; }
+    .topbar .brand img { width: 26px; height: 26px; }
+    .menu-button {
+      display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; padding: 0; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); cursor: pointer;
+    }
+    .menu-button svg { width: 20px; height: 20px; }
+    .js nav {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
+      width: min(300px, 85vw); height: 100vh; height: 100dvh; bottom: auto;
+      padding-bottom: calc(40px + env(safe-area-inset-bottom));
+      border-right: 1px solid var(--border); border-bottom: 0;
+      transform: translateX(-100%); visibility: hidden;
+      transition: transform .2s ease, visibility .2s;
+    }
+    .menu-open nav { transform: none; visibility: visible; }
+    .menu-open .backdrop { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .4); touch-action: none; }
+    /* Safari on iOS scrolls the page under an open menu unless the body is
+       held too. */
+    .menu-open, .menu-open body { overflow: hidden; }
+    /* Section links land below the sticky top bar. */
+    .js { scroll-padding-top: 68px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    nav { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add("js");</script>
+<header class="topbar">
+  <button class="menu-button" type="button" aria-label="Menu" aria-controls="menu" aria-expanded="false">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="index.html"><img src="assets/slintplot-icon.png" alt="" width="32" height="32">SlintPlot</a>
+  <button class="theme-button" type="button" aria-label="Switch between light and dark mode" title="Light or dark mode">
+    <svg class="when-light" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg>
+    <svg class="when-dark" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4"/></svg>
+  </button>
+</header>
+<div class="backdrop"></div>
+<div class="layout">
+<nav id="menu">
+  <div class="nav-head">
+  <a class="brand" href="index.html"><img src="assets/slintplot-icon.png" alt="" width="32" height="32">SlintPlot</a>
+  <button class="theme-button" type="button" aria-label="Switch between light and dark mode" title="Light or dark mode">
+    <svg class="when-light" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg>
+    <svg class="when-dark" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4"/></svg>
+  </button>
+  </div>
+  <p class="group">SlintPlot</p>
+  <a href="index.html">Documentation</a>
+  <a href="index.html#performance">Performance summary</a>
+  <p class="group">Benchmarks</p>
+  <a href="#method">How it's measured</a>
+  <a href="#software">Software renderer</a>
+  <a href="#matrix-charts">Segmented rings and tile grids</a>
+  <a href="#skia">Skia (GPU)</a>
+  <a href="#streaming-limits">Streaming limits</a>
+  <a href="#conclusions">What the numbers mean</a>
+  <a href="#not-measured">What isn't measured</a>
+  <a href="#run-it">Run it yourself</a>
+</nav>
+
+<main id="top">
+<h1>SlintPlot benchmarks</h1>
+<p>Frame times of SlintPlot's charts from 100 to 1,000,000 points, with Slint's software renderer and with Skia on the GPU. For the short version, see <a href="index.html#practical-limits">how much a chart can show</a>.</p>
+<h2 id="method">How it's measured</h2>
+<p>The numbers come from the stress test app, <code>slintplot-stress</code>. <code>--bench</code> renders each configuration with Slint's software renderer, without a window;
+<code>--bench-gpu</code> renders the same configurations with Skia, on the GPU.</p>
+<ul>
+  <li><strong>Machine:</strong> Apple M4 (10 cores, 16 GB), macOS 27, a release build of SlintPlot 0.5.0 with Slint 1.18.1 (its Skia renderer through skia-bindings 0.153.3).</li>
+  <li><strong>Versions matter.</strong> Most of a frame is spent in Slint's renderer, so another Slint version, or another Skia, can give different numbers, faster or slower. We measure again for each SlintPlot release; when you compare your own numbers with these, check which Slint version your build uses (<code>cargo tree -i slint</code>).</li>
+  <li><strong>Software renderer:</strong> on one CPU core, into a 1280&times;800 pixel buffer.</li>
+  <li><strong>Skia:</strong> Slint's Skia renderer with Metal on the M4's GPU, in a 1280&times;800 window at scale factor 1. Each frame is drawn with
+    <code>Window::take_snapshot</code>, which returns once the GPU has drawn it and the pixels are read back, so the GPU's work is included.
+    Reading back costs a fixed amount per frame: the least a frame takes, a gauge, is 1.3 ms.</li>
+  <li><strong>Data:</strong> three datasets (three groups for the sunburst), random walks.</li>
+  <li><strong>Frame:</strong> the chart's layout plus drawing every pixel, measured once per configuration. Showing it on a screen isn't included.
+    <strong>Hover</strong> is the next frame after the mouse moves over the chart.
+    With Skia, <strong>redraw</strong> is the median of up to 15 more frames of the same data.</li>
+  <li><strong>Runs:</strong> each number is the median of three runs. Most numbers differed between runs by &plusmn;3% or less; frames under 5 ms, and a few others, by up to &plusmn;15%.</li>
+</ul>
+<p>At 60 frames per second, a frame has 16.7 ms. Frames below that can be animated and streamed smoothly; slower ones are
+fine for charts that change now and then.</p>
+
+<h2 id="software">Software renderer</h2>
+<h3>Lines, bars and points</h3>
+<p>Frame time per number of points in each dataset. Decimation draws a line with more points than pixels as one span per pixel column.</p>
+<table>
+  <tr><th>Points</th><th>Line</th><th>Line, decimated</th><th>Time series</th><th>Time series, decimated</th><th>Bars</th><th>Scatter</th></tr>
+  <tr><td>100</td><td>4.4 ms</td><td>4.6 ms</td><td>3.2 ms</td><td>3.1 ms</td><td>3.2 ms</td><td>2.7 ms</td></tr>
+  <tr><td>1,000</td><td>6.8 ms</td><td>6.8 ms</td><td>7.6 ms</td><td>5.8 ms</td><td>5.0 ms</td><td>4.3 ms</td></tr>
+  <tr><td>10,000</td><td>59 ms</td><td>5.5 ms</td><td>67 ms</td><td>5.6 ms</td><td>26 ms</td><td>23 ms</td></tr>
+  <tr><td>100,000</td><td>1.2 s</td><td>24 ms</td><td>1.3 s</td><td>29 ms</td><td>231 ms</td><td>not run</td></tr>
+  <tr><td>1,000,000</td><td>16.9 s</td><td>238 ms</td><td>15.3 s</td><td>281 ms</td><td>not run</td><td>not run</td></tr>
+</table>
+<p>With point markers and smooth lines, a line takes 6.3 ms at 100 points, 14 ms at 1,000 and 129 ms at 10,000: each marker is an element.
+Bars and markers are one element each, so the benchmark doesn't run them past 100,000 bars or 10,000 markers.</p>
+
+<h3>Charts with one shape per item</h3>
+<p>Waterfall, dumbbell, funnel and sunburst charts draw every step, row, stage or item, with no decimation:</p>
+<table>
+  <tr><th>Items</th><th>Waterfall</th><th>Dumbbell</th><th>Funnel</th><th>Sunburst</th></tr>
+  <tr><td>100</td><td>1.7 ms</td><td>1.5 ms</td><td>1.0 ms</td><td>3.4 ms</td></tr>
+  <tr><td>1,000</td><td>9.0 ms</td><td>9.1 ms</td><td>3.8 ms</td><td>21 ms</td></tr>
+  <tr><td>10,000</td><td>83 ms</td><td>93 ms</td><td>33 ms</td><td>266 ms</td></tr>
+</table>
+<p>A gauge frame takes 2.3 ms.</p>
+<div>
+<h3 id="matrix-charts">Segmented rings and tile grids</h3>
+<p>Frame time per number of cells in the matrix, on a scale and by category. These charts draw their cells as one path per color, not a shape per cell:</p>
+<table>
+  <tr><th>Cells</th><th>Segmented rings, on a scale</th><th>Segmented rings, by category</th><th>Tile grid, on a scale</th><th>Tile grid, by category</th></tr>
+  <tr><td>100</td><td>2.4 ms</td><td>2.4 ms</td><td>2.9 ms</td><td>2.9 ms</td></tr>
+  <tr><td>1,000</td><td>6.2 ms</td><td>5.1 ms</td><td>7.7 ms</td><td>7.4 ms</td></tr>
+  <tr><td>10,000</td><td>45 ms</td><td>30 ms</td><td>54 ms</td><td>53 ms</td></tr>
+  <tr><td>100,000</td><td>over the limit</td><td>over the limit</td><td>238 ms</td><td>235 ms</td></tr>
+</table>
+<p>A segmented ring chart shows at most 50 rings of 720 segments (36,000 cells), and a tile grid at most 200 rows of 1,000 tiles (200,000 cells); the rest of a larger matrix isn't drawn.</p>
+</div>
+
+<div>
+<h2 id="skia">Skia (GPU)</h2>
+<p>Frame time per number of points in each dataset, with new data, and redrawing the same data (as when hovering), with Slint's Skia renderer on the M4's GPU:</p>
+<table>
+  <tr><th>Points</th><th>Line</th><th>Line, decimated</th><th>Time series</th><th>Time series, decimated</th><th>Bars</th><th>Scatter</th></tr>
+  <tr><td>100</td><td>2.4 ms</td><td>2.2 ms</td><td>2.3 ms</td><td>1.8 ms</td><td>3.0 ms</td><td>2.5 ms</td></tr>
+  <tr><td>1,000</td><td>5.8 ms</td><td>5.4 ms</td><td>6.7 ms</td><td>4.8 ms</td><td>8.2 ms</td><td>11 ms</td></tr>
+  <tr><td>10,000</td><td>34 ms</td><td>5.8 ms</td><td>44 ms</td><td>5.8 ms</td><td>62 ms</td><td>102 ms</td></tr>
+  <tr><td>100,000</td><td>352 ms</td><td>25 ms</td><td>430 ms</td><td>29 ms</td><td>641 ms</td><td>not run</td></tr>
+  <tr><td>1,000,000</td><td>3.3 s</td><td>241 ms</td><td>3.4 s</td><td>288 ms</td><td>not run</td><td>not run</td></tr>
+  <tr><td>Redraw, 1,000,000</td><td>2.2 s</td><td>3.1 ms</td><td>2.2 s</td><td>3.0 ms</td><td></td><td></td></tr>
+</table>
+<p>With point markers and smooth lines, a line takes 4.2 ms at 100 points, 18 ms at 1,000 and 177 ms at 10,000.</p>
+<table>
+  <tr><th>Items</th><th>Waterfall</th><th>Dumbbell</th><th>Funnel</th><th>Sunburst</th></tr>
+  <tr><td>100</td><td>2.5 ms</td><td>3.6 ms</td><td>1.8 ms</td><td>4.6 ms</td></tr>
+  <tr><td>1,000</td><td>11 ms</td><td>24 ms</td><td>6.5 ms</td><td>24 ms</td></tr>
+  <tr><td>10,000</td><td>97 ms</td><td>224 ms</td><td>53 ms</td><td>364 ms</td></tr>
+</table>
+<table>
+  <tr><th>Cells</th><th>Segmented rings, on a scale</th><th>Segmented rings, by category</th><th>Tile grid, on a scale</th><th>Tile grid, by category</th></tr>
+  <tr><td>100</td><td>1.8 ms</td><td>1.8 ms</td><td>2.0 ms</td><td>1.9 ms</td></tr>
+  <tr><td>1,000</td><td>6.6 ms</td><td>5.0 ms</td><td>5.6 ms</td><td>5.6 ms</td></tr>
+  <tr><td>10,000</td><td>44 ms</td><td>29 ms</td><td>37 ms</td><td>36 ms</td></tr>
+  <tr><td>100,000</td><td>over the limit</td><td>over the limit</td><td>112 ms</td><td>110 ms</td></tr>
+</table>
+<ul>
+  <li><strong>Long paths are faster with Skia.</strong> A line or time series without decimation takes 3.3 s at a million points instead of 17 s, and 34 ms at 10,000 instead of 59 ms.</li>
+  <li><strong>Many separate shapes are slower.</strong> Each bar, marker or item is a separate draw on the GPU: 10,000 scatter markers take 102 ms instead of 23 ms, 10,000 bars 62 ms instead of 26 ms.</li>
+  <li><strong>Decimated lines cost the same</strong> in both renderers, since reading and decimating the data takes most of the time; redrawing them without new data takes 3 ms with Skia.</li>
+  <li><strong>Redraws are cheaper.</strong> Drawing the same data again takes a third to three quarters of a frame with new data, because Skia keeps the shapes it has built.</li>
+  <li><strong>One machine.</strong> These are from Apple's Metal on an M4. Other GPUs, and Skia with OpenGL or Vulkan on Linux and Windows, will differ.</li>
+</ul>
+</div>
+
+<h2 id="streaming-limits">Streaming limits</h2>
+<p>How much data can a chart show while it streams, and still update at 60 or 30 frames per second? <code>slintplot-stress --bench-stream</code>
+measures it: each update appends one value to each of three datasets, drops the oldest, and renders a full frame. It grows the window
+(the values kept per dataset) in 1-2-5 steps from 1,000 to 10,000,000, and times each size: the 95th percentile of up to 100 updates, the median of three runs.
+Same machine and renderer as above: Apple M4, macOS 27, Slint's software renderer on one core, 1280&times;800.</p>
+<p>Two views: <strong>everything</strong>, the whole window on screen, and <strong>the latest 1,000</strong>, zoomed in to the newest values, as a live view
+usually is, with the rest kept for scrolling back.</p>
+<table>
+  <tr><th rowspan="2">Chart</th><th colspan="2">Everything shown</th><th colspan="2">Latest 1,000 shown</th></tr>
+  <tr><th>60 fps</th><th>30 fps</th><th>60 fps</th><th>30 fps</th></tr>
+  <tr><td>Line, decimated</td><td>50,000</td><td>100,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Time series, decimated</td><td>20,000</td><td>100,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Line, not decimated</td><td>2,000</td><td>5,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Time series, not decimated</td><td>2,000</td><td>5,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Bars</td><td>2,000</td><td>5,000</td><td>10,000,000+</td><td>10,000,000+</td></tr>
+  <tr><td>Scatter</td><td>5,000</td><td>10,000</td><td>20,000</td><td>50,000</td></tr>
+</table>
+<p>The largest window, in values per dataset, that updates within 16.7 ms (60 fps) or 33.3 ms (30 fps).
+10,000,000+ means the largest size tried still made it.</p>
+<ul>
+  <li><strong>Zoomed in, the data size doesn't matter.</strong> A view of the latest 1,000 values updates in about 6 ms with 1,000 values kept per dataset or with 10,000,000:
+    the chart finds the visible values with a binary search and reads only those.</li>
+  <li><strong>Showing everything, decimation sets the limit.</strong> A decimated line updates at 60 fps with 50,000 values per dataset, and takes 130&ndash;150 ms with 500,000. A decimated time series makes 60 fps with 20,000 in two runs of three and 50,000 in one: at 50,000 it takes 16.4&ndash;16.8 ms, right at the 16.7 ms limit.
+    Below about 2,500 values (twice the plot width in pixels) lines aren't decimated, so up to there all line charts cost the same.</li>
+  <li><strong>Scatter charts read every point</strong>, since their points can be in any order, so even zoomed in they slow down from about 20,000 points per dataset.</li>
+  <li><strong>One value per update.</strong> At higher data rates, the samples that arrive between frames are added in one batch per frame (see <a href="#streaming">Streaming</a>).
+    The benchmark doesn't measure those larger batches; the stress app shows their effect live, at up to 100,000 samples a second.</li>
+</ul>
+
+<h2 id="conclusions">What the numbers mean</h2>
+<ul>
+  <li><strong>Up to about 1,000 points per dataset, every chart fits in a 60 fps frame</strong>, except the sunburst (21 ms).</li>
+  <li><strong>Lines of any size stay usable with decimation</strong>, which is on by default: 5 ms at 10,000 points, 24 ms at 100,000 and about 240 ms at 1,000,000 for a full redraw.
+    Hovering stays at about 3 ms at every size, and zooming in to 0.1% of a million points brings a frame to 46 ms.
+    Without decimation, a million-point line takes 17 s to draw.</li>
+  <li><strong>Bars, scatter markers and the one-shape-per-item charts grow with the count.</strong> For animation and streaming, keep them to about 1,000 bars, markers or items; at 10,000 a frame takes 23&ndash;266 ms.</li>
+  <li><strong>Up to 10,000 points, drawing takes most of the time.</strong> Computing the chart takes 1&ndash;8 ms (19 ms for a line with point markers) of frames of 6&ndash;266 ms.
+    With decimated million-point lines it's the other way round: reading and decimating the data takes 188 ms of the 238 ms frame.</li>
+</ul>
+
+<h2 id="not-measured">What isn't measured</h2>
+<ul>
+  <li><strong>FemtoVG, and Skia on other systems.</strong> Skia is measured on macOS only, with Metal. FemtoVG, Slint's default GPU renderer, isn't benchmarked:
+    its snapshots can't be timed the same way. The streaming limits are measured with the software renderer only.</li>
+  <li><strong>The browser.</strong> The <a href="demo/">web gallery</a> runs SlintPlot as WebAssembly; it isn't benchmarked, and is likely slower.</li>
+  <li><strong>Other machines.</strong> Everything above is from one fast computer. Older or low-power hardware is slower; embedded devices are untested.</li>
+  <li><strong>Memory use and start-up time.</strong></li>
+</ul>
+<h2 id="run-it">Run it yourself</h2>
+<p>To measure your own machine, run the benchmark, or open the app to try the charts with live numbers:</p>
+<pre><code>cargo install slintplot-stress
+slintplot-stress --bench          # the tables above, for your machine
+slintplot-stress --bench-stream   # only the streaming limits, with your machine's specs
+slintplot-stress                  # the interactive stress test</code></pre>
+<div>
+<p>To repeat the numbers above from the source, at the version they were measured with:</p>
+<pre><code>git clone https://github.com/trondegil/slintplot
+cd slintplot
+git checkout v0.5.0
+cargo run --release -p slintplot-stress -- --bench</code></pre>
+<p>A full run takes about 8 minutes and prints the machine it ran on. Close other apps first and keep the computer on mains power; we run it three times and take the median of each number.</p>
+<p>The interactive app shows live frame times with any renderer; see <a href="index.html#renderers">choosing a renderer</a>.</p>
+<p>The Skia numbers, with the app built with its <code>skia</code> feature (or installed with <code>cargo install slintplot-stress --features skia</code>, then
+<code>SLINT_BACKEND=winit-skia SLINT_SCALE_FACTOR=1 slintplot-stress --bench-gpu</code>). A window opens and stays empty while it runs: the frames are drawn off-screen. Add a folder after <code>--bench-gpu</code> to save every frame as a PNG.</p>
+<pre><code>SLINT_BACKEND=winit-skia SLINT_SCALE_FACTOR=1 \
+  cargo run --release -p slintplot-stress --features skia -- --bench-gpu</code></pre>
+</div>
+
+
+<p class="muted">SlintPlot · <a href="index.html">slintplot.dev</a> · <a href="mailto:license@slintplot.dev">license@slintplot.dev</a></p>
+</main>
+</div>
+<script>
+  // The menu on narrow screens: the button opens it, and picking a section,
+  // tapping outside it or pressing Escape closes it.
+  const root = document.documentElement;
+  const button = document.querySelector(".menu-button");
+  const setOpen = (open) => {
+    root.classList.toggle("menu-open", open);
+    button.setAttribute("aria-expanded", String(open));
+    button.setAttribute("aria-label", open ? "Close menu" : "Menu");
+  };
+  button.addEventListener("click", () => setOpen(!root.classList.contains("menu-open")));
+  document.querySelector(".backdrop").addEventListener("click", () => setOpen(false));
+  document.querySelectorAll("nav a").forEach((link) => link.addEventListener("click", () => setOpen(false)));
+  // The logo follows the theme button's choice, when there is one.
+  const pickLogo = () => {
+    const theme = root.dataset.theme;
+    document.querySelectorAll("source[data-dark]").forEach((source) => {
+      source.media = theme ? (theme === "dark" ? "all" : "not all") : "(prefers-color-scheme: dark)";
+    });
+  };
+  pickLogo();
+  // The gallery's animation: only the theme's video plays, once it's on
+  // screen, and none for visitors who ask for less motion; they see its first
+  // frame.
+  const tours = document.querySelectorAll("video.tour");
+  const lessMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  let tourInView = false;
+  const playTour = () => tours.forEach((video) => {
+    if (tourInView && !lessMotion.matches && video.offsetParent !== null) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  });
+  new IntersectionObserver((entries) => {
+    tourInView = entries[entries.length - 1].isIntersecting;
+    playTour();
+  }).observe(tours[0].parentElement);
+  lessMotion.addEventListener("change", playTour);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", playTour);
+  // The theme button: switches between light and dark, and remembers it.
+  document.querySelectorAll(".theme-button").forEach((themeButton) => themeButton.addEventListener("click", () => {
+    const dark = root.dataset.theme
+      ? root.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+    pickLogo();
+    playTour();
+  }));
+  // A copy button on every code example.
+  document.querySelectorAll("main pre").forEach((pre) => {
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "copy";
+    copy.textContent = "Copy";
+    copy.setAttribute("aria-label", "Copy the code");
+    copy.addEventListener("click", async () => {
+      const text = (pre.querySelector("code") || pre).innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = "Copied";
+      } catch (e) {
+        copy.textContent = "Press Ctrl+C";
+        const range = document.createRange();
+        range.selectNodeContents(pre.querySelector("code") || pre);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+      }
+      copy.classList.add("done");
+      setTimeout(() => { copy.textContent = "Copy"; copy.classList.remove("done"); }, 1600);
+    });
+    pre.appendChild(copy);
+  });
+  // Column names as labels, for the one-card-per-row tables on narrow screens.
+  document.querySelectorAll("table").forEach((table) => {
+    const head = table.querySelector("tr");
+    if (!head || !head.querySelector("th")) return;
+    head.classList.add("head");
+    const names = [...head.children].map((cell) => cell.textContent.trim());
+    table.querySelectorAll("tr").forEach((row) => {
+      if (row === head) return;
+      [...row.children].forEach((cell, i) => {
+        if (i > 0 && names[i]) cell.dataset.label = names[i];
+      });
+    });
+  });
+</script>
+</body>
+</html>

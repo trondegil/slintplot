@@ -11,7 +11,7 @@ license = "GPL-3.0-only OR PolyForm-Noncommercial-1.0.0 OR LicenseRef-SlintPlot-
 [workspace.dependencies]
 slint = "1.18"
 slint-build = "1.18"
-slintplot = { path = "crates/slintplot", version = "0.4.3" }
+slintplot = { path = "crates/slintplot", version = "0.5.0" }
 
 # The browser gallery: the smallest download, at the cost of a slower build
 # (the website workflow shrinks it further with wasm-opt).

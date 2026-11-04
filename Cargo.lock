@@ -1709,6 +1709,7 @@ dependencies = [
  "i-slint-common",
  "i-slint-core",
  "i-slint-renderer-femtovg",
+ "i-slint-renderer-skia",
  "i-slint-renderer-software",
  "input",
  "libseat",
@@ -1733,6 +1734,7 @@ dependencies = [
  "i-slint-core",
  "i-slint-core-macros",
  "i-slint-renderer-femtovg",
+ "i-slint-renderer-skia",
 ]
 
 [[package]]
@@ -1744,6 +1746,7 @@ dependencies = [
  "cfg_aliases",
  "i-slint-common",
  "i-slint-core",
+ "i-slint-renderer-skia",
  "i-slint-renderer-software",
  "vtable",
 ]
@@ -4061,6 +4064,7 @@ dependencies = [
  "i-slint-core",
  "i-slint-core-macros",
  "i-slint-renderer-femtovg",
+ "i-slint-renderer-skia",
  "i-slint-renderer-software",
  "num-traits",
  "once_cell",
@@ -4097,11 +4101,11 @@ dependencies = [
 
 [[package]]
 name = "slintplot"
-version = "0.4.3"
+version = "0.5.0"
 
 [[package]]
 name = "slintplot-docshots"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "png",
  "slint",
@@ -4111,7 +4115,7 @@ dependencies = [
 
 [[package]]
 name = "slintplot-fuzz"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "slint",
  "slint-build",
@@ -4120,7 +4124,7 @@ dependencies = [
 
 [[package]]
 name = "slintplot-gallery"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -4136,7 +4140,7 @@ dependencies = [
 
 [[package]]
 name = "slintplot-stress"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
@@ -4235,6 +4239,7 @@ checksum = "aac18da81ebbf05109ab275b157c22a653bb3c12cf884450179942f81bcbf6c3"
 dependencies = [
  "as-raw-xcb-connection",
  "bytemuck",
+ "drm",
  "fastrand",
  "js-sys",
  "memmap2",

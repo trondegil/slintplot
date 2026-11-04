@@ -10,7 +10,7 @@
 <p align="center">
   <b><a href="https://slintplot.dev">Documentation</a></b> ·
   <b><a href="https://slintplot.dev/demo/">Try the gallery in your browser</a></b> ·
-  <b><a href="https://slintplot.dev/#pricing">Buy a commercial license</a></b>
+  <b><a href="https://slintplot.dev/#pricing">Request a commercial license</a></b>
 </p>
 
 <p align="center">
@@ -24,14 +24,15 @@
 SlintPlot is a chart library for [Slint](https://slint.dev) in Rust. It draws
 charts with Slint's own `Path`, `Rectangle` and `Text` elements, not images,
 so charts stay sharp at any scale, follow the theme and dark mode, and react
-to the mouse.
+to the mouse. Datasets are ordinary Slint models, so updating a row updates
+the chart.
 
 - **Cartesian charts.** Line, bar, horizontal bar, scatter and bubble charts, with stacked, mixed, stepped and filled variants.
-- **Radial charts.** Pie, doughnut, polar area, radial bar and radar charts.
-- **Time and heatmaps.** Time series with date axes, candlestick and OHLC charts, Gantt charts, matrix heatmaps, matrix charts of sized circles and GitHub-style calendar heatmaps.
+- **Radial charts.** Pie, doughnut, polar area, radial bar, radar and segmented ring charts.
+- **Time and heatmaps.** Time series with date axes, candlestick and OHLC charts, Gantt charts, matrix heatmaps, matrix charts of sized circles, tile grids and GitHub-style calendar heatmaps.
 - **Hierarchies and business.** Treemaps, sunbursts, funnels, waterfalls, dumbbells, gauges and bullet charts.
 - **Interactive.** Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.
-- **Large datasets.** Min-max decimation and on-demand data reading for millions of points.
+- **Large datasets.** Min-max decimation and on-demand data reading for millions of points. Three lines of 1,000,000 points each redraw the full range in 238 ms, and zoomed in to the 3,000 points in view in 46 ms (Apple M4, Slint's software renderer; see [Performance](https://slintplot.dev/#performance)).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/screenshots/tour-anim-dark.webp">
@@ -41,9 +42,16 @@ to the mouse.
 *The gallery app shows every chart type with live data, themes and dark mode.
 [Try it in your browser](https://slintplot.dev/demo/), install it with
 `cargo install slintplot-gallery`, or download it ready-built from the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.3).*
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.0).*
 
 ## Getting started
+
+**Compatibility.** Rust only (not Slint's C++, JavaScript or Python APIs).
+Slint 1.18 or later, Rust 1.88 or later. Tested on macOS, Windows, Linux and
+in the browser (WebAssembly); embedded (MCU) builds are untested. FemtoVG,
+Skia and the software renderer are tested; the software renderer needs
+Slint's `software-renderer-path` feature. Charts aren't drawn in Slint's live
+preview or SlintPad.
 
 **1. Add the dependencies.** SlintPlot is both a regular dependency (the
 `register!` macro) and a build dependency (to find its `.slint` files).
@@ -51,11 +59,11 @@ to the mouse.
 ```toml
 [dependencies]
 slint = "1.18"
-slintplot = "0.4"
+slintplot = "0.5"
 
 [build-dependencies]
 slint-build = "1.18"
-slintplot = "0.4"
+slintplot = "0.5"
 ```
 
 **2. Make the library importable** in `build.rs`:
@@ -166,19 +174,24 @@ bars with `series-type`, such as an average line over bars. See
 ## Performance
 
 Every chart is drawn with Slint's own elements, so the cost grows with the
-data. Frame times with Slint's software renderer on one core of an Apple M4,
-1280×800, 3 datasets (a 60 fps frame has 16.7 ms):
+data. Frame times with new data, SlintPlot 0.5.0 and Slint 1.18.1 on an
+Apple M4, 1280×800, 3 datasets (a 60 fps frame has 16.7 ms), with Slint's
+software renderer on one core:
 
 | Points per dataset | Line | Line, decimated | Time series, decimated | Bars | Scatter |
 |---:|---:|---:|---:|---:|---:|
-| 1,000 | 6.6 ms | 6.4 ms | 5.7 ms | 5.6 ms | 4.6 ms |
-| 10,000 | 57 ms | 5.3 ms | 5.4 ms | 30 ms | 27 ms |
-| 100,000 | 1.1 s | 24 ms | 28 ms | 275 ms | not run |
-| 1,000,000 | 16.0 s | 237 ms | 277 ms | not run | not run |
+| 1,000 | 6.8 ms | 6.8 ms | 5.8 ms | 5.0 ms | 4.3 ms |
+| 10,000 | 59 ms | 5.5 ms | 5.6 ms | 26 ms | 23 ms |
+| 100,000 | 1.2 s | 24 ms | 29 ms | 231 ms | not run |
+| 1,000,000 | 16.9 s | 238 ms | 281 ms | not run | not run |
 
-A decimated line streaming the latest 1,000 of 10,000,000 values still updates
-at 60 fps. [Performance](https://slintplot.dev/#performance) has the full
-results, including sunburst, waterfall, dumbbell and funnel charts, and the
+With Skia on the GPU, long lines are faster (a million points without
+decimation take 3.3 s), but charts of many separate shapes are slower, since
+each shape is a separate draw: 10,000 scatter markers take 102 ms. A decimated
+line streaming the latest 1,000 of 10,000,000 values still updates at 60 fps.
+[Performance](https://slintplot.dev/#performance) has how many points or items
+each chart can show at 60 fps, 30 fps and within a second, and
+[Benchmarks](https://slintplot.dev/benchmarks.html) every measured time; the
 stress test app (`cargo install slintplot-stress`) measures your own machine.
 
 <picture>
@@ -204,19 +217,24 @@ cargo install slintplot-gallery   # every chart type, themes and dark mode
 cargo install slintplot-stress    # up to 8 × 1,000,000 points, 60 Hz streaming
 ```
 
+Both apps draw with Slint's FemtoVG renderer by default. Start them with
+`SLINT_BACKEND=winit-software` for the software renderer, or install them with
+`--features skia` and start them with `SLINT_BACKEND=winit-skia` for Skia; see
+[Choosing a renderer](https://slintplot.dev/#renderers).
+
 `slintplot-gallery --snapshot <dir>` renders every sample to PNG, and
 `slintplot-stress --bench` prints headless timings. On Linux, Slint needs the
 fontconfig and xkbcommon development packages (`libfontconfig-dev` and
 `libxkbcommon-dev` on Debian and Ubuntu). Ready-built apps for macOS, Windows
 and Linux are on the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.4.3),
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.0),
 and the source is in [`examples/gallery`](https://github.com/trondegil/slintplot/tree/main/examples/gallery) and
 [`examples/stress`](https://github.com/trondegil/slintplot/tree/main/examples/stress). The gallery's `ui/gallery.slint` has a
 working example of every chart.
 
 ## Limitations
 
-What SlintPlot 0.4 doesn't do yet, or does with restrictions:
+What SlintPlot 0.5 doesn't do yet, or does with restrictions:
 
 - **Rust only.** The chart geometry is computed in Rust, so the library can't be used from Slint's C++, JavaScript or Python APIs, and charts aren't drawn in Slint's live preview or SlintPad.
 - **Platforms.** Tested on desktop (macOS, Windows and Linux) and in the browser with WebAssembly. Embedded (MCU) builds are untested. With Slint's software renderer, enable its `software-renderer-path` feature, or charts aren't drawn.
@@ -239,6 +257,8 @@ cargo run -p slintplot-gallery                                 # sample browser
 cargo run -p slintplot-gallery -- --snapshot target/snapshots  # headless PNG renders
 cargo run --release -p slintplot-stress                        # stress test, streaming
 cargo run --release -p slintplot-stress -- --bench             # headless timings
+SLINT_BACKEND=winit-skia SLINT_SCALE_FACTOR=1 \
+  cargo run --release -p slintplot-stress --features skia -- --bench-gpu  # the same with Skia
 cargo run --release -p slintplot-stress -- --snapshot docs/screenshots  # the stress test screenshots
 cargo run --release -p slintplot-gallery -- --docs docs/screenshots     # the website's gallery pictures
 cargo run --release -p slintplot-docshots -- docs/screenshots/charts   # the chart pictures, from the page's code
@@ -284,7 +304,7 @@ two years: the first year and the first renewal. **Perpetual fallback:**
 products you release while your license is active may keep being sold and
 shipped after it ends, with the SlintPlot version they were built with.
 
-See [Pricing](https://slintplot.dev/#pricing) to buy a license, or email
+See [Pricing](https://slintplot.dev/#pricing) to request a license, or email
 <license@slintplot.dev>. The full terms are in
 [LICENSE.md](https://github.com/trondegil/slintplot/blob/main/LICENSE.md) and
 [COMMERCIAL.md](https://github.com/trondegil/slintplot/blob/main/COMMERCIAL.md).
