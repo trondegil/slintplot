@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Example apps
+
+- Gallery: the segmented ring and tile grid samples with four charts show
+  one at a time, picked above the chart, on phones and small windows, where
+  four were too small to read.
+
 ## 0.5.0
 
 ### Added

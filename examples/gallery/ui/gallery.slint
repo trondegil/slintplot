@@ -1143,6 +1143,19 @@ export component Gallery inherits Window {
     // The colors of the segmented ring and tile grid charts by category that
     // pick their own, worked out in Rust: per chart, the categories' colors.
     // 1: the charts' custom colors.
+    // The samples with four charts show one at a time on phones and small
+    // windows, where four would be too small: this one, picked in the header.
+    // Set when the size changes rather than bound to it, as `narrow` is.
+    private property <bool> one-chart;
+    in-out property <int> grid-chart;
+    function fit-charts() {
+        // Not for the website's screenshots of the charts (`chart-only`).
+        self.one-chart = !self.chart-only && (self.narrow || self.height < 700px
+            || self.width - (self.sidebar-shown ? 240px : 0px) < 900px);
+    }
+    changed sample => {
+        self.grid-chart = 0;
+    }
     in-out property <int> ring-colors: 1;
     in property <[[color]]> ring-class-colors;
     // The practice tile grid's color: its own orange with Custom colors,
@@ -1244,11 +1257,22 @@ export component Gallery inherits Window {
     }
     init => {
         self.narrow = self.width < 900px;
+        self.fit-charts();
         self.fit-text();
         self.apply-look();
     }
     changed width => {
         self.narrow = self.width < 900px;
+        self.fit-charts();
+    }
+    changed height => {
+        self.fit-charts();
+    }
+    changed sidebar-shown => {
+        self.fit-charts();
+    }
+    changed chart-only => {
+        self.fit-charts();
     }
     changed narrow => {
         self.fit-text();
@@ -1457,6 +1481,17 @@ export component Gallery inherits Window {
                     VerticalLayout {
                         vertical-stretch: 1;
                         padding: root.narrow ? 8px : 16px;
+                        // Which of the four charts, when there's room for one.
+                        if root.one-chart && (root.sample == "tile-grid-scale" || root.sample == "tile-grid-classes" || root.sample == "segmented-ring-classes" || root.sample == "segmented-ring-scale"): HorizontalLayout {
+                            alignment: start;
+                            vertical-stretch: 0;
+                            padding-bottom: 8px;
+                            ComboBox {
+                                width: 240px;
+                                model: root.sample == "tile-grid-scale" ? ["Practice this quarter", "Contributions", "Server load by half hour", "Temperature against normal"] : root.sample == "tile-grid-classes" ? ["Service status by day", "Tests by build", "Room bookings", "Seats sold"] : root.sample == "segmented-ring-classes" ? ["Automated runs", "Uptime this year", "Habits this month", "Release pipeline"] : root.sample == "segmented-ring-scale" ? ["Website visits by hour", "Temperature against normal", "CPU load by core", "Steps per day"] : [];
+                                current-index <=> root.grid-chart;
+                            }
+                        }
 
                     if root.sample == "bar-vertical": BarChart {
                         title: "Vertical bar chart";
@@ -1911,9 +1946,11 @@ export component Gallery inherits Window {
                     }
                     if root.sample == "tile-grid-scale": GridLayout {
                         spacing: 8px;
+                        vertical-stretch: 1;
                         TileGridChart {
                             row: 0;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 0;
                             title: "Practice this quarter";
                             values: root.matrix-values[0];
                             x-labels: root.matrix-x-labels[0];
@@ -1927,7 +1964,8 @@ export component Gallery inherits Window {
                         }
                         TileGridChart {
                             row: 0;
-                            col: 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 1;
                             title: "Contributions";
                             values: root.matrix-values[1];
                             x-labels: root.matrix-x-labels[1];
@@ -1938,8 +1976,9 @@ export component Gallery inherits Window {
                             }
                         }
                         TileGridChart {
-                            row: 1;
+                            row: root.one-chart ? 0 : 1;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 2;
                             title: "Server load by half hour";
                             values: root.matrix-values[2];
                             x-labels: root.matrix-x-labels[2];
@@ -1954,8 +1993,9 @@ export component Gallery inherits Window {
                             }
                         }
                         TileGridChart {
-                            row: 1;
-                            col: 1;
+                            row: root.one-chart ? 0 : 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 3;
                             title: "Temperature against normal";
                             values: root.matrix-values[3];
                             x-labels: root.matrix-x-labels[3];
@@ -1970,9 +2010,11 @@ export component Gallery inherits Window {
                     }
                     if root.sample == "tile-grid-classes": GridLayout {
                         spacing: 8px;
+                        vertical-stretch: 1;
                         TileGridChart {
                             row: 0;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 0;
                             title: "Service status by day";
                             values: root.matrix-values[0];
                             x-labels: root.matrix-x-labels[0];
@@ -1988,7 +2030,8 @@ export component Gallery inherits Window {
                         }
                         TileGridChart {
                             row: 0;
-                            col: 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 1;
                             title: "Tests by build";
                             values: root.matrix-values[1];
                             x-labels: root.matrix-x-labels[1];
@@ -2003,8 +2046,9 @@ export component Gallery inherits Window {
                             }
                         }
                         TileGridChart {
-                            row: 1;
+                            row: root.one-chart ? 0 : 1;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 2;
                             title: "Room bookings";
                             values: root.matrix-values[2];
                             x-labels: root.matrix-x-labels[2];
@@ -2018,8 +2062,9 @@ export component Gallery inherits Window {
                             }
                         }
                         TileGridChart {
-                            row: 1;
-                            col: 1;
+                            row: root.one-chart ? 0 : 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 3;
                             title: "Seats sold";
                             values: root.matrix-values[3];
                             x-labels: root.matrix-x-labels[3];
@@ -2036,9 +2081,11 @@ export component Gallery inherits Window {
                     }
                     if root.sample == "segmented-ring-classes": GridLayout {
                         spacing: 8px;
+                        vertical-stretch: 1;
                         SegmentedRingChart {
                             row: 0;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 0;
                             title: "Automated runs";
                             values: root.matrix-values[0];
                             x-labels: root.matrix-x-labels[0];
@@ -2060,7 +2107,8 @@ export component Gallery inherits Window {
                         }
                         SegmentedRingChart {
                             row: 0;
-                            col: 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 1;
                             title: "Uptime this year";
                             values: root.matrix-values[1];
                             x-labels: root.matrix-x-labels[1];
@@ -2081,8 +2129,9 @@ export component Gallery inherits Window {
                             }
                         }
                         SegmentedRingChart {
-                            row: 1;
+                            row: root.one-chart ? 0 : 1;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 2;
                             title: "Habits this month";
                             values: root.matrix-values[2];
                             x-labels: root.matrix-x-labels[2];
@@ -2100,8 +2149,9 @@ export component Gallery inherits Window {
                             }
                         }
                         SegmentedRingChart {
-                            row: 1;
-                            col: 1;
+                            row: root.one-chart ? 0 : 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 3;
                             title: "Release pipeline";
                             values: root.matrix-values[3];
                             x-labels: root.matrix-x-labels[3];
@@ -2123,9 +2173,11 @@ export component Gallery inherits Window {
                     }
                     if root.sample == "segmented-ring-scale": GridLayout {
                         spacing: 8px;
+                        vertical-stretch: 1;
                         SegmentedRingChart {
                             row: 0;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 0;
                             title: "Website visits by hour";
                             values: root.matrix-values[0];
                             x-labels: root.matrix-x-labels[0];
@@ -2141,7 +2193,8 @@ export component Gallery inherits Window {
                         }
                         SegmentedRingChart {
                             row: 0;
-                            col: 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 1;
                             title: "Temperature against normal";
                             values: root.matrix-values[1];
                             x-labels: root.matrix-x-labels[1];
@@ -2158,8 +2211,9 @@ export component Gallery inherits Window {
                             }
                         }
                         SegmentedRingChart {
-                            row: 1;
+                            row: root.one-chart ? 0 : 1;
                             col: 0;
+                            visible: !root.one-chart || root.grid-chart == 2;
                             title: "CPU load by core";
                             values: root.matrix-values[2];
                             x-labels: root.matrix-x-labels[2];
@@ -2180,8 +2234,9 @@ export component Gallery inherits Window {
                             }
                         }
                         SegmentedRingChart {
-                            row: 1;
-                            col: 1;
+                            row: root.one-chart ? 0 : 1;
+                            col: root.one-chart ? 0 : 1;
+                            visible: !root.one-chart || root.grid-chart == 3;
                             title: "Steps per day";
                             values: root.matrix-values[3];
                             x-labels: root.matrix-x-labels[3];
@@ -2286,7 +2341,7 @@ export component Gallery inherits Window {
                         // Rows without a target, on one axis.
                         BulletChart {
                             row: root.narrow ? 2 : 1;
-                            col: root.narrow ? 0 : 1;
+                            col: root.one-chart ? 0 : 1;
                             title: "Website visits, thousands";
                             shared-axis: true;
                             show-legend: true;
