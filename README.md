@@ -32,7 +32,7 @@ the chart.
 - **Time and heatmaps.** Time series with date axes, candlestick and OHLC charts, Gantt charts, matrix heatmaps, matrix charts of sized circles, tile grids and GitHub-style calendar heatmaps.
 - **Hierarchies and business.** Treemaps, sunbursts, funnels, waterfalls, dumbbells, gauges and bullet charts.
 - **Interactive.** Tooltips, hover highlights, clickable legends, click callbacks, zoom and pan, keyboard navigation.
-- **Large datasets.** Min-max decimation and on-demand data reading for millions of points. Three lines of 1,000,000 points each redraw the full range in 238 ms, and zoomed in to the 3,000 points in view in 46 ms (Apple M4, Slint's software renderer; see [Performance](https://slintplot.dev/#performance)).
+- **Large datasets.** Millions of points stay responsive. SlintPlot draws only what the screen can show and reads only the data in view, so zooming in makes a chart faster. See [Performance](https://slintplot.dev/#performance) for how much a chart can handle.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://slintplot.dev/screenshots/tour-anim-dark.webp">
