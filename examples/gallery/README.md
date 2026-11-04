@@ -15,6 +15,19 @@ slintplot-gallery --snapshot <dir>   # render every sample to PNG, without a win
   <img src="https://slintplot.dev/screenshots/tour-anim.webp" alt="The gallery app: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list">
 </picture>
 
+## Renderers
+
+The app draws with Slint's FemtoVG renderer (on the GPU) by default. Pick
+another with `SLINT_BACKEND`; Skia needs the app built with its `skia`
+feature:
+
+```sh
+SLINT_BACKEND=winit-software slintplot-gallery      # Slint's software renderer, on the CPU
+SLINT_BACKEND=winit-femtovg slintplot-gallery       # FemtoVG, the default
+cargo install slintplot-gallery --features skia
+SLINT_BACKEND=winit-skia slintplot-gallery          # Skia, on the GPU
+```
+
 `ui/gallery.slint` has a working example of every chart. The code button
 (`</>`) at the top right shows the sample as a small Rust app, a file per tab:
 `ui/app.slint`, the sample's code taken from that file at build time, as a

@@ -15,6 +15,23 @@ slintplot-stress --bench   # print headless frame timings
 On Linux, Slint needs the fontconfig and xkbcommon development packages first
 (`libfontconfig-dev` and `libxkbcommon-dev` on Debian and Ubuntu).
 
+## Renderers
+
+The app draws with Slint's FemtoVG renderer (on the GPU) by default. Pick
+another with `SLINT_BACKEND`; Skia needs the app built with its `skia`
+feature:
+
+```sh
+SLINT_BACKEND=winit-software slintplot-stress      # Slint's software renderer, on the CPU
+SLINT_BACKEND=winit-femtovg slintplot-stress       # FemtoVG, the default
+cargo install slintplot-stress --features skia
+SLINT_BACKEND=winit-skia slintplot-stress          # Skia, on the GPU
+```
+
+`slintplot-stress --bench-gpu` times the same charts as `--bench` with the
+renderer `SLINT_BACKEND` picks, such as Skia; see
+[Benchmarks](https://slintplot.dev/benchmarks.html).
+
 Documentation: [slintplot.dev](https://slintplot.dev). The gallery app
 runs [in your browser](https://slintplot.dev/demo/).
 

@@ -6,9 +6,12 @@
 //!
 //! `--bench [dir]` renders headlessly with the software renderer and prints
 //! timings, optionally saving every rendered configuration as a PNG in `dir`.
-//! `--bench-stream` runs only its streaming part.
+//! `--bench-stream` runs only its streaming part. `--bench-gpu` renders the
+//! same configurations in a window with a GPU renderer, chosen with
+//! `SLINT_BACKEND` (build with `--features skia` for Skia).
 
 mod bench;
+mod bench_gpu;
 mod dock_icon;
 mod stream_model;
 
@@ -479,11 +482,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match (args.next().as_deref(), args.next()) {
         (Some("--bench"), dir) => return bench::run(dir.map(Into::into)),
         (Some("--bench-stream"), None) => return bench::run_stream(),
+        (Some("--bench-gpu"), dir) => return bench_gpu::run(dir.map(Into::into)),
         (Some("--snapshot"), Some(dir)) => return bench::snapshot(dir.as_ref()),
         (None, _) => {}
         _ => {
             return Err(
-                "usage: slintplot-stress [--bench [<dir>] | --bench-stream | --snapshot <dir>]"
+                "usage: slintplot-stress [--bench [<dir>] | --bench-stream | --bench-gpu [<dir>] | --snapshot <dir>]"
                     .into(),
             );
         }

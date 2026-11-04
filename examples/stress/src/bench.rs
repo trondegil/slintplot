@@ -24,6 +24,51 @@ impl Platform for Headless {
     }
 }
 
+/// The benchmarked configurations: label, chart type (see
+/// `Stress.chart-type`), show points, smooth, decimate.
+pub const MODES: [(&str, i32, bool, bool, bool); 16] = [
+    ("line, points, smooth", 0, true, true, false),
+    ("line, no points", 0, false, false, false),
+    ("line, decimated", 0, false, false, true),
+    ("bars", 1, false, false, false),
+    ("time series", 2, false, false, false),
+    ("time series, decimated", 2, false, false, true),
+    ("scatter", 3, true, false, false),
+    ("waterfall", 4, false, false, false),
+    ("dumbbell", 5, false, false, false),
+    ("funnel", 6, false, false, false),
+    ("sunburst", 7, false, false, false),
+    ("gauge", 8, true, false, false),
+    ("segmented rings, scale", 9, false, false, false),
+    ("segmented rings, class", 9, true, false, false),
+    ("tile grid, scale", 10, false, false, false),
+    ("tile grid, class", 10, true, false, false),
+];
+
+/// Why a configuration isn't run.
+pub enum Skip {
+    /// The gauge shows one value, so other counts would repeat it.
+    Silently,
+    /// Too slow to be worth the wait; printed as "skipped".
+    Say,
+}
+
+/// Markers and bars are one element each, and undecimated lines of a
+/// million points take seconds to draw in software: skip the sizes that
+/// would take minutes. In the matrix charts, Points means classes, not
+/// markers.
+pub fn skip(points: usize, chart_type: i32, show_points: bool) -> Option<Skip> {
+    if chart_type == 8 && points > 100 {
+        return Some(Skip::Silently);
+    }
+    let markers = (show_points && !matches!(chart_type, 8..=10)) || chart_type == 1;
+    let per_item = (4..=7).contains(&chart_type);
+    if (markers && points > 100_000) || ((chart_type == 3 || per_item) && points > 10_000) {
+        return Some(Skip::Say);
+    }
+    None
+}
+
 /// Renders one frame and returns how long it took, including layout.
 fn frame(window: &MinimalSoftwareWindow, pixels: &mut [PremultipliedRgbaColor]) -> Duration {
     slint::platform::update_timers_and_animations();
@@ -73,43 +118,17 @@ pub fn run(png_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
         "{:>10}  {:<22}  {:>10}  {:>10}  {:>6}  {:>10}  {:>12}  {:>6}",
         "points", "mode", "generate", "engine", "calls", "frame", "hover frame", "calls"
     );
-    let modes: [(&str, i32, bool, bool, bool); 16] = [
-        // label, chart type (see `Stress.chart-type`), show points, smooth,
-        // decimate
-        ("line, points, smooth", 0, true, true, false),
-        ("line, no points", 0, false, false, false),
-        ("line, decimated", 0, false, false, true),
-        ("bars", 1, false, false, false),
-        ("time series", 2, false, false, false),
-        ("time series, decimated", 2, false, false, true),
-        ("scatter", 3, true, false, false),
-        ("waterfall", 4, false, false, false),
-        ("dumbbell", 5, false, false, false),
-        ("funnel", 6, false, false, false),
-        ("sunburst", 7, false, false, false),
-        ("gauge", 8, true, false, false),
-        ("segmented rings, scale", 9, false, false, false),
-        ("segmented rings, class", 9, true, false, false),
-        ("tile grid, scale", 10, false, false, false),
-        ("tile grid, class", 10, true, false, false),
-    ];
     let mut zoom = Vec::new();
     for &points in &POINT_COUNTS {
         app.set_bench_count(points as i32);
-        for (label, chart_type, show_points, smooth, decimate) in modes {
-            // Markers and bars are one element each, and undecimated lines
-            // of a million points take seconds to draw in software: skip the
-            // sizes that would take minutes, and say so.
-            // The gauge shows one value, so the point count doesn't matter.
-            if chart_type == 8 && points > 100 {
-                continue;
-            }
-            // In the matrix charts, Points means classes, not markers.
-            let markers = (show_points && !matches!(chart_type, 8..=10)) || chart_type == 1;
-            let per_item = (4..=7).contains(&chart_type);
-            if (markers && points > 100_000) || ((chart_type == 3 || per_item) && points > 10_000) {
-                println!("{points:>10}  {label:<22}  {:>10}", "skipped");
-                continue;
+        for (label, chart_type, show_points, smooth, decimate) in MODES {
+            match skip(points, chart_type, show_points) {
+                Some(Skip::Silently) => continue,
+                Some(Skip::Say) => {
+                    println!("{points:>10}  {label:<22}  {:>10}", "skipped");
+                    continue;
+                }
+                None => {}
             }
             app.set_chart_type(chart_type);
             let started = Instant::now();
@@ -176,7 +195,7 @@ pub fn run_stream() -> Result<(), Box<dyn std::error::Error>> {
 
 /// The machine the benchmark runs on: CPU, cores, memory and OS, as far as
 /// the OS tells.
-fn machine() -> String {
+pub fn machine() -> String {
     use std::process::Command;
     let run = |cmd: &str, args: &[&str]| {
         Command::new(cmd)
