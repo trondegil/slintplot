@@ -118,6 +118,8 @@ fn sample_code(ui: &Gallery, id: &str) -> String {
     let Some(body) = template(id) else {
         return String::new();
     };
+    let shown = ui.get_one_chart().then(|| ui.get_grid_chart() as usize);
+    let body = &four_charts(body, shown);
     let mut properties = String::new();
     for name in properties_read(body) {
         if let Some(callback) = callback_declaration(&name) {
@@ -151,6 +153,55 @@ fn sample_code(ui: &Gallery, id: &str) -> String {
     // ChartEngine is exported so that slintplot::register! can connect it.
     let code = format!("export {{ ChartEngine }}\n\n{window}");
     format!("{}\n{code}", import_line(&code))
+}
+
+/// The code of a sample with four charts in a grid, which on phones and
+/// small windows shows one at a time (`one-chart`): with `shown`, only that
+/// chart, otherwise the grid, without the code that picks the chart. Other
+/// samples' code is returned as it is.
+fn four_charts(body: &str, shown: Option<usize>) -> String {
+    if !body.contains("root.grid-chart") {
+        return body.to_string();
+    }
+    // The grid: each chart in its own cell.
+    let mut grid = String::new();
+    for line in body.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("visible: !root.one-chart") {
+            continue;
+        }
+        grid.push_str(&line.replace("root.one-chart ? 0 : ", ""));
+        grid.push('\n');
+    }
+    let Some(shown) = shown else {
+        return grid.trim_end().to_string();
+    };
+    // The grid's charts are its elements at the first level, four spaces in.
+    let mut charts: Vec<String> = Vec::new();
+    for line in grid.lines() {
+        if line.starts_with("    ") && !line.starts_with("     ") && line.ends_with(" {") {
+            charts.push(String::new());
+        }
+        if let Some(chart) = charts.last_mut() {
+            let trimmed = line.trim_start();
+            if !(line.starts_with("        ")
+                && !line.starts_with("         ")
+                && (trimmed.starts_with("row: ") || trimmed.starts_with("col: ")))
+            {
+                chart.push_str(line.get(4..).unwrap_or(""));
+                chart.push('\n');
+            }
+            if line == "    }" {
+                // The chart is complete; lines after it belong to no chart.
+                charts.push(String::new());
+            }
+        }
+    }
+    charts.retain(|c| !c.trim().is_empty());
+    match charts.get(shown) {
+        Some(chart) => chart.trim_end().to_string(),
+        None => grid.trim_end().to_string(),
+    }
 }
 
 /// The sample's code from ui/gallery.slint, if it has any.
@@ -547,7 +598,10 @@ mod tests {
     fn every_sample_has_code_and_known_properties() {
         for sample in crate::SAMPLES {
             let body = template(sample.id).unwrap_or_else(|| panic!("no code for {}", sample.id));
-            for name in properties_read(body) {
+            for name in [None, Some(0), Some(3)]
+                .into_iter()
+                .flat_map(|shown| properties_read(&four_charts(body, shown)))
+            {
                 assert!(
                     property_type(&name).is_some() || callback_declaration(&name).is_some(),
                     "{}: root.{name}",
@@ -572,6 +626,52 @@ mod tests {
                 std::fs::write(format!("{dir}/{}.slint", sample.id), slint.as_str()).unwrap();
             }
         }
+    }
+
+    /// On phones and small windows the samples with four charts show one at
+    /// a time, and the code panel only that one, as a chart of its own.
+    #[test]
+    fn four_chart_samples_show_the_code_of_the_chart_shown() {
+        let window = crate::snapshot::install();
+        let (ui, state) = crate::gallery().unwrap();
+        slint::ComponentHandle::show(&ui).unwrap();
+        let grids = crate::SAMPLES
+            .iter()
+            .filter(|s| template(s.id).unwrap().contains("root.grid-chart"));
+        let mut count = 0;
+        for sample in grids {
+            count += 1;
+            crate::snapshot::resize(&window, crate::snapshot::WIDTH, crate::snapshot::HEIGHT);
+            state.borrow_mut().select(sample);
+            // `changed` handlers run before the next frame.
+            crate::snapshot::render(&window);
+            assert!(!ui.get_one_chart(), "{}", sample.id);
+            let grid = sample_files(&ui, sample.id).row_data(0).unwrap().code;
+            assert!(grid.contains("GridLayout"), "{}", sample.id);
+            assert!(
+                !grid.contains("one-chart") && !grid.contains("grid-chart"),
+                "{grid}"
+            );
+            crate::snapshot::resize(&window, 390, 800);
+            crate::snapshot::render(&window);
+            assert!(ui.get_one_chart(), "{}", sample.id);
+            for shown in 0..4 {
+                ui.set_grid_chart(shown);
+                let code = sample_files(&ui, sample.id).row_data(0).unwrap().code;
+                assert!(!code.contains("GridLayout"), "{code}");
+                assert!(!code.contains("row: ") && !code.contains("col: "), "{code}");
+                assert!(
+                    !code.contains("one-chart") && !code.contains("grid-chart"),
+                    "{code}"
+                );
+                assert_eq!(code.matches("title: ").count(), 1, "{code}");
+                if let Some(dir) = option_env!("GALLERY_CODE_DIR") {
+                    std::fs::write(format!("{dir}/{}-{shown}.slint", sample.id), code.as_str())
+                        .unwrap();
+                }
+            }
+        }
+        assert_eq!(count, 4);
     }
 
     #[test]

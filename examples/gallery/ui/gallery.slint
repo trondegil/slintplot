@@ -1146,7 +1146,7 @@ export component Gallery inherits Window {
     // The samples with four charts show one at a time on phones and small
     // windows, where four would be too small: this one, picked in the header.
     // Set when the size changes rather than bound to it, as `narrow` is.
-    private property <bool> one-chart;
+    out property <bool> one-chart;
     in-out property <int> grid-chart;
     function fit-charts() {
         // Not for the website's screenshots of the charts (`chart-only`).
@@ -2341,7 +2341,7 @@ export component Gallery inherits Window {
                         // Rows without a target, on one axis.
                         BulletChart {
                             row: root.narrow ? 2 : 1;
-                            col: root.one-chart ? 0 : 1;
+                            col: root.narrow ? 0 : 1;
                             title: "Website visits, thousands";
                             shared-axis: true;
                             show-legend: true;
