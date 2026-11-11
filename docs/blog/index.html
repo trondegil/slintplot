@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlintPlot blog</title>
+<meta name="description" content="Notes on building SlintPlot, a chart library for Slint in Rust.">
+<link rel="canonical" href="https://slintplot.dev/blog/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SlintPlot">
+<meta property="og:title" content="SlintPlot blog">
+<meta property="og:description" content="Notes on building SlintPlot, a chart library for Slint in Rust.">
+<meta property="og:url" content="https://slintplot.dev/blog/">
+<meta property="og:image" content="https://slintplot.dev/screenshots/gallery.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/slintplot-icon.png">
+<!-- Privacy-friendly analytics by Plausible: visit counts without cookies or
+     personal data, plus the site's custom events. Outbound link clicks are
+     switched on in Plausible's site settings. -->
+<script async src="https://plausible.io/js/pa-Uc9vcGHjcu2slhm1AwQAS.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
+<script>
+  // The theme picked with the theme button; otherwise the system's.
+  try {
+    const theme = localStorage.getItem("theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f7fb;
+    --text: #1d2433;
+    --text-muted: #5b6475;
+    --border: #e3e6ef;
+    --accent: #2563c9;
+    --accent-2: #13b7a5;
+    --code-bg: #f3f5fa;
+    --code-text: #1d2433;
+    --note-bg: #eef7f6;
+    --placeholder: #f2f4fa;
+    --sidebar: #fafbfd;
+    --scrollbar: #c9ceda;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151c;
+      --bg-soft: #181c25;
+      --text: #e6e9f0;
+      --text-muted: #a3abbb;
+      --border: #2a303d;
+      --accent: #6aa2ff;
+      --accent-2: #3fd6c4;
+      --code-bg: #1b2030;
+      --code-text: #dfe5f2;
+      --note-bg: #16302d;
+      --placeholder: #1a1f2b;
+      --sidebar: #151922;
+      --scrollbar: #3a4254;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151c;
+    --bg-soft: #181c25;
+    --text: #e6e9f0;
+    --text-muted: #a3abbb;
+    --border: #2a303d;
+    --accent: #6aa2ff;
+    --accent-2: #3fd6c4;
+    --code-bg: #1b2030;
+    --code-text: #dfe5f2;
+    --note-bg: #16302d;
+    --placeholder: #1a1f2b;
+    --sidebar: #151922;
+    --scrollbar: #3a4254;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  /* Scrollbars in the theme's colors. */
+  html { scrollbar-color: var(--scrollbar) transparent; }
+  nav, pre { scrollbar-width: thin; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+  /* The logo, the screenshots and the theme button's icon follow the
+     theme: .when-light shows in light mode only, .when-dark in dark mode. */
+  :root[data-theme="light"] .when-dark,
+  :root[data-theme="dark"] .when-light { display: none !important; }
+  @media not all and (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .when-dark { display: none !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .when-light { display: none !important; }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  main p a, main li a, main td a, figcaption a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  .layout { display: flex; min-height: 100vh; }
+  nav {
+    position: sticky; top: 0; align-self: flex-start;
+    /* dvh: on phones 100vh is taller than the screen between the browser's
+       bars, which hides the end of the menu. overscroll-behavior keeps a
+       scroll that reaches the end of the menu from moving the page. */
+    width: 250px; height: 100vh; height: 100dvh; overflow-y: auto;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding: 20px 16px 40px;
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .nav-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .nav-head .brand { margin-bottom: 0; }
+  .theme-button {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px;
+    background: transparent; color: var(--text-muted); cursor: pointer;
+  }
+  .theme-button:hover { background: var(--bg-soft); color: var(--text); }
+  .theme-button svg { width: 18px; height: 18px; }
+  pre { position: relative; }
+  .copy {
+    position: absolute; top: 8px; right: 8px;
+    padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text-muted); font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; cursor: pointer;
+    opacity: 0; transition: opacity .15s;
+  }
+  pre:hover .copy, .copy:focus-visible, .copy.done { opacity: 1; }
+  .copy:hover { color: var(--text); }
+  @media (hover: none) { .copy { opacity: 1; } }
+  nav .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--text); font-weight: 700; font-size: 18px; }
+  nav .brand img { width: 32px; height: 32px; }
+  nav .group { margin: 18px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  nav a { display: block; padding: 3px 8px; border-radius: 6px; color: var(--text); font-size: 14px; }
+  nav a:hover { background: var(--bg-soft); text-decoration: none; }
+  main { flex: 1; min-width: 0; padding: 32px 48px 80px; max-width: 980px; }
+  .hero { padding: 28px; border-radius: 14px; background: var(--bg-soft); border: 1px solid var(--border); margin-bottom: 28px; text-align: center; }
+  .hero img { max-width: 420px; width: 100%; height: auto; }
+  .hero .try { display: inline-block; margin-top: 6px; padding: 9px 18px; border-radius: 8px; background: #2563c9; color: #ffffff; font-weight: 600; }
+  .hero .try:hover { background: #1d4fa6; }
+  .hero p { color: #5b6475; margin: 10px 0 0; font-size: 17px; }
+  h1 { font-size: 30px; margin: 0 0 8px; }
+  h2 { font-size: 24px; margin: 52px 0 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 18px; margin: 32px 0 8px; }
+  h3 code, h2 code { font-size: .95em; }
+  p, li { color: var(--text); }
+  .muted { color: var(--text-muted); }
+  code { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code-bg); color: var(--code-text); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; }
+  pre code { background: none; padding: 0; font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--bg-soft); border: 1px solid var(--border); color: var(--text-muted); margin-left: 6px; vertical-align: middle; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td code { white-space: nowrap; }
+  .note { background: var(--note-bg); border-left: 3px solid var(--accent-2); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .placeholder {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: 220px; margin: 14px 0 20px; padding: 20px;
+    border: 2px dashed var(--border); border-radius: 12px;
+    background: var(--placeholder); color: var(--text-muted); font-size: 14px;
+  }
+  .placeholder.small { min-height: 70px; }
+  .placeholder strong { display: block; color: var(--text); margin-bottom: 4px; }
+  .shot { margin: 14px 0 20px; }
+  .shot figcaption { margin-top: 8px; font-size: 14px; color: var(--text-muted); }
+  .shot img, .shot video { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
+  .swatches { display: flex; gap: 4px; }
+  .swatches span { width: 18px; height: 18px; border-radius: 4px; display: inline-block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+  .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-soft); }
+  .card h2 { margin: 0 0 4px; padding: 0; border: 0; font-size: 15px; }
+  .card p { margin: 0; font-size: 13px; color: var(--text-muted); }
+  /* The compatibility box next to Getting started. */
+  .compat { border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; background: var(--bg-soft); margin: 14px 0; }
+  .compat h3 { margin: 0 0 6px; font-size: 15px; }
+  .compat dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; font-size: 14px; }
+  .compat dt { font-weight: 600; }
+  .compat dd { margin: 0; }
+  /* The hero's second button, and the pricing plans. */
+  .hero .buy-license { display: inline-block; margin: 6px 0 0 8px; padding: 8px 17px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-weight: 600; }
+  .hero .buy-license:hover { border-color: var(--accent); text-decoration: none; }
+  .early-bird { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 16px 0; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--accent-2); background: var(--note-bg); }
+  .early-bird p { flex: 1 1 320px; margin: 0; }
+  .early-bird strong { color: var(--text); }
+  .countdown { display: flex; gap: 6px; margin: 0; }
+  .countdown div { min-width: 54px; padding: 4px 6px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); text-align: center; }
+  .countdown span { display: block; font-size: 20px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .countdown small { display: block; font-size: 11px; color: var(--text-muted); }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 16px 0 10px; }
+  .plan { display: flex; flex-direction: column; padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft); }
+  .plan.featured { border-color: var(--accent); }
+  .plan h3 { margin: 0; font-size: 17px; }
+  .plan .who { margin: 2px 0 12px; font-size: 13px; color: var(--text-muted); }
+  .plan .price { font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .plan .price small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+  .plan .was { font-size: 14px; color: var(--text-muted); text-decoration: line-through; margin-right: 6px; }
+  .plan .bird { display: block; font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .plan ul { margin: 12px 0 16px; padding-left: 18px; font-size: 14px; flex: 1; }
+  .plan li { margin: 3px 0; }
+  .plan label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--text-muted); }
+  .plan input { width: 72px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  .plan .buy { display: block; padding: 9px 14px; border-radius: 8px; border: 0; background: #2563c9; color: #ffffff; font: inherit; font-weight: 600; text-align: center; cursor: pointer; }
+  .plan .buy:hover { background: #1d4fa6; text-decoration: none; }
+  .plan .buy.soon { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .plan .buy.soon:hover { border-color: var(--accent); }
+  .topbar, .backdrop { display: none; }
+  @media (max-width: 820px) {
+    .layout { display: block; }
+    nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    main { padding: 20px 16px 60px; }
+    /* Tables become one card per row: the first cell as its heading, the
+       others labelled with their column names (copied in by the script at
+       the end). */
+    .js table, .js tbody, .js tr, .js td { display: block; }
+    .js tr.head { display: none; }
+    .js tr { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .js td { padding: 2px 0; border: 0; }
+    .js td:first-child { font-weight: 600; margin-bottom: 2px; }
+    .js td[data-label]::before {
+      content: attr(data-label); display: inline-block; min-width: 8.5em; margin-right: 6px;
+      color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .js td:empty { display: none; }
+    .hero { padding: 20px 16px; }
+    /* With JavaScript, the menu opens from a button instead of sitting
+       above the content. */
+    .js .topbar {
+      display: flex; align-items: center; gap: 10px;
+      position: sticky; top: 0; z-index: 20;
+      padding: 8px 12px; background: var(--sidebar); border-bottom: 1px solid var(--border);
+    }
+    .topbar .brand { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; font-size: 17px; }
+    .topbar .theme-button { margin-left: auto; }
+    .topbar .brand img { width: 26px; height: 26px; }
+    .menu-button {
+      display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; padding: 0; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); cursor: pointer;
+    }
+    .menu-button svg { width: 20px; height: 20px; }
+    .js nav {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
+      width: min(300px, 85vw); height: 100vh; height: 100dvh; bottom: auto;
+      padding-bottom: calc(40px + env(safe-area-inset-bottom));
+      border-right: 1px solid var(--border); border-bottom: 0;
+      transform: translateX(-100%); visibility: hidden;
+      transition: transform .2s ease, visibility .2s;
+    }
+    .menu-open nav { transform: none; visibility: visible; }
+    .menu-open .backdrop { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .4); touch-action: none; }
+    /* Safari on iOS scrolls the page under an open menu unless the body is
+       held too. */
+    .menu-open, .menu-open body { overflow: hidden; }
+    /* Section links land below the sticky top bar. */
+    .js { scroll-padding-top: 68px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    nav { transition: none !important; }
+  }
+
+  /* Blog. */
+  main.post { max-width: 800px; }
+  .byline { color: var(--text-muted); margin: 0 0 20px; }
+  main.post p, main.post li { font-size: 16px; line-height: 1.7; }
+  main.post td { font-size: 14px; }
+  .shot svg { display: block; width: 100%; height: auto; }
+  .posts { list-style: none; padding: 0; }
+  .posts li { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .posts h2 { margin: 0 0 4px; padding: 0; border: 0; font-size: 20px; }
+  .posts p { margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add("js");</script>
+<header class="topbar">
+  <button class="menu-button" type="button" aria-label="Menu" aria-controls="menu" aria-expanded="false">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html"><img src="../assets/slintplot-icon.png" alt="" width="32" height="32">SlintPlot</a>
+  <button class="theme-button" type="button" aria-label="Switch between light and dark mode" title="Light or dark mode">
+    <svg class="when-light" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg>
+    <svg class="when-dark" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4"/></svg>
+  </button>
+</header>
+<div class="backdrop"></div>
+<div class="layout">
+<nav id="menu">
+  <div class="nav-head">
+  <a class="brand" href="../index.html"><img src="../assets/slintplot-icon.png" alt="" width="32" height="32">SlintPlot</a>
+  <button class="theme-button" type="button" aria-label="Switch between light and dark mode" title="Light or dark mode">
+    <svg class="when-light" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg>
+    <svg class="when-dark" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4"/></svg>
+  </button>
+  </div>
+  <p class="group">SlintPlot</p>
+  <a href="../index.html">Documentation</a>
+  <a href="../demo/">Gallery</a>
+  <a href="index.html">Blog</a>
+</nav>
+
+<main id="top" class="post">
+<h1>SlintPlot blog</h1>
+<p class="muted">Notes on building a chart library for Slint in Rust.</p>
+<ul class="posts">
+<li><h2><a href="drawing-charts-with-slints-own-elements.html">Drawing charts with Slint&#x27;s own elements</a></h2>
+<span class="muted">11 November 2026</span>
+<p>Slint has no chart element. Here are the options you have today, why I wrote SlintPlot, and how it draws charts from Path, Rectangle and Text with the geometry computed in Rust.</p></li>
+</ul>
+</main>
+</div>
+<script>
+  // The menu on narrow screens: the button opens it, and picking a section,
+  // tapping outside it or pressing Escape closes it.
+  const root = document.documentElement;
+  const button = document.querySelector(".menu-button");
+  const setOpen = (open) => {
+    root.classList.toggle("menu-open", open);
+    button.setAttribute("aria-expanded", String(open));
+    button.setAttribute("aria-label", open ? "Close menu" : "Menu");
+  };
+  button.addEventListener("click", () => setOpen(!root.classList.contains("menu-open")));
+  document.querySelector(".backdrop").addEventListener("click", () => setOpen(false));
+  document.querySelectorAll("nav a").forEach((link) => link.addEventListener("click", () => setOpen(false)));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && root.classList.contains("menu-open")) {
+      setOpen(false);
+      button.focus();
+    }
+  });
+  // The theme button: switches between light and dark, and remembers it.
+  document.querySelectorAll(".theme-button").forEach((themeButton) => themeButton.addEventListener("click", () => {
+    const dark = root.dataset.theme
+      ? root.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+  }));
+  // A copy button on every code example.
+  document.querySelectorAll("main pre").forEach((pre) => {
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "copy";
+    copy.textContent = "Copy";
+    copy.setAttribute("aria-label", "Copy the code");
+    copy.addEventListener("click", async () => {
+      const text = (pre.querySelector("code") || pre).innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = "Copied";
+      } catch (e) {
+        copy.textContent = "Press Ctrl+C";
+        const range = document.createRange();
+        range.selectNodeContents(pre.querySelector("code") || pre);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+      }
+      copy.classList.add("done");
+      setTimeout(() => { copy.textContent = "Copy"; copy.classList.remove("done"); }, 1600);
+    });
+    pre.appendChild(copy);
+  });
+  // Column names as labels, for the one-card-per-row tables on narrow screens.
+  document.querySelectorAll("table").forEach((table) => {
+    const head = table.querySelector("tr");
+    if (!head || !head.querySelector("th")) return;
+    head.classList.add("head");
+    const names = [...head.children].map((cell) => cell.textContent.trim());
+    table.querySelectorAll("tr").forEach((row) => {
+      if (row === head) return;
+      [...row.children].forEach((cell, i) => {
+        if (i > 0 && names[i]) cell.dataset.label = names[i];
+      });
+    });
+  });
+</script>
+</body>
+</html>
