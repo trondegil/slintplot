@@ -75,6 +75,7 @@ jobs:
           sed -i "s/?v=BUILD/?v=$build/g" docs/demo/index.html
       - name: WebP images
         run: |
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends webp
           docs/make-webp.sh
       - uses: actions/configure-pages@v5

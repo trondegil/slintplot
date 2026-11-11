@@ -335,7 +335,7 @@
 <p>So when I say charts are missing, I mean it as someone who wants to keep using Slint. I want charts that work the way the rest of it does.</p>
 
 <h2 id="today">Charts in Slint today</h2>
-<p>I'm not the only one who has looked. There is a <a href="https://github.com/slint-ui/slint/discussions/5141">GitHub discussion</a> asking how to build a line or radar chart, and a thread in the <code>plotters</code> project asking for Slint support. As far as I can tell, these are the choices.</p>
+<p>I'm not the only one who has looked. There is a <a href="https://github.com/slint-ui/slint/discussions/5141">GitHub discussion</a> asking how to build a line or radar chart, and a <a href="https://github.com/orgs/plotters-rs/discussions/521">thread in the <code>plotters</code> project</a> asking for Slint support. As far as I can tell, these are the choices.</p>
 <table>
 <tr><th>Option</th><th>How it works</th><th>Where it falls short</th></tr>
 <tr><td>Render to an image</td><td>A crate like <code>plotters</code> draws the plot into a pixel buffer, and Slint shows it as an <code>Image</code>. Slint's own <a href="https://github.com/slint-ui/slint/tree/master/examples/plotter">plotter example</a> does this.</td><td>The chart is a bitmap. It blurs when the scale changes, ignores the app's theme, and knows nothing about hover, focus or clicks. Every change redraws the whole picture.</td></tr>
