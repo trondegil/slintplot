@@ -381,7 +381,7 @@
 <figure class="shot"><video class="tour when-light" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour.mp4" type="video/mp4"></video><video class="tour when-dark" width="1280" height="820" muted loop playsinline preload="none" poster="screenshots/tour-dark.webp" aria-label="The gallery: hovering the bars of a bar chart shows tooltips, Randomize moves the bars to new values, and the radial bar and Gantt charts open from the sample list"><source src="screenshots/tour-dark.mp4" type="video/mp4"></video>
   <figcaption>The gallery app, to try the library out: every chart type, with live data, themes and dark mode.
   <a href="demo/">Try it in your browser</a>, install it with <code>cargo install slintplot-gallery</code>, or download it ready-built from the
-  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.0">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
+  <a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.1">releases page</a>. See <a href="#examples">Example apps</a>.</figcaption></figure>
 
 <h2 id="getting-started">Getting started</h2>
 <div class="compat" id="compatibility">
@@ -494,6 +494,7 @@ LineChart {
   <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
   <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>integer-ticks</code></td><td><code>bool</code></td><td><code>false</code></td><td>Count in whole numbers: the value axis steps by at least 1, for values that are counted (people, items), where a short range otherwise gets ticks at 0.5 or 0.2</td></tr>
   <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
   <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
@@ -549,7 +550,7 @@ BarChart {
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value on its bar</td></tr>
   <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: the bars. The theme's default is 0.5</td></tr>
-  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Rounded bar corners</td></tr>
+  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Rounded bar corners; in a stacked chart, the ends of each stack</td></tr>
   <tr><td><code>bar-border-width</code></td><td><code>length</code></td><td><code>1px</code></td><td>The width of the solid bar outline</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
@@ -563,6 +564,7 @@ BarChart {
   <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
   <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>integer-ticks</code></td><td><code>bool</code></td><td><code>false</code></td><td>Count in whole numbers: the value axis steps by at least 1, for values that are counted (people, items), where a short range otherwise gets ticks at 0.5 or 0.2</td></tr>
   <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
   <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
@@ -600,7 +602,7 @@ HorizontalBarChart {
   <tr><td><code>title</code></td><td><code>string</code></td><td><code>""</code></td><td>Shown above the chart</td></tr>
   <tr><td><code>show-values</code></td><td><code>bool</code></td><td><code>false</code></td><td>Write each value on its bar</td></tr>
   <tr><td><code>fill-opacity</code></td><td><code>float</code></td><td><code>ChartTheme.fill-opacity</code></td><td>The opacity of filled marks: the bars. The theme's default is 0.5</td></tr>
-  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Rounded bar corners</td></tr>
+  <tr><td><code>bar-radius</code></td><td><code>length</code></td><td><code>0</code></td><td>Rounded bar corners; in a stacked chart, the ends of each stack</td></tr>
   <tr><td><code>bar-border-width</code></td><td><code>length</code></td><td><code>1px</code></td><td>The width of the solid bar outline</td></tr>
   <tr><td><code>show-legend</code></td><td><code>bool</code></td><td><code>true</code></td><td>A legend of the datasets; clicking an entry hides or shows one</td></tr>
   <tr><td><code>legend-position</code></td><td><code>ChartLegendPosition</code></td><td><code>top</code></td><td><code>top</code>, <code>bottom</code>, <code>left</code> or <code>right</code></td></tr>
@@ -614,6 +616,7 @@ HorizontalBarChart {
   <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
   <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>integer-ticks</code></td><td><code>bool</code></td><td><code>false</code></td><td>Count in whole numbers: the value axis steps by at least 1, for values that are counted (people, items), where a short range otherwise gets ticks at 0.5 or 0.2</td></tr>
   <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
   <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
@@ -664,6 +667,7 @@ ScatterChart {
   <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
   <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>integer-ticks</code></td><td><code>bool</code></td><td><code>false</code></td><td>Count in whole numbers: the value axis steps by at least 1, for values that are counted (people, items), where a short range otherwise gets ticks at 0.5 or 0.2</td></tr>
   <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
   <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
@@ -715,6 +719,7 @@ BubbleChart {
   <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
   <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>integer-ticks</code></td><td><code>bool</code></td><td><code>false</code></td><td>Count in whole numbers: the value axis steps by at least 1, for values that are counted (people, items), where a short range otherwise gets ticks at 0.5 or 0.2</td></tr>
   <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
   <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
@@ -1201,6 +1206,7 @@ TimeSeriesChart {
   <tr><td><code>fixed-range</code></td><td><code>bool</code></td><td><code>false</code></td><td>Use <code>min-value</code> and <code>max-value</code> instead of fitting the value axis to the data</td></tr>
   <tr><td><code>min-value</code></td><td><code>float</code></td><td><code>0</code></td><td>The start of the value axis, with <code>fixed-range</code></td></tr>
   <tr><td><code>max-value</code></td><td><code>float</code></td><td><code>100</code></td><td>The end of the value axis, with <code>fixed-range</code></td></tr>
+  <tr><td><code>integer-ticks</code></td><td><code>bool</code></td><td><code>false</code></td><td>Count in whole numbers: the value axis steps by at least 1, for values that are counted (people, items), where a short range otherwise gets ticks at 0.5 or 0.2</td></tr>
   <tr><td><code>logarithmic</code></td><td><code>bool</code></td><td><code>false</code></td><td>A logarithmic value axis, for values that span several powers of ten</td></tr>
   <tr><td><code>value-prefix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written before every value, such as <code>$</code></td></tr>
   <tr><td><code>value-suffix</code></td><td><code>string</code></td><td><code>""</code></td><td>Written after every value, such as <code> %</code></td></tr>
@@ -2626,7 +2632,7 @@ a hang or a runaway allocation. Its soak test repeats the same rounds for a whil
 cargo run --release -p slintplot-fuzz -- soak 60    # an hour of the same rounds</code></pre>
 <p>The gallery also runs in the browser, built with WebAssembly: <a href="demo/">slintplot.dev/demo</a>.</p>
 <p>Ready-built apps for macOS, Windows and Linux are on the
-<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.0">releases page</a>.
+<a href="https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.1">releases page</a>.
 Each download includes the licenses of the open-source crates it is built from.</p>
 <p><a href="https://slint.dev"><img src="assets/MadeWithSlint-logo-whitebg.webp" alt="Made with Slint" width="212" height="97"></a></p>
 <figure class="shot"><img width="1280" height="820" class="when-light" src="screenshots/gallery.webp" alt="The gallery sample browser" loading="lazy"><img width="1280" height="820" class="when-dark" src="screenshots/gallery-dark.webp" alt="The gallery sample browser" loading="lazy"></figure>

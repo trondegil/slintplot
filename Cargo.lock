@@ -4101,11 +4101,11 @@ dependencies = [
 
 [[package]]
 name = "slintplot"
-version = "0.5.0"
+version = "0.5.1"
 
 [[package]]
 name = "slintplot-docshots"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "png",
  "slint",
@@ -4115,7 +4115,7 @@ dependencies = [
 
 [[package]]
 name = "slintplot-fuzz"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "slint",
  "slint-build",
@@ -4124,7 +4124,7 @@ dependencies = [
 
 [[package]]
 name = "slintplot-gallery"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -4140,7 +4140,7 @@ dependencies = [
 
 [[package]]
 name = "slintplot-stress"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",

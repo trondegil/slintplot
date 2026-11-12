@@ -516,6 +516,9 @@ pub struct AxisRequest<'a> {
     /// Scatter charts: every dataset's points are in x order (time series),
     /// so the visible ones are found by binary search.
     pub ordered: bool,
+    /// Steps of at least 1 on a linear axis, for counted values: without
+    /// it a short range is stepped by 0.5 or 0.2.
+    pub integer_ticks: bool,
 }
 
 /// Computes the value axis for the visible datasets. Tick positions are
@@ -617,10 +620,16 @@ pub fn value_axis(req: &AxisRequest) -> Axis {
             Some((lo, hi)) if hi > lo => (lo, hi),
             _ => (min, max),
         };
-        let nice = if req.align_ticks >= 2 && req.fixed.is_none() {
+        let aligned = req.align_ticks >= 2 && req.fixed.is_none();
+        let nice = if aligned {
             NiceScale::aligned(lo, hi, req.align_ticks)
         } else {
             NiceScale::new(lo, hi, max_ticks)
+        };
+        let nice = if req.integer_ticks {
+            nice.whole(lo, hi, if aligned { req.align_ticks } else { 0 })
+        } else {
+            nice
         };
         // A fixed range ends exactly at its bounds, with the ticks inside.
         let (lo, hi) = if req.fixed.is_some() {
@@ -989,6 +998,12 @@ pub struct Bar {
     pub width: f32,
     pub height: f32,
     pub color: Rgba,
+    /// Whether the bar's upper and lower ends take the chart's bar radius.
+    /// Both for a bar on its own. In a stack only the ends of the whole
+    /// stack do, so that it reads as one bar: the segments inside it are
+    /// square where they meet.
+    pub round_top: bool,
+    pub round_bottom: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -1218,6 +1233,30 @@ pub fn layout(req: &LayoutRequest) -> Layout {
         let clip = |y: f32| y.clamp(-reach, 2.0 * reach);
         let slots = if req.stacked { 1 } else { bar_sets.len() };
         let slot = group / slots as f32;
+        // Whether a segment's outer end and its end at the baseline are ends
+        // of its whole stack: the last, and the first, of the segments on
+        // its side of zero that have a height, where the first is an end
+        // only when nothing is stacked the other way. Zero and missing
+        // values, and hidden datasets, aren't in a stack, so the rounding
+        // passes on to the segment next to them.
+        let stack_ends = |ds: usize, index: usize, v: f64| -> (bool, bool) {
+            if !req.stacked {
+                return (true, true);
+            }
+            let side = |o: usize| {
+                let w = req.datasets[o].values.get(index);
+                (w.is_finite() && w != 0.0).then_some(w < 0.0)
+            };
+            let mut peers = bar_sets
+                .iter()
+                .copied()
+                .filter(|&o| req.datasets[o].right_axis == req.datasets[ds].right_axis);
+            let own = v < 0.0;
+            let first = peers.clone().find(|&o| side(o) == Some(own)) == Some(ds);
+            let last = peers.clone().rfind(|&o| side(o) == Some(own)) == Some(ds);
+            let other_way = peers.any(|o| side(o) == Some(!own));
+            (last, first && !other_way)
+        };
         for (k, &ds) in bar_sets.iter().enumerate() {
             let color = out.series[ds].color;
             let k = if req.stacked { 0 } else { k };
@@ -1233,6 +1272,13 @@ pub fn layout(req: &LayoutRequest) -> Layout {
                 // renderer draws rectangles with.
                 let (y0, y1) = (clip(axis_of(ds).y(base)), clip(axis_of(ds).y(top)));
                 let band_left = out.category_x(index) - step / 2.0;
+                // The outer end is the upper one unless the bar hangs down.
+                let (outer, inner) = stack_ends(ds, index, v);
+                let (round_top, round_bottom) = if y1 <= y0 {
+                    (outer, inner)
+                } else {
+                    (inner, outer)
+                };
                 out.bars.push(Bar {
                     dataset: ds,
                     index,
@@ -1241,6 +1287,8 @@ pub fn layout(req: &LayoutRequest) -> Layout {
                     width: slot * 0.9,
                     height: (y1 - y0).abs(),
                     color,
+                    round_top,
+                    round_bottom,
                 });
             }
         }
@@ -1688,6 +1736,7 @@ mod tests {
             side: None,
             align_ticks: 0,
             ordered: false,
+            integer_ticks: false,
         })
     }
 
@@ -1867,6 +1916,7 @@ mod tests {
             side: None,
             align_ticks: 0,
             ordered: false,
+            integer_ticks: false,
         });
         assert!(a.min >= 400.0 && a.max <= 700.0, "{} to {}", a.min, a.max);
     }
@@ -1919,6 +1969,7 @@ mod tests {
                 side: None,
                 align_ticks: 0,
                 ordered: false,
+                integer_ticks: false,
             })
         };
         let fixed = axis_with(Some((0.0, 250.0)), false);
@@ -1973,6 +2024,7 @@ mod tests {
             side: None,
             align_ticks: 0,
             ordered: false,
+            integer_ticks: false,
         });
         assert_eq!(a.ticks.last().map(|t| t.label.as_str()), Some("$6,000"));
     }
@@ -2187,6 +2239,99 @@ mod tests {
         );
     }
 
+    #[test]
+    fn integer_ticks_count_in_ones() {
+        let labels =
+            |a: &Axis| -> Vec<String> { a.ticks.iter().map(|t| t.label.clone()).collect() };
+        let data = [ds(&[1.0, 3.0, 2.0])];
+        let axis = |integer_ticks: bool, length: f32, data: &[Dataset]| {
+            value_axis(&AxisRequest {
+                datasets: data,
+                kind: Kind::Bar,
+                stacked: false,
+                label_count: 0,
+                length,
+                begin_at_zero: true,
+                tick_spacing: 30.0,
+                view: (0.0, 0.0),
+                fixed: None,
+                logarithmic: false,
+                format: &Format::default(),
+                percent: false,
+                grace: 0.0,
+                side: None,
+                align_ticks: 0,
+                ordered: false,
+                integer_ticks,
+            })
+        };
+        // Room for many ticks: fractions without, ones with.
+        assert!(
+            labels(&axis(false, 400.0, &data))
+                .iter()
+                .any(|l| l.contains('.'))
+        );
+        let whole = axis(true, 400.0, &data);
+        assert_eq!(labels(&whole), ["0", "1", "2", "3"]);
+        assert_eq!((whole.min, whole.max), (0.0, 3.0));
+        // A scale that steps by more than 1 is left alone.
+        let big = [ds(&[10.0, 250.0])];
+        assert_eq!(
+            labels(&axis(true, 400.0, &big)),
+            labels(&axis(false, 400.0, &big))
+        );
+        // Fractions round outwards to whole numbers.
+        let part = [ds(&[0.4, 2.5])];
+        assert_eq!(labels(&axis(true, 400.0, &part)), ["0", "1", "2", "3"]);
+    }
+
+    #[test]
+    fn only_the_ends_of_a_stack_are_rounded() {
+        let ends = |l: &Layout| -> Vec<(bool, bool)> {
+            l.bars
+                .iter()
+                .map(|b| (b.round_top, b.round_bottom))
+                .collect()
+        };
+        // Bars side by side are rounded at both ends.
+        let data = [ds(&[4.0]), ds(&[6.0])];
+        let req = request(Kind::Bar, &data, NO_LABELS);
+        assert_eq!(ends(&layout(&req)), [(true, true), (true, true)]);
+        // Stacked: the first at the baseline, the last at the top.
+        let data = [ds(&[4.0]), ds(&[3.0]), ds(&[6.0])];
+        let mut req = request(Kind::Bar, &data, NO_LABELS);
+        req.stacked = true;
+        assert_eq!(
+            ends(&layout(&req)),
+            [(false, true), (false, false), (true, false)]
+        );
+        // A zero at the end of the stack passes the rounding on.
+        let data = [ds(&[4.0]), ds(&[3.0]), ds(&[0.0])];
+        let mut req = request(Kind::Bar, &data, NO_LABELS);
+        req.stacked = true;
+        assert_eq!(ends(&layout(&req))[..2], [(false, true), (true, false)]);
+        // So does a hidden dataset.
+        let mut data = [ds(&[4.0]), ds(&[3.0]), ds(&[6.0])];
+        data[2].hidden = true;
+        let mut req = request(Kind::Bar, &data, NO_LABELS);
+        req.stacked = true;
+        assert_eq!(ends(&layout(&req)), [(false, true), (true, false)]);
+        // Both ways from zero: each stack's outer end, and neither's
+        // baseline, where they meet.
+        let data = [ds(&[4.0]), ds(&[-3.0]), ds(&[6.0]), ds(&[-2.0])];
+        let mut req = request(Kind::Bar, &data, NO_LABELS);
+        req.stacked = true;
+        assert_eq!(
+            ends(&layout(&req)),
+            [(false, false), (false, false), (true, false), (false, true)]
+        );
+        // One segment alone is a whole bar.
+        let data = [ds(&[0.0]), ds(&[5.0])];
+        let mut req = request(Kind::Bar, &data, NO_LABELS);
+        req.stacked = true;
+        assert_eq!(ends(&layout(&req)).last(), Some(&(true, true)));
+    }
+
     fn ds(values: &[f64]) -> Dataset {
         Dataset {
             values: values.to_vec().into(),
@@ -2390,6 +2535,7 @@ mod tests {
             side: Some(right),
             align_ticks: align,
             ordered: false,
+            integer_ticks: false,
         })
     }
 

@@ -1,6 +1,30 @@
 # Changelog
 
-## Unreleased
+## 0.5.1
+
+### Added
+
+- `integer-ticks` on line, bar, horizontal bar, scatter, bubble and time
+  series charts: the value axes step by at least 1. For values that are
+  counted, such as people or items, where a short range otherwise gets
+  ticks at 0.5 or 0.2: a largest value of 3 gives 0, 1, 2, 3. Off by
+  default; a scale that already steps by 1 or more is unchanged.
+
+### Fixed
+
+- Stacked bars with a `bar-radius` are rounded at the ends of the whole
+  stack only, so a stack reads as one bar: every segment used to be rounded
+  on all four corners, which left notches between them. A zero value or a
+  hidden dataset at the end of a stack passes the rounding on to the
+  segment next to it, and stacks above and below zero are square where they
+  meet. Bars side by side are rounded as before.
+- The legend's swatches are filled with the chart's own `fill-opacity`, on
+  bar, line, horizontal bar, candlestick and waterfall charts: they used the
+  theme's, so a chart with solid bars had pale swatches.
+
+### Website
+
+- The blog's front page shows the picture of each post.
 
 ### Example apps
 

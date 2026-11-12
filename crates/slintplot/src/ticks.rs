@@ -52,6 +52,32 @@ impl NiceScale {
 }
 
 impl NiceScale {
+    /// The scale with steps of at least 1, for values that are counted:
+    /// people, items, ratings. A scale that would step by 0.5 or 0.2
+    /// counts in ones instead, from the whole number at or below `min` to
+    /// the one at or above `max`; with `ticks` (2 or more), with exactly
+    /// that many ticks, as [`NiceScale::aligned`] gives. A scale that
+    /// already steps by 1 or more is returned as it is.
+    pub fn whole(self, min: f64, max: f64, ticks: usize) -> Self {
+        if self.step >= 1.0 || !min.is_finite() || !max.is_finite() {
+            return self;
+        }
+        let (min, max) = if min <= max { (min, max) } else { (max, min) };
+        let lo = min.floor();
+        let hi = if ticks >= 2 {
+            lo + (ticks - 1) as f64
+        } else {
+            max.ceil().max(lo + 1.0)
+        };
+        Self {
+            min: lo,
+            max: hi,
+            step: 1.0,
+        }
+    }
+}
+
+impl NiceScale {
     /// A scale with exactly `count` ticks that covers `[min, max]`, so that
     /// its ticks line up with those of another axis with `count` ticks. Steps
     /// are 1, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten: more than a

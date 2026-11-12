@@ -233,6 +233,7 @@ fn axis(rows: &[&Row], req: &BulletRequest, length: f32, format: &Format) -> Axi
         side: None,
         align_ticks: 0,
         ordered: false,
+        integer_ticks: false,
     })
 }
 

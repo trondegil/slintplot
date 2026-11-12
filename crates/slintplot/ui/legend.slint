@@ -10,6 +10,9 @@ export component Legend {
     in property <[ChartLegendItem]> items;
     // Stack the entries (for legends left or right of a chart).
     in property <bool> vertical;
+    // How solid the swatches are filled: the chart's own fill opacity, so
+    // that a swatch has the colour of what it stands for.
+    in property <float> fill-opacity: ChartTheme.fill-opacity;
     callback toggled(index: int);
 
     // Wraps onto more lines when the entries don't fit.
@@ -26,7 +29,7 @@ export component Legend {
                     Rectangle {
                         width: 28px;
                         height: 10px;
-                        background: item.color.with-alpha(ChartTheme.fill-opacity);
+                        background: item.color.with-alpha(root.fill-opacity);
                         border-color: item.color;
                         border-width: 2px;
                         opacity: item.hidden ? 0.4 : 1;
@@ -62,6 +65,9 @@ export component LegendFrame {
     in property <[ChartLegendItem]> items;
     in property <bool> show-legend: true;
     in property <ChartLegendPosition> position: ChartLegendPosition.top;
+    // How solid the swatches are filled: charts with a `fill-opacity` of
+    // their own pass it on.
+    in property <float> fill-opacity: ChartTheme.fill-opacity;
     // Keep the legend next to what the chart draws, instead of at the edge:
     // charts whose shape doesn't fill their area, such as a pie in a wide
     // area, say how much empty space it leaves on each side, and the legend
@@ -84,6 +90,7 @@ export component LegendFrame {
         if root.show-legend && root.position == ChartLegendPosition.top: Legend {
             visible: !root.attached;
             items: root.items;
+            fill-opacity: root.fill-opacity;
             toggled(index) => {
                 root.toggled(index);
             }
@@ -97,6 +104,7 @@ export component LegendFrame {
                     visible: !root.attached;
                     vertical: true;
                     items: root.items;
+                    fill-opacity: root.fill-opacity;
                     toggled(index) => {
                         root.toggled(index);
                     }
@@ -109,6 +117,7 @@ export component LegendFrame {
                     visible: !root.attached;
                     vertical: true;
                     items: root.items;
+                    fill-opacity: root.fill-opacity;
                     toggled(index) => {
                         root.toggled(index);
                     }
@@ -118,6 +127,7 @@ export component LegendFrame {
         if root.show-legend && root.position == ChartLegendPosition.bottom: Legend {
             visible: !root.attached;
             items: root.items;
+            fill-opacity: root.fill-opacity;
             toggled(index) => {
                 root.toggled(index);
             }
@@ -133,6 +143,7 @@ export component LegendFrame {
             ? max(0px, root.slack-top)
             : root.height - self.height - max(0px, root.slack-bottom);
         items: root.items;
+        fill-opacity: root.fill-opacity;
         toggled(index) => {
             root.toggled(index);
         }
@@ -146,6 +157,7 @@ export component LegendFrame {
             : root.width - self.width - max(0px, root.slack-right);
         y: (root.height - self.height) / 2;
         items: root.items;
+        fill-opacity: root.fill-opacity;
         toggled(index) => {
             root.toggled(index);
         }

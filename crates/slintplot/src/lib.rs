@@ -302,6 +302,7 @@ macro_rules! register {
                 },
                 align_ticks: usize::try_from(req.align_ticks).unwrap_or(0),
                 ordered: req.ordered,
+                integer_ticks: req.integer_ticks,
             });
             let axis = ChartAxis {
                 min: axis.min as f32,
@@ -359,6 +360,8 @@ macro_rules! register {
                     width: b.width,
                     height: b.height,
                     color: color(b.color),
+                    round_top: b.round_top,
+                    round_bottom: b.round_bottom,
                 })),
                 x_ticks: ticks(out.x_ticks),
                 count: out.count as i32,

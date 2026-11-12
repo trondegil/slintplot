@@ -42,7 +42,7 @@ the chart.
 *The gallery app shows every chart type with live data, themes and dark mode.
 [Try it in your browser](https://slintplot.dev/demo/), install it with
 `cargo install slintplot-gallery`, or download it ready-built from the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.0).*
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.1).*
 
 ## Getting started
 
@@ -227,7 +227,7 @@ Both apps draw with Slint's FemtoVG renderer by default. Start them with
 fontconfig and xkbcommon development packages (`libfontconfig-dev` and
 `libxkbcommon-dev` on Debian and Ubuntu). Ready-built apps for macOS, Windows
 and Linux are on the
-[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.0),
+[releases page](https://github.com/trondegil/slintplot/releases/tag/apps-v0.5.1),
 and the source is in [`examples/gallery`](https://github.com/trondegil/slintplot/tree/main/examples/gallery) and
 [`examples/stress`](https://github.com/trondegil/slintplot/tree/main/examples/stress). The gallery's `ui/gallery.slint` has a
 working example of every chart.

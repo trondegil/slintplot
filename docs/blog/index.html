@@ -279,6 +279,9 @@
   .posts li { padding: 16px 0; border-bottom: 1px solid var(--border); }
   .posts h2 { margin: 0 0 4px; padding: 0; border: 0; font-size: 20px; }
   .posts p { margin: 4px 0 0; }
+  /* The picture featuring a post, above its title. */
+  .posts .cover { display: block; margin-bottom: 14px; }
+  .posts .cover img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
 </style>
 </head>
 <body>
@@ -313,7 +316,8 @@
 <h1>SlintPlot blog</h1>
 <p class="muted">Notes on building a chart library for Slint in Rust.</p>
 <ul class="posts">
-<li><h2><a href="drawing-charts-with-slints-own-elements.html">Drawing charts with Slint&#x27;s own elements</a></h2>
+<li><a class="cover" href="drawing-charts-with-slints-own-elements.html" tabindex="-1" aria-hidden="true"><img src="img/slintplot-charts.png" width="2060" height="920" alt=""></a>
+<h2><a href="drawing-charts-with-slints-own-elements.html">Drawing charts with Slint&#x27;s own elements</a></h2>
 <span class="muted">11 November 2026</span>
 <p>Slint has no chart element. Here are the options you have today, why I wrote SlintPlot, and how it draws charts from Path, Rectangle and Text with the geometry computed in Rust.</p></li>
 </ul>

@@ -32,6 +32,10 @@ export component HorizontalBarChart {
     in property <string> y-title;
     // A fixed value axis from `min-value` to `max-value`.
     in property <bool> fixed-range: false;
+    // Count in whole numbers: the value axis steps by at least 1. For
+    // values that are counted (people, items), where a short range would
+    // otherwise get ticks at 0.5 or 0.2.
+    in property <bool> integer-ticks: false;
     in property <float> min-value: 0;
     in property <float> max-value: 100;
     // A logarithmic value axis. Values that aren't positive are left out.
@@ -88,6 +92,7 @@ export component HorizontalBarChart {
         fixed-min: root.min-value,
         fixed-max: root.max-value,
         logarithmic: root.logarithmic,
+        integer-ticks: root.integer-ticks,
         format: root.format,
     });
     private property <ChartLayout> chart: ChartEngine.layout({
@@ -126,6 +131,7 @@ export component HorizontalBarChart {
         }
 
         LegendFrame {
+            fill-opacity: root.fill-opacity;
             vertical-stretch: 1;
             items: ChartEngine.dataset-legend(root.datasets, ChartTheme.colors);
             show-legend: root.show-legend;
@@ -186,7 +192,12 @@ export component HorizontalBarChart {
                         width: bar.height * 1px;
                         height: bar.width * 1px;
                         background: bar.color.with-alpha(root.hovered-index == bar.index ? min(1, root.fill-opacity + 0.3) : root.fill-opacity);
-                        border-radius: root.bar-radius;
+                        // In a stack, only the ends of the whole stack. The
+                        // engine's upper end is the right one here.
+                        border-top-right-radius: bar.round-top ? root.bar-radius : 0;
+                        border-bottom-right-radius: bar.round-top ? root.bar-radius : 0;
+                        border-top-left-radius: bar.round-bottom ? root.bar-radius : 0;
+                        border-bottom-left-radius: bar.round-bottom ? root.bar-radius : 0;
                         border-color: bar.color;
                         border-width: root.bar-border-width;
                         animate background { duration: 120ms; }

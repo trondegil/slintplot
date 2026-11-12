@@ -74,6 +74,10 @@ export struct ChartBar {
     width: float,
     height: float,
     color: color,
+    // Whether its upper and lower ends take the bar radius: both for a bar
+    // on its own, only the ends of the whole stack in a stacked chart.
+    round-top: bool,
+    round-bottom: bool,
 }
 
 export struct ChartLegendItem { label: string, color: color, hidden: bool }
@@ -122,6 +126,8 @@ export struct ChartAxisRequest {
     align-ticks: int,
     // Scatter charts: every dataset's points are in x order (time series).
     ordered: bool,
+    // Steps of at least 1 on a linear axis, for counted values.
+    integer-ticks: bool,
 }
 
 export struct ChartLayoutRequest {
